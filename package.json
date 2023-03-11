@@ -1,5 +1,6 @@
 {
   "name": "poc-wee-ed",
+  "homepage": ".",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -7,8 +8,13 @@
     "@testing-library/react": "^13.0.0",
     "@testing-library/user-event": "^13.2.1",
     "react": "^18.2.0",
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^18.2.0",
+    "react-draggable": "^4.4.5",
     "react-scripts": "5.0.1",
+    "react-xarrows": "^2.0.2",
+    "react-zoom-pan-pinch": "^2.6.1",
     "web-vitals": "^2.1.0"
   },
   "scripts": {
