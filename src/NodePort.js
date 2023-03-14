@@ -1,39 +1,75 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useDragContext } from './DragContext';
+import { useScreenContext } from './ScreenContext';
 
-function NodePort({ id, type, nodeId, label, onConnected, isConnected, scale, containerRef }) {
+const globalToLocal = (globalX, globalY, translate, scale) => {
+  const localX = (globalX) / scale;
+  const localY = (globalY) / scale;
+  return { x: localX, y: localY };
+};
 
-  const pointerRef = useRef(null)
+function NodePort({ id, type, nodeId, label, onConnected, isConnected, direction }) {
+
+  const { position: screenPosition, scale: screenScale } = useScreenContext()
+  const { dragInfo, setDragInfo } = useDragContext()
+
+  const containerRef = useRef(null)
+  const connectorRef = useRef(null)
+
+  const connectorRect = useRef()
+  useEffect(() => {
+    if (!connectorRef.current) return
+    connectorRect.current = connectorRef.current.getBoundingClientRect()
+  }, [connectorRef.current])
+  
+  const containerRect = useRef()
+  useEffect(() => {
+    if (!containerRef.current) return
+    containerRect.current = containerRef.current.getBoundingClientRect()
+  }, [containerRef.current])
+
+  const [pointerPos, setPointerPos] = useState({ x: 0, y: 0 })
+  
   const handleMouseDown = (event) => {
-    event.preventDefault();
+    //event.preventDefault();
     event.stopPropagation();
 
-    console.log('drag start', event)
-  
-    const startX =  event.clientX - 100;
-    const startY =  event.clientY;
+    const nodePos = containerRef.current.getBoundingClientRect()
+    const localPos = globalToLocal(event.pageX - nodePos.left, event.pageY - nodePos.top, screenPosition, screenScale);
+    
+    const connectorRect = connectorRef.current.getBoundingClientRect()
+
+    const _dragInfo = {
+      type: 'connector',
+      nodeId,
+      portId: id,
+      portType: type,
+      startX: connectorRect.left + 5 * screenScale,
+      startY: connectorRect.top + 5 * screenScale,
+    }
+
+    setDragInfo(_dragInfo)
 
     const handleMouseMove = (event) => {
-      const dx = (event.pageX - startX) / scale;
-      const dy = (event.pageY - startY) / scale;
+      if (!_dragInfo) return
 
-      pointerRef.current.style.left = `${dx}px`;
-      pointerRef.current.style.top = `${dy}px`;
+      if (_dragInfo.type !== 'connector') return
+
+      const localPos = globalToLocal(event.pageX - nodePos.left, event.pageY - nodePos.top, screenPosition, screenScale);
+      setPointerPos({ x: localPos.x, y: localPos.y })
     }
 
     const handleMouseUp = (e) => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
 
-      console.log('drag end', e.target)
+      setDragInfo(null)
+      if (!_dragInfo) return
 
-      pointerRef.current.style.left = 0;
-      pointerRef.current.style.top = 0;
-
-      const target = document.elementFromPoint(event.pageX, event.pageY);
-      if (target?.classList?.contains('port-connector')) {
-        console.log('target found!', target, target.id, 'card-1-output-')
-        const targetId = target.id.split('-')[3];
-        onConnected?.({ source: id, target: targetId });
+      const targets = document.elementsFromPoint(e.pageX - window.scrollX, e.pageY - window.scrollY);
+      const target = targets.find(t => t.classList?.contains('port-overlay') && t.dataset.portDirection.toString() !== direction.toString() && t.dataset.portType.toString() === type.toString())
+      if (target) {
+        onConnected?.({ source: id, target: target.dataset.portId });
       }
     }
 
@@ -42,23 +78,48 @@ function NodePort({ id, type, nodeId, label, onConnected, isConnected, scale, co
   };
 
   return (
-    <div style={{ position: 'relative', width: '100%' }} className="port"
+    <div ref={containerRef} style={{ position: 'relative', width: '100%' }} className="port"
       onMouseDown={handleMouseDown}
+    >
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: direction === 'input' ? '-20px' : 0,
+        right: direction === 'output' ? '-20px' : 0,
+        width: '100%',
+        height: '100%',
+        zIndex: 2000,
+        borderRadius: '4px',
+        backgroundColor: 'rgba(0,0,0,0.1)',
+        padding: direction === 'input' ? '0 15px 0 0' : '0 0 0 15px',
+        borderTopLeftRadius: direction === 'input' ? '15px' : null,
+        borderBottomLeftRadius: direction === 'input' ? '15px' : null,
+        borderTopRightRadius: direction === 'output' ? '15px' : null,
+        borderBottomRightRadius: direction === 'output' ? '15px' : null,
+      }} 
+      className="port-overlay" 
+      id={`card-${nodeId}-${type}-${id}`}
+      data-port-id={id}
+      data-port-type={type}
+      data-port-direction={direction}
+      data-port-name={label}
+      data-node-id={nodeId}
       >
-        <div ref={pointerRef} style={{ width: '4px', height: '4px', position: 'absolute', top: 0, left: 0, zIndex: 1, border: '1px solid red', borderRadius: '2px', backgroundColor: 'red' }} />
-
+      </div>
+        
       <span style={{ fontSize: '9px' }}>{label}</span>
       <div 
         id={`card-${nodeId}-${type}-${id}`}
+        ref={connectorRef}
         style={{
           width: '10px',
           height: '10px',
-          background: type === 'input' ? 'blue' : 'red',
+          background: direction === 'input' ? 'blue' : 'red',
           borderRadius: '50%',
           cursor: 'pointer',
           position: 'absolute',
-          left: type === 'input' ? '-5px' : null,
-          right: type === 'output' ? '-5px' : null,
+          left: direction === 'input' ? '-10px' : null,
+          right: direction === 'output' ? '-10px' : null,
           top: 'calc(50% - 5px)',
         }}
         className='port-connector'

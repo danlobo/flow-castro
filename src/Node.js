@@ -1,12 +1,13 @@
-import { useState } from 'react';
 import NodePort from './NodePort';
+import { useScreenContext } from './ScreenContext';
 
-function Node({ id, name, position, scale, onChangePosition, inputPorts, outputPorts, containerRef }) {
+function Node({ id, name, position: nodePosition, onChangePosition, inputPorts, outputPorts, containerRef }) {
+
+  const { scale: screenScale } = useScreenContext()
+
   const handleMouseDown = (event) => {
     // event.preventDefault();
     event.stopPropagation();
-
-    console.log('mouse down', event.currentTarget, event.target)
 
     const startX = event.pageX;
     const startY = event.pageY;
@@ -15,7 +16,7 @@ function Node({ id, name, position, scale, onChangePosition, inputPorts, outputP
       const dx = event.pageX - startX;
       const dy = event.pageY - startY;
 
-      onChangePosition({ x: position.x + dx / scale, y: position.y + dy / scale });
+      onChangePosition({ x: nodePosition.x + dx / screenScale, y: nodePosition.y + dy / screenScale });
     };
 
     const handleMouseUp = () => {
@@ -27,11 +28,19 @@ function Node({ id, name, position, scale, onChangePosition, inputPorts, outputP
     window.addEventListener('mouseup', handleMouseUp);
   };
 
+  const onOutputPortConnected = (portId, targetNodeId, targetPortId) => {
+    console.log('output port connected', portId, targetNodeId, targetPortId)
+  }
+
+  const onInputPortConnected = (portId, targetNodeId, targetPortId) => {
+    console.log('input port connected', portId, targetNodeId, targetPortId)
+  }
+
   return <div
     id={`card-${id}`}
     className="node"
     style={{
-      transform: `translate(${position.x}px, ${position.y}px)`,
+      transform: `translate(${nodePosition.x}px, ${nodePosition.y}px)`,
     }}
     onMouseDown={handleMouseDown}
   >
@@ -51,10 +60,11 @@ function Node({ id, name, position, scale, onChangePosition, inputPorts, outputP
             id={port.id} 
             nodeId={id} 
             key={port.id} 
-            type="input" 
+            type="string"
+            direction="input" 
             label={port.label}
-            scale={scale}
             containerRef={containerRef}
+            onConnected={onInputPortConnected}
           />
         ))}
       {outputPorts?.map((port) => (
@@ -62,11 +72,11 @@ function Node({ id, name, position, scale, onChangePosition, inputPorts, outputP
             id={port.id}
             nodeId={id}
             key={port.id}
-            type="output"
+            type="string"
+            direction="output"
             label={port.label}
-            scale={scale}
             containerRef={containerRef}
-            // onConnected={onOutputPortConnected}
+            onConnected={onOutputPortConnected}
           />
         ))}
     </div>

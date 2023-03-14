@@ -1,266 +1,269 @@
-import React, { useRef, useState, useEffect } from 'react';
-import './Screen.css';
+import { useEffect, useRef, useState } from 'react';
+import Node from './Node';
+import { 
+  TransformWrapper, 
+  TransformComponent 
+} from "react-zoom-pan-pinch";
+import Xarrow, { useXarrow, Xwrapper } from 'react-xarrows';
+import { useDragContext } from './DragContext';
+import { useScreenContext } from './ScreenContext';
+import { ConnectorCurve } from './ConnectorCurve';
 
-const MIN_ZOOM = 0.1;
-const MAX_ZOOM = 5;
+function NodeContainer() {
+  const { dragInfo, setDragInfo } = useDragContext()
+  const { position, setPosition, scale, setScale } = useScreenContext();
 
-function Item({ position, scale, onChangePosition }) {
-  const handleMouseDown = (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    const startX = event.pageX;
-    const startY = event.pageY;
-
-    const handleMouseMove = (event) => {
-      const dx = event.pageX - startX;
-      const dy = event.pageY - startY;
-
-      onChangePosition({ x: position.x + dx / scale, y: position.y + dy / scale });
-    };
-
-    const handleMouseUp = () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-  };
-
-  return <img
-    className="zoom-and-pan-image"
-    src="https://picsum.photos/300/200"
-    alt="Example"
-    style={{
-      transform: `translate(${position.x}px, ${position.y}px)`,
-    }}
-    onMouseDown={handleMouseDown}
-  />
-}
-
-function Screen() {
-  const [nodes, setNodes] = useState([
-    { id: 1, position: { x: 0, y: 0 }, type: 'item' },
-    { id: 2, position: { x: 400, y: 400 }, type: 'item' }
-  ]);
-  const [scale, setScale] = useState(1);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-
-  const panning = useRef(false);
-
-  const start = useRef({ x: 0, y: 0 });
-
-  const screenRef = useRef(null);
-
-  const translatorRef = useRef(null);
-  const scalerRef = useRef(null);
+  const [dstDragPosition, setDstDragPosition] = useState({ x: 0, y: 0 })
+  const [pointerPosition, setPointerPosition] = useState({ x: 0, y: 0 })
   
-  const lastTouch = useRef(null);
-
-  const [pointer, setPointer] = useState({ x: 0, y: 0 });
-  const [oldPointer, setOldPointer] = useState({ x: 0, y: 0 });
-
-  const pointerRef = useRef({ x: 0, y: 0 });
-  const targetRef = useRef({ x: 0, y: 0 });
-
-  const handleMouseDown = (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    start.current = { 
-      x: event.clientX - position.x, 
-      y: event.clientY - position.y 
-    };
-    
-    // setPointer({
-    //   x: start.current.x / scale,
-    //   y: start.current.y / scale,
-    // })
-
-    panning.current = true;
-
-    const handleMouseMove = (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-
-      // const rect = translatorRef.current.getBoundingClientRect();
-      // setPointer({
-      //   x: (event.clientX - rect.x) / scale, 
-      //   y: (event.clientY - rect.y) / scale
-      // })
-
-      if (!panning.current) {
-        return;
-      }
-
-      setPosition(prev => {
-        return { 
-          x: event.clientX - start.current.x, 
-          y: event.clientY - start.current.y
-        }
-      })
-    };
-
-    const handleMouseUp = () => {
-      panning.current = false;
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-  };
 
   useEffect(() => {
-    const handleTouchStart = (event) => {
-      lastTouch.current = event.touches[0];
-    };
-  
-    const handleTouchMove = (event) => {
-      if (event.touches.length === 1 && lastTouch.current) {
-        const touch = event.touches[0];
-        setPosition({
-          x: position.x + touch.pageX - lastTouch.current.pageX,
-          y: position.y + touch.pageY - lastTouch.current.pageY,
-        });
-        lastTouch.current = touch;
-      } else {
-        lastTouch.current = null;
-      }
-    };
-  
-    const handleTouchEnd = () => {
-      lastTouch.current = null;
-    };
-
-    // handleWheel must consider the mouse position relative to the screen
-    const handleWheel = (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-
-      const delta = (event.wheelDelta ? event.wheelDelta : -event.deltaY);
-      const factor = delta > 0 ? 1.1 : 0.9;
-
-      // const rect = translatorRef.current.getBoundingClientRect();
-      // const mouseX = event.clientX - rect.left;
-      // const mouseY = event.clientY - rect.top;
-
-      setScale(currScale => {
-        const newScale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, currScale * factor))
-        return newScale;
-      })
-    };
-
-    if (screenRef.current) {
-      screenRef.current.addEventListener('touchstart', handleTouchStart);
-      screenRef.current.addEventListener('touchmove', handleTouchMove);
-      screenRef.current.addEventListener('touchend', handleTouchEnd);
-      screenRef.current.addEventListener('wheel', handleWheel, { passive: false });
+    if (!dragInfo) {
+      setDstDragPosition(null)
+      return
     }
 
-    const refCurr = screenRef.current;
+    const mouseMoveListener = (event) => {
+      setPointerPosition({
+        x: event.pageX - window.scrollX,
+        y: event.pageY - window.scrollY,
+      })
+
+      if (!dragInfo) return
+
+      const { startX, startY } = dragInfo
+      const dx = event.pageX //- startX
+      const dy = event.pageY //- startY
+
+      setDstDragPosition({ x: dx, y: dy })
+    }
+
+    window.addEventListener('mousemove', mouseMoveListener)
     return () => {
-      if (refCurr) {
-        refCurr.removeEventListener('touchstart', handleTouchStart);
-        refCurr.removeEventListener('touchmove', handleTouchMove);
-        refCurr.removeEventListener('touchend', handleTouchEnd);
-        refCurr.removeEventListener('wheel', handleWheel);
-      }
-    };
-  }, []);
+      window.removeEventListener('mousemove', mouseMoveListener)
+    }
+  }, [dragInfo])
+  
+  const [cards, setCards] = useState([
+    { 
+      id: 2, 
+      name: 'Daniel', 
+      position: { x: 100, y: 0 },
+      outputPorts: [
+        { id: 1, label: 'output 1' },
+      ]
+    },
+    { 
+      id: 3, 
+      name: 'Camylla', 
+      position: { x: 200, y: 200 },
+      inputPorts: [
+        { id: 1, label: 'input 1' },
+      ]
+    }
+  ]);
+
+  const [connections, setConnections] = useState([
+    { srcNode: 2, dstNode: 3, srcPort: 1, dstPort: 1 }
+  ]);
+
+  const screenRef = useRef()
+
+  const updateXarrow = useXarrow();
+  useEffect(() => {
+    window.addEventListener('resize', updateXarrow);
+    return () => window.removeEventListener('resize', updateXarrow);
+  }, [])
+
+  const [isMoveable, setIsMoveable] = useState(false);
+  const [canMove, setCanMove] = useState(true);
+
+  const onDrag = () => {
+    setIsMoveable(true)
+    updateXarrow()
+    //etc
+  }
+  const onStop = () => {
+    setIsMoveable(false)
+    updateXarrow()
+    //etc 
+  }
+
+  const onZoom = (params) => {
+    setScale(params.state.scale);
+    updateXarrow(params)
+  }
+
+  const onTransform = (params) => {  
+    setPosition({x: params.state.positionX, y: params.state.positionY });
+    updateXarrow(params)
+  }
 
   const gridSize = 40;
   const scaledGridSize = gridSize * scale;
   const scaledPositionX = (position.x) % scaledGridSize;
   const scaledPositionY = (position.y) % scaledGridSize;
 
+  //hashed list
+  const connectionsHash = connections.reduce((acc, curr) => {
+    const { srcNode, dstNode, srcPort, dstPort } = curr;
+    const key = `${srcNode}-${dstNode}-${srcPort}-${dstPort}`;
+    acc[key] = curr;
+    return acc;
+  }, {});
+
+  const handleOutputPortConnected = (props) => {
+    console.log('handleOutputPortConnected', props);
+  };
+
   return (
-    <div
-      className="screen"
-      ref={screenRef}
-      style={{
-        height: '100%',
-        backgroundSize: `${scaledGridSize}px ${scaledGridSize}px`,
-        backgroundImage: `linear-gradient(to right, #CCCCCC 1px, transparent 1px), linear-gradient(to bottom, #CCCCCC 1px, transparent 1px)`,
-        backgroundPosition: `${scaledPositionX}px ${scaledPositionY}px`,
-      }}
-      onMouseDown={handleMouseDown}
-    >
-      <div 
-        style={{
-          position: 'absolute',
-          right: '20px',
-          bottom: '20px',
-          width: '100px',
-          border: '1px solid gray',
-          borderRadius: '4px',
-        }}>
-          <div>Scale: {scale.toFixed(2)}</div>
-          <div>Position: {position.x.toFixed(1)}, {position.y.toFixed(1)}</div>
-      </div>
-      <div
-        ref={translatorRef}
-        style={{
-          width: 0,
-          height: 0,
-          transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-          // transformOrigin: `${pointer.x}px ${pointer.y}px`,
-        }}
+    <div style={{ position: 'relative', border: `1px solid blue` }}>
+      <TransformWrapper
+        initialScale={1}
+        initialPositionX={0}
+        initialPositionY={0}
+        disabled={isMoveable}
+        minScale={.25}
+        maxScale={2}
+        limitToBounds={false}
+        onPanning={onTransform}
+        onZoom={onZoom}
+        pinch={{ step: 5 }}
+        panning={{ excluded: ['node', 'react-draggable', 'port', 'port-connector']}}
       >
-        <div
-          ref={scalerRef}
-        >
-          <div ref={pointerRef} style={{
-            position: 'absolute', 
-            left: pointer.x, 
-            top: pointer.y, 
-            width: `${Math.ceil(4 / scale)}px`, 
-            height: `${Math.ceil(4 / scale)}px`, 
-            translate: '(-2px, -2px)',
-            border: '2px solid red',
-            borderRadius: '2px',
-            }}
-          />
-          <div style={{
-            position: 'absolute', 
-            left: oldPointer.x, 
-            top: oldPointer.y, 
-            width: `${Math.ceil(4 / scale)}px`, 
-            height: `${Math.ceil(4 / scale)}px`, 
-            translate: '(-2px, -2px)',
-            border: '2px solid gray',
-            borderRadius: '2px',
-            }}
-          />
-          <div
-            ref={targetRef}
-            style={{ 
+        {({ zoomIn, zoomOut, resetTransform, setTransform, centerView, ...rest }) => (
+          <>
+            <div style={{ 
               position: 'absolute', 
-              left: targetRef.current.x, 
-              top: targetRef.current.y,
-              width: `${Math.ceil(4 / scale)}px`, 
-              height: `${Math.ceil(4 / scale)}px`, 
-              translate: '(-2px, -2px)',
-              border: '2px solid green',
-              borderRadius: '2px',
-            }} />
-          {nodes.map((node, idx) => 
-            <Item
-              key={node.id}
-              scale={scale}
-              position={node.position}
-              onChangePosition={(newPosition) => setNodes([
-                ...nodes.slice(0, idx),
-                { ...node, position: newPosition },
-                ...nodes.slice(idx + 1),
-              ])}
-            />
-          )}
-        </div>
-      </div>
+              bottom: '40px', 
+              right: '40px', 
+              zIndex: 1000, 
+              width: '30px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor: 'white',
+              border: '1px solid #CCC',
+              borderRadius: '.5rem',
+              padding: '.5rem',
+              boxShadow: '0 0 5px #CCC',
+              gap: '.5rem'
+              }}
+            >
+              <button style={{ width: '30px', height: '30px' }} onClick={() => zoomIn()}>+</button>
+              <button style={{ width: '30px', height: '30px' }} onClick={() => zoomOut()}>-</button>
+              <button style={{ width: '30px', height: '30px' }} onClick={() => centerView()}>C</button>
+              <button style={{ width: '30px', height: '30px' }} onClick={() => {setTransform(position.x, position.y, 1); setScale(1);} }>Z</button>
+              
+              <button style={{ width: '30px', height: '30px' }} onClick={() => setCanMove(!canMove)}>{canMove ? 'L' : 'U'}</button>
+            </div>
+
+            <div style={{ 
+              position: 'absolute', 
+              bottom: '40px', 
+              right: '150px', 
+              zIndex: 1000,
+              width: '120px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor: 'white',
+              border: '1px solid #CCC',
+              borderRadius: '.5rem',
+              padding: '.5rem',
+              boxShadow: '0 0 5px #CCC',
+              gap: '.5rem',
+              fontSize: '9px'
+              }}
+            >
+              <div>Scale: {scale}</div>
+              <div>Position: {JSON.stringify(position)}</div>
+              <div>Pointer: {JSON.stringify(pointerPosition)}</div>
+            </div>
+
+            <TransformComponent 
+              contentClass='main' 
+              wrapperStyle={{ 
+                height: '100vh', 
+                width: '100vw',
+                backgroundSize: `${scaledGridSize}px ${scaledGridSize}px`,
+                backgroundImage: `linear-gradient(to right, #CCCCCC 1px, transparent 1px), linear-gradient(to bottom, #CCCCCC 1px, transparent 1px)`,
+                backgroundPosition: `${scaledPositionX}px ${scaledPositionY}px`,
+              }}
+              wrapperProps={{
+                onDragOver: (e) => {
+                  e.dataTransfer.dropEffect = "move";
+                  e.dataTransfer.effectAllowed = "move";
+
+                  console.log(`drag over dropEffect: ${e.dataTransfer.dropEffect} effectAllowed: ${e.dataTransfer.effectAllowed}`)
+                },
+                onDragLeave: (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }
+              }}
+              
+              >
+              {cards.map((value, index) => (
+                <Node 
+                  key={index} 
+                  id={value.id}
+                  name={value.name}
+                  position={value.position}
+                  onChangePosition={(position) => setCards(prev => [
+                    ...prev.slice(0, index),
+                    { ...value, position },
+                    ...prev.slice(index + 1)
+                  ])}
+                  containerRef={screenRef}
+                  // onDrag={onDrag} 
+                  // onStop={onStop}
+                  inputPorts={value.inputPorts}
+                  outputPorts={value.outputPorts}
+                  // canMove={canMove}
+                  // onOutputPortConnected={handleOutputPortConnected}
+                  />
+              ))}
+            </TransformComponent>
+            {dragInfo && dstDragPosition && <ConnectorCurve src={{
+              x: dragInfo.startX + window.scrollX,
+              y: dragInfo.startY + window.scrollY
+            }}
+            dst={{
+              x: dstDragPosition.x,
+              y: dstDragPosition.y
+            }}
+            />}
+            <Xwrapper>
+                {connections.map((rel, index) => (
+                  <Xarrow 
+                  key={index}
+                  headShape={'arrow1'}
+                  tailShape={'circle'}
+                  arrowTailProps={{stroke:"#9BA1A6",strokeWidth:".2",fill:'#1A1D1E',fillOpacity:'0.1'}}
+                  arrowHeadProps={{stroke:"#9BA1A6",strokeWidth:".2",fill:'#1A1D1E',fillOpacity:'0.1'}}
+                  headSize={10 * scale}
+                  tailSize={0}
+                  path={'smooth'}
+                  showHead={true}
+                  showTail={false}
+                  startAnchor={['right', 'left']}
+                  endAnchor={['left', 'right']}
+                  color={'#9BA1A6'}
+                  start={`card-${rel.srcNode}-output-${rel.srcPort}`} 
+                  end={`card-${rel.dstNode}-input-${rel.dstPort}`} 
+                  strokeWidth={1.5}
+                  curveness={0.5}
+                />
+              ))}
+            </Xwrapper>
+          </>
+        )}
+      </TransformWrapper>
     </div>
   );
 }
 
-export default Screen;
+export default NodeContainer;
