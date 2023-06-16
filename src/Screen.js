@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Node from './Node';
 import { 
   TransformWrapper, 
@@ -8,6 +8,7 @@ import Xarrow, { useXarrow, Xwrapper } from 'react-xarrows';
 import { useDragContext } from './DragContext';
 import { useScreenContext } from './ScreenContext';
 import { ConnectorCurve } from './ConnectorCurve';
+import ConnectorCanvas from './ConnectorCanvas';
 
 function NodeContainer() {
   const { dragInfo, setDragInfo } = useDragContext()
@@ -46,11 +47,23 @@ function NodeContainer() {
   
   const [cards, setCards] = useState([
     { 
+      id: 1, 
+      name: 'Aninha', 
+      position: { x: 300, y: 300 },
+      inputPorts: [
+        { id: 1, label: 'input 1' },
+      ],
+      outputPorts: [
+        { id: 1, label: 'output 1' },
+      ]
+    },
+    { 
       id: 2, 
       name: 'Daniel', 
       position: { x: 100, y: 0 },
       outputPorts: [
         { id: 1, label: 'output 1' },
+        { id: 2, label: 'output 2' },
       ]
     },
     { 
@@ -63,9 +76,7 @@ function NodeContainer() {
     }
   ]);
 
-  const [connections, setConnections] = useState([
-    { srcNode: 2, dstNode: 3, srcPort: 1, dstPort: 1 }
-  ]);
+  const [connections, setConnections] = useState([]);
 
   const screenRef = useRef()
 
@@ -89,6 +100,13 @@ function NodeContainer() {
     //etc 
   }
 
+  const handleNodeMove = (node, position) => {
+    const outputConnections = connections.filter(c => c.srcNode === node.id);
+    const inputConnections = connections.filter(c => c.dstNode === node.id);
+
+
+  }
+
   const onZoom = (params) => {
     setScale(params.state.scale);
     updateXarrow(params)
@@ -99,18 +117,35 @@ function NodeContainer() {
     updateXarrow(params)
   }
 
+  const onConnect = ({ source, target }) => {
+    const item = {
+      srcNode: source.nodeId,
+      dstNode: target.nodeId,
+      srcPort: source.portId,
+      dstPort: target.portId,
+    }
+
+    const key = `${item.srcNode}-${item.dstNode}-${item.srcPort}-${item.dstPort}`;
+    if (connectionsHash[key]) return;
+
+    const newConnections = [...connections, item];
+    console.log('newConnections', newConnections)
+    setConnections(newConnections);
+  }
+
   const gridSize = 40;
   const scaledGridSize = gridSize * scale;
   const scaledPositionX = (position.x) % scaledGridSize;
   const scaledPositionY = (position.y) % scaledGridSize;
 
   //hashed list
-  const connectionsHash = connections.reduce((acc, curr) => {
+  const connectionsHash = React.useMemo(() => connections.reduce((acc, curr) => {
     const { srcNode, dstNode, srcPort, dstPort } = curr;
     const key = `${srcNode}-${dstNode}-${srcPort}-${dstPort}`;
     acc[key] = curr;
     return acc;
-  }, {});
+  }, {})
+  , [connections]);
 
   const handleOutputPortConnected = (props) => {
     console.log('handleOutputPortConnected', props);
@@ -208,57 +243,65 @@ function NodeContainer() {
               >
               {cards.map((value, index) => (
                 <Node 
-                  key={index} 
+                  key={value.id} 
                   id={value.id}
                   name={value.name}
                   position={value.position}
+                  onMove={(pos) => handleNodeMove(value, pos)}
                   onChangePosition={(position) => setCards(prev => [
                     ...prev.slice(0, index),
                     { ...value, position },
                     ...prev.slice(index + 1)
                   ])}
                   containerRef={screenRef}
-                  // onDrag={onDrag} 
-                  // onStop={onStop}
                   inputPorts={value.inputPorts}
                   outputPorts={value.outputPorts}
-                  // canMove={canMove}
-                  // onOutputPortConnected={handleOutputPortConnected}
+                  canMove={canMove}
+                  onConnect={onConnect}
                   />
               ))}
             </TransformComponent>
-            {dragInfo && dstDragPosition && <ConnectorCurve src={{
-              x: dragInfo.startX + window.scrollX,
-              y: dragInfo.startY + window.scrollY
-            }}
-            dst={{
-              x: dstDragPosition.x,
-              y: dstDragPosition.y
-            }}
-            />}
-            <Xwrapper>
-                {connections.map((rel, index) => (
-                  <Xarrow 
-                  key={index}
-                  headShape={'arrow1'}
-                  tailShape={'circle'}
-                  arrowTailProps={{stroke:"#9BA1A6",strokeWidth:".2",fill:'#1A1D1E',fillOpacity:'0.1'}}
-                  arrowHeadProps={{stroke:"#9BA1A6",strokeWidth:".2",fill:'#1A1D1E',fillOpacity:'0.1'}}
-                  headSize={10 * scale}
-                  tailSize={0}
-                  path={'smooth'}
-                  showHead={true}
-                  showTail={false}
-                  startAnchor={['right', 'left']}
-                  endAnchor={['left', 'right']}
-                  color={'#9BA1A6'}
-                  start={`card-${rel.srcNode}-output-${rel.srcPort}`} 
-                  end={`card-${rel.dstNode}-input-${rel.dstPort}`} 
-                  strokeWidth={1.5}
-                  curveness={0.5}
+              {dragInfo && dstDragPosition && <ConnectorCurve tmp src={{
+                x: dragInfo.startX + window.scrollX,
+                y: dragInfo.startY + window.scrollY
+              }}
+              dst={{
+                x: dstDragPosition.x,
+                y: dstDragPosition.y
+              }}
+              scale={scale}
+              />}
+              {connections.map((rel, index) => {
+                const srcElem = document.getElementById(`card-${rel.srcNode}-output-${rel.srcPort}`);
+                const dstElem = document.getElementById(`card-${rel.dstNode}-input-${rel.dstPort}`);
+
+                if (!srcElem || !dstElem) {
+                  return null;
+                }
+
+                const srcRect = srcElem.getBoundingClientRect();
+                const dstRect = dstElem.getBoundingClientRect();
+
+                const srcPos = {
+                  x: srcRect.x + window.scrollX + srcRect.width / 2,
+                  y: srcRect.y + window.scrollY + srcRect.height / 2
+                }
+
+                const dstPos = {
+                  x: dstRect.x + window.scrollX + dstRect.width / 2,
+                  y: dstRect.y + window.scrollY + dstRect.height / 2
+                }
+
+                // srcPos.x = srcPos.x + srcRect.width * Math.sign(dstPos.x - srcPos.x);
+                // dstPos.x = dstPos.x + dstRect.width * Math.sign(srcPos.x - dstPos.x);
+
+                return <ConnectorCurve
+                  key={`connector-${rel.srcNode}-${rel.srcPort}-${rel.dstNode}-${rel.dstPort}`}
+                  src={srcPos}
+                  dst={dstPos}
+                  scale={scale} 
                 />
-              ))}
-            </Xwrapper>
+              })}
           </>
         )}
       </TransformWrapper>

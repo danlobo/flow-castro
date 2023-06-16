@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { memo, useEffect, useRef, useState } from 'react';
 import { useDragContext } from './DragContext';
 import { useScreenContext } from './ScreenContext';
 
@@ -44,8 +44,8 @@ function NodePort({ id, type, nodeId, label, onConnected, isConnected, direction
       nodeId,
       portId: id,
       portType: type,
-      startX: connectorRect.left + 5 * screenScale,
-      startY: connectorRect.top + 5 * screenScale,
+      startX: connectorRect.left,
+      startY: connectorRect.top,
     }
 
     setDragInfo(_dragInfo)
@@ -69,7 +69,8 @@ function NodePort({ id, type, nodeId, label, onConnected, isConnected, direction
       const targets = document.elementsFromPoint(e.pageX - window.scrollX, e.pageY - window.scrollY);
       const target = targets.find(t => t.classList?.contains('port-overlay') && t.dataset.portDirection.toString() !== direction.toString() && t.dataset.portType.toString() === type.toString())
       if (target) {
-        onConnected?.({ source: id, target: target.dataset.portId });
+        console.log(target.dataset)
+        onConnected?.({ source: { nodeId, portId: id }, target: { nodeId: target.dataset.nodeId, portId: target.dataset.portId } });
       }
     }
 
@@ -98,7 +99,7 @@ function NodePort({ id, type, nodeId, label, onConnected, isConnected, direction
         borderBottomRightRadius: direction === 'output' ? '15px' : null,
       }} 
       className="port-overlay" 
-      id={`card-${nodeId}-${type}-${id}`}
+      id={`card-${nodeId}-${direction}-${id}-overlay`}
       data-port-id={id}
       data-port-type={type}
       data-port-direction={direction}
@@ -109,7 +110,7 @@ function NodePort({ id, type, nodeId, label, onConnected, isConnected, direction
         
       <span style={{ fontSize: '9px' }}>{label}</span>
       <div 
-        id={`card-${nodeId}-${type}-${id}`}
+        id={`card-${nodeId}-${direction}-${id}`}
         ref={connectorRef}
         style={{
           width: '10px',
@@ -128,4 +129,4 @@ function NodePort({ id, type, nodeId, label, onConnected, isConnected, direction
   );
 }
 
-export default NodePort;
+export default memo(NodePort);

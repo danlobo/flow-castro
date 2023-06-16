@@ -1,7 +1,8 @@
+import { memo } from 'react';
 import NodePort from './NodePort';
 import { useScreenContext } from './ScreenContext';
 
-function Node({ id, name, position: nodePosition, onChangePosition, inputPorts, outputPorts, containerRef }) {
+function Node({ id, name, position: nodePosition, onChangePosition, onConnect, inputPorts, outputPorts, containerRef }) {
 
   const { scale: screenScale } = useScreenContext()
 
@@ -28,12 +29,14 @@ function Node({ id, name, position: nodePosition, onChangePosition, inputPorts, 
     window.addEventListener('mouseup', handleMouseUp);
   };
 
-  const onOutputPortConnected = (portId, targetNodeId, targetPortId) => {
-    console.log('output port connected', portId, targetNodeId, targetPortId)
+  const onOutputPortConnected = ({ source, target }) => {
+    console.log('output port connected', source, target)
+    onConnect?.({ source, target })
   }
 
-  const onInputPortConnected = (portId, targetNodeId, targetPortId) => {
-    console.log('input port connected', portId, targetNodeId, targetPortId)
+  const onInputPortConnected = ({ source, target }) => {
+    console.log('input port connected', source, target)
+    onConnect?.({ source: target, target: source })
   }
 
   return <div
@@ -54,8 +57,9 @@ function Node({ id, name, position: nodePosition, onChangePosition, inputPorts, 
       alt="Example"
     />
 
-    <div style={{ width: '100%' }}>
-      {inputPorts?.map((port) => (
+    <div style={{ width: '100%', display: 'flex' }}>
+      <div style={{ width: '50%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+        {inputPorts?.map((port) => (
           <NodePort 
             id={port.id} 
             nodeId={id} 
@@ -67,7 +71,9 @@ function Node({ id, name, position: nodePosition, onChangePosition, inputPorts, 
             onConnected={onInputPortConnected}
           />
         ))}
-      {outputPorts?.map((port) => (
+      </div>
+      <div style={{ width: '50%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+        {outputPorts?.map((port) => (
           <NodePort 
             id={port.id}
             nodeId={id}
@@ -79,9 +85,10 @@ function Node({ id, name, position: nodePosition, onChangePosition, inputPorts, 
             onConnected={onOutputPortConnected}
           />
         ))}
+      </div>
     </div>
 
   </div>
 }
 
-export default Node;
+export default  memo(Node);
