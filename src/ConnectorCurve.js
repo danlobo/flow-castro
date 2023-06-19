@@ -1,4 +1,4 @@
-export function ConnectorCurve({ src, dst, scale, tmp}) {
+export function ConnectorCurve({ src, dst, scale, tmp, onContextMenu}) {
   if (!src || !dst) {
     return
   }
@@ -33,7 +33,7 @@ export function ConnectorCurve({ src, dst, scale, tmp}) {
         left: -5,
         width: Math.abs(dst.x-src.x)+10,
         height: Math.abs(dst.y-src.y)+10,
-        zIndex: tmp ? 1000 : 10,
+        zIndex: tmp ? 1000 : -1,
       }}
     >
       {/* <circle cx={x1.x} cy={x1.y} r={12} fill="green" />
@@ -41,9 +41,10 @@ export function ConnectorCurve({ src, dst, scale, tmp}) {
       <circle cx={b1.x} cy={b1.y} r={5} fill="blue" />
       <circle cx={b2.x} cy={b2.y} r={5} fill="purple" /> */}
       <path 
-        style={{ position: 'relative', pointerEvents:'all', strokeWidth: 5 * scale }}
+        style={{ position: 'relative', pointerEvents:'all', strokeWidth: Math.max(4, 5 * scale) }}
         className={tmp ? 'tmp-connector' : "connector-curve"}
         d={`M ${x1.x} ${x1.y} C ${b1.x} ${b1.y}, ${b2.x} ${b2.y}, ${x2.x} ${x2.y}`}
+        onContextMenu={onContextMenu}
       />
     </svg>
   )
