@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Node from './Node';
 import { 
   TransformWrapper, 
@@ -18,6 +18,47 @@ function NodeContainer() {
   const [dstDragPosition, setDstDragPosition] = useState({ x: 0, y: 0 })
   const [pointerPosition, setPointerPosition] = useState({ x: 0, y: 0 })
   
+  const portTypes = useMemo(() => ({
+    string: { 
+      type: 'string', 
+      label: 'String', 
+      color: '#f80', 
+      render({ value, onChange }) {
+        return <textarea style={{width: '100%'}} value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
+     }
+    },
+    number: { 
+      type: 'number', 
+      label: 'Número', 
+      color: '#33f', 
+      render({ value, onChange }) {
+        return <input type="tel" style={{width: '100%'}} value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
+     }
+    },
+  }), [])
+
+  const nodeTypes = useMemo(() => ({
+    string: {
+      type: 'string',
+      label: 'String',
+      inputs: [
+        { type: 'string', name: 'string', label: 'input 1' }
+      ],
+      outputs: [
+        { type: 'string', name: 'string', label: 'output 1' }
+      ],
+    },
+    number: {
+      type: 'number',
+      label: 'Número',
+      inputs: [
+        { type: 'number', name: 'number', label: 'input 1' }
+      ],
+      outputs: [
+        { type: 'number', name: 'number', label: 'output 1' }
+      ],
+    },    
+  }), [])
 
   useEffect(() => {
     if (!dragInfo) {
@@ -49,35 +90,44 @@ function NodeContainer() {
   const [cards, setCards] = useState([
     { 
       id: 1, 
+      type: 'string',
       name: 'Aninha', 
       position: { x: 300, y: 300 },
       inputPorts: [
-        { id: 1, label: 'input 1' },
+        { id: 1, name: 'string', type: 'string', label: 'input 1' },
       ],
       outputPorts: [
-        { id: 1, label: 'output 1' },
+        { id: 1, name: 'string', type: 'string', label: 'output 1' },
       ]
     },
     { 
-      id: 2, 
+      id: 2,
+      type: 'number',
       name: 'Daniel', 
       position: { x: 100, y: 0 },
+      inputPorts: [
+        { id: 1, name: 'number', type: 'number', label: 'input 1' },
+      ],
       outputPorts: [
-        { id: 1, label: 'output 1' },
-        { id: 2, label: 'output 2' },
+        { id: 1, name: 'number', type: 'number', label: 'output 1' },
       ]
     },
     { 
-      id: 3, 
+      id: 3,
+      type: 'string',
       name: 'Camylla', 
       position: { x: 200, y: 200 },
       inputPorts: [
-        { id: 1, label: 'input 1' },
+        { id: 1, name: 'string', type: 'string', label: 'input 1' },
+      ],
+      outputPorts: [
+        { id: 1, name: 'string', type: 'string', label: 'output 1' },
       ]
     }
   ]);
 
   const [connections, setConnections] = useState([]);
+  const [connectionsMap, setConnectionsMap] = useState(new Map());
 
 
   const updateConnections = useCallback((newConnections, nodeAffected) => {
@@ -128,6 +178,16 @@ function NodeContainer() {
   useEffect(() => {
     updateConnections();
   }, [scale, position, updateConnections]);
+
+  useEffect(() => {
+  const _cm = new Map()
+
+   connections.forEach(conn => {
+      _cm.set(`src_` + conn.srcNode + "_" + conn.srcPort, conn);
+      _cm.set(`dst_` + conn.dstNode + "_" + conn.dstPort, conn);
+    });
+    setConnectionsMap(_cm)
+  }, [connections])
 
   const screenRef = useRef()
 
@@ -269,7 +329,7 @@ function NodeContainer() {
                       e.stopPropagation();
                     },
                     onContextMenu: (e) => handleContextMenu(e, [
-                      { label: 'Add Node', onClick: () => {}}
+                      { label: 'Adicionar nó', onClick: () => {}}
                     ])
                   }}
                   
@@ -278,8 +338,10 @@ function NodeContainer() {
                     <Node 
                       key={value.id} 
                       id={value.id}
-                      name={value.name}
-                      position={value.position}
+                      portTypes={portTypes}
+                      nodeType={nodeTypes[value.type]}
+                      settings={value}
+                      connectionsMap={connectionsMap}
                       onChangePosition={(position) => {
                         setCards(prev => [
                           ...prev.slice(0, index),
@@ -289,10 +351,14 @@ function NodeContainer() {
                         updateConnections(null, value.id);
                       }}
                       containerRef={screenRef}
-                      inputPorts={value.inputPorts}
-                      outputPorts={value.outputPorts}
                       canMove={canMove}
                       onConnect={onConnect}
+                      onContextMenu={(e) => handleContextMenu(e, [
+                        { label: 'Clonar este nó', onClick: () => {}}
+                      ])}
+                      onResize={(size) => {
+                        updateConnections(null, value.id);
+                      }}
                       />
                   ))}
 

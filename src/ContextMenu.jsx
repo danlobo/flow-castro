@@ -37,7 +37,7 @@ export const ContextMenu = ({ children }) => {
   return (
     <>
       {children({ handleContextMenu })}
-      {<div ref={menuRef} className={styles["context-menu"]} style={{ left: position.x, top: position.y, visibility: options ? 'visible' : 'hidden' }}>
+      <div ref={menuRef} className={styles["context-menu"]} style={{ left: position.x, top: position.y, visibility: options ? 'visible' : 'hidden' }}>
         <ul>
           {options?.map((option) => (
             <li key={option.id} onClick={() => handleMenuItemClick(option)}>
@@ -45,7 +45,7 @@ export const ContextMenu = ({ children }) => {
             </li>
           ))}
         </ul>
-      </div>}
+      </div>
     </>
   )
 };
