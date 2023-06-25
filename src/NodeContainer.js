@@ -3,11 +3,11 @@ import { ScreenContextProvider } from './ScreenContext';
 import Screen from './Screen';
 
 
-function NodeContainer() {
+function NodeContainer(props) {
   return (
     <ScreenContextProvider>
       <DragContextProvider>
-        <Screen />
+        <Screen {...props} />
       </DragContextProvider>
     </ScreenContextProvider>
   );

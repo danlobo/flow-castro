@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDragContext } from './DragContext';
 import { useScreenContext } from './ScreenContext';
 
@@ -8,15 +8,48 @@ const globalToLocal = (globalX, globalY, translate, scale) => {
   return { x: localX, y: localY };
 };
 
-function NodePort({ settings, id, type, nodeId, label, onConnected, isConnected, direction, onValueChange }) {
+function NodePort({ 
+    name, 
+    type, 
+    nodeName, 
+    label, 
+    onConnected, 
+    isConnected, 
+    direction, 
+    value,
+    onValueChange
+  }) {
   const { position: screenPosition, scale: screenScale } = useScreenContext()
   const { dragInfo, setDragInfo } = useDragContext()
 
-  const [internalValue, setInternalValue] = useState(settings.value)
+  const [internalValue, setInternalValue] = useState(value)
+
+  const shapeStyles = useMemo(() => ({
+    circle: {
+      borderRadius: '50%',
+    },
+    square: {
+      borderRadius: '0%',
+    },
+    diamond: {
+      borderRadius: '0%',
+      transform: 'rotate(45deg)',
+    },
+  }), [])
 
   useEffect(() => {
-    console.log('new Internal value', internalValue)
+    if (!name)
+      throw new Error('Port name is required')
+  }, [name])
+
+  useEffect(() => {
   }, [internalValue])
+
+  useEffect(() => {
+    if (isConnected) {
+      onValueChange?.(null)
+    }
+  }, [isConnected])
 
   const containerRef = useRef(null)
   const connectorRef = useRef(null)
@@ -24,7 +57,9 @@ function NodePort({ settings, id, type, nodeId, label, onConnected, isConnected,
   const handleUpdateForm = useCallback((e) => {
     e.preventDefault()
     e.stopPropagation()
-    console.log('update port ', settings.name, `from node`, nodeId)
+
+    console.log('handleUpdateForm', internalValue)
+
     onValueChange?.(internalValue)
   }, [internalValue])
 
@@ -53,8 +88,8 @@ function NodePort({ settings, id, type, nodeId, label, onConnected, isConnected,
 
     const _dragInfo = {
       type: 'connector',
-      nodeId,
-      portId: id,
+      nodeName,
+      portName: name,
       portType: type,
       startX: connectorRect.left,
       startY: connectorRect.top,
@@ -81,11 +116,8 @@ function NodePort({ settings, id, type, nodeId, label, onConnected, isConnected,
       const targets = document.elementsFromPoint(e.pageX - window.scrollX, e.pageY - window.scrollY);
       const target = targets.find(t => t.classList?.contains('port-overlay') && t.dataset.portDirection.toString() !== direction.toString() && t.dataset.portType.toString() === type.type?.toString())
       
-      console.log('targets', targets, target, type, direction)
-
       if (target) {
-        console.log(target.dataset)
-        onConnected?.({ source: { nodeId, portId: id }, target: { nodeId: target.dataset.nodeId, portId: target.dataset.portId } });
+       onConnected?.({ source: { nodeName, portName: name }, target: { nodeName: target.dataset.nodeName, portName: target.dataset.portName } });
       }
     }
 
@@ -110,8 +142,8 @@ function NodePort({ settings, id, type, nodeId, label, onConnected, isConnected,
         width: '100%',
         height: '100%',
         zIndex: 2000,
-        borderRadius: '4px',
-        backgroundColor: 'rgba(0,0,0,0.1)',
+        // borderRadius: '4px',
+        // backgroundColor: 'rgba(0,0,0,0.1)',
         padding: '0 15px',
         borderTopLeftRadius: direction === 'input' ? '15px' : null,
         borderBottomLeftRadius: direction === 'input' ? '15px' : null,
@@ -119,12 +151,11 @@ function NodePort({ settings, id, type, nodeId, label, onConnected, isConnected,
         borderBottomRightRadius: direction === 'output' ? '15px' : null,
       }} 
       className="port-overlay" 
-      id={`card-${nodeId}-${direction}-${id}-overlay`}
-      data-port-id={id}
+      id={`card-${nodeName}-${direction}-${name}-overlay`}
+      data-port-name={name}
       data-port-type={type.type}
       data-port-direction={direction}
-      data-port-name={label}
-      data-node-id={nodeId}
+      data-node-name={nodeName}
       >
       </div>
         
@@ -141,19 +172,19 @@ function NodePort({ settings, id, type, nodeId, label, onConnected, isConnected,
         {direction === 'input' && !isConnected ? type.render({ value: internalValue, onChange: setInternalValue }) : null}
       </div>
       <div 
-        id={`card-${nodeId}-${direction}-${id}`}
+        id={`card-${nodeName}-${direction}-${name}`}
         ref={connectorRef}
         style={{
           width: '10px',
           height: '10px',
           background: type.color,
           border: isConnected ? '2px solid #fff' : '2px solid #000',
-          borderRadius: '50%',
           cursor: 'pointer',
           position: 'absolute',
           left: direction === 'input' ? '-15px' : null,
           right: direction === 'output' ? '-15px' : null,
-          top: 'calc(50% - 5px)'
+          top: 'calc(50% - 5px)',
+          ...(shapeStyles[type?.shape ?? 'circle'] ?? {})
         }}
         className='port-connector'
       />

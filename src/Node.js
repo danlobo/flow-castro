@@ -1,20 +1,19 @@
-import { memo, useEffect, useRef } from 'react';
+import { memo, useCallback, useEffect, useRef } from 'react';
 import NodePort from './NodePort';
 import { useScreenContext } from './ScreenContext';
 
 function Node({ 
-  id, 
+  name, 
   portTypes,
   nodeType,
-  connectionsMap,
-  settings,
+  value,
   onChangePosition, 
   onConnect, 
   containerRef, 
   onContextMenu,
-  onResize
+  onResize,
+  onValueChange
 }) {
-
   const nodeRef = useRef()
   useEffect(() => {
     const currentRef = nodeRef.current
@@ -26,14 +25,22 @@ function Node({
     return () => {
       observer.unobserve(currentRef)
     }
-  }, [onResize])
+  }, [])
 
   const {
-    name, 
+    name: nodeName,
     position: nodePosition, 
-    inputPorts, 
-    outputPorts
-  } = settings
+    values: nodeValues
+  } = value
+
+  useEffect(() => {
+    if (!name)
+      throw new Error('Node name is required')
+
+    if (name !== nodeName) {
+      console.warn('Node name mismatch', name, nodeName)
+    }  
+  }, [name, nodeName])
 
   const { scale: screenScale } = useScreenContext()
 
@@ -60,19 +67,27 @@ function Node({
     window.addEventListener('mouseup', handleMouseUp);
   };
 
-  const onOutputPortConnected = ({ source, target }) => {
-    console.log('output port connected', source, target)
+  const onOutputPortConnected = useCallback(({ source, target }) => {
     onConnect?.({ source, target })
-  }
+  }, [onConnect])
 
-  const onInputPortConnected = ({ source, target }) => {
-    console.log('input port connected', source, target)
+  const onInputPortConnected = useCallback(({ source, target }) => {
     onConnect?.({ source: target, target: source })
-  }
+  }, [onConnect])
+
+
+  const handleResolveClick = useCallback((e) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    const resolvedValue = nodeType?.resolve?.(nodeValues)
+    console.log('resolvedValue', resolvedValue)
+  }, [name, nodeValues, nodeType])
 
   return <div
     ref={nodeRef}
-    id={`card-${id}`}
+    id={`card-${name}`}
+    key={`card-${name}`}
     className="node"
     style={{
       transform: `translate(${nodePosition.x}px, ${nodePosition.y}px)`,
@@ -80,7 +95,7 @@ function Node({
     onMouseDown={handleMouseDown}
     onContextMenu={onContextMenu}
   >
-    <div style={{ padding: '1rem' }}>
+    <div style={{ padding: '0 1rem' }}>
         <h3>{name}</h3>
     </div>
         
@@ -91,37 +106,63 @@ function Node({
     /> */}
 
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-        {inputPorts?.map((port) => (
-          <NodePort 
-            settings={port}
-            id={port.id} 
-            nodeId={id}
-            key={port.id} 
-            type={portTypes[port.type]}
+      <div style={{ 
+        width: '100%', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'flex-end',
+        gap: '1rem'
+      }}>
+        {nodeType?.inputs?.map((input) => {
+          return <NodePort 
+            name={input.name}
+            value={nodeValues[input.name]}
+            onValueChange={(v1) => {
+              onValueChange?.({
+                ...value,
+                values: {
+                  ...value.values,
+                  [input.name]: v1,
+                }
+              })
+            }}
+            nodeName={name}
+            key={input.name} 
+            type={portTypes[input.type]}
             direction="input" 
-            label={port.label}
+            label={input.label}
             containerRef={containerRef}
-            isConnected={connectionsMap.has(`dst_${id}_${port.id}`)}
+            isConnected={value.connections?.inputs?.some((c) => c.name === input.name)}
             onConnected={onInputPortConnected}
           />
-        ))}
+        })}
       </div>
-      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-        {outputPorts?.map((port) => (
-          <NodePort 
-            settings={port}
-            id={port.id}
-            nodeId={id}
-            key={port.id}
-            type={portTypes[port.type]}
+      <div style={{ 
+        width: '100%', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'flex-start',
+        gap: '1rem'
+      }}>
+        {nodeType?.outputs?.map((output) => {
+          return <NodePort
+            name={output.name}
+            nodeName={name}
+            key={output.name}
+            type={portTypes[output.type]}
             direction="output"
-            label={port.label}
+            label={output.label}
             containerRef={containerRef}
-            isConnected={connectionsMap.has(`src_${id}_${port.id}`)}
+            isConnected={value.connections?.outputs?.some((c) => c.name === output.name)}
             onConnected={onOutputPortConnected}
           />
-        ))}
+        })}
+      </div>
+
+      <div>
+        <button onClick={handleResolveClick}>
+          Resolve
+        </button>
       </div>
     </div>
 

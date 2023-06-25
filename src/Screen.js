@@ -4,61 +4,17 @@ import {
   TransformWrapper, 
   TransformComponent 
 } from "react-zoom-pan-pinch";
-import Xarrow, { useXarrow, Xwrapper } from 'react-xarrows';
 import { useDragContext } from './DragContext';
 import { useScreenContext } from './ScreenContext';
 import { ConnectorCurve } from './ConnectorCurve';
-import ConnectorCanvas from './ConnectorCanvas';
 import { ContextMenu } from './ContextMenu';
 
-function NodeContainer() {
-  const { dragInfo, setDragInfo } = useDragContext()
+function NodeContainer({ portTypes, nodeTypes, state, onChangeState }) {
+  const { dragInfo } = useDragContext()
   const { position, setPosition, scale, setScale } = useScreenContext();
 
   const [dstDragPosition, setDstDragPosition] = useState({ x: 0, y: 0 })
   const [pointerPosition, setPointerPosition] = useState({ x: 0, y: 0 })
-  
-  const portTypes = useMemo(() => ({
-    string: { 
-      type: 'string', 
-      label: 'String', 
-      color: '#f80', 
-      render({ value, onChange }) {
-        return <textarea style={{width: '100%'}} value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
-     }
-    },
-    number: { 
-      type: 'number', 
-      label: 'Número', 
-      color: '#33f', 
-      render({ value, onChange }) {
-        return <input type="tel" style={{width: '100%'}} value={value ?? ''} onChange={(e) => onChange(e.target.value)} />
-     }
-    },
-  }), [])
-
-  const nodeTypes = useMemo(() => ({
-    string: {
-      type: 'string',
-      label: 'String',
-      inputs: [
-        { type: 'string', name: 'string', label: 'input 1' }
-      ],
-      outputs: [
-        { type: 'string', name: 'string', label: 'output 1' }
-      ],
-    },
-    number: {
-      type: 'number',
-      label: 'Número',
-      inputs: [
-        { type: 'number', name: 'number', label: 'input 1' }
-      ],
-      outputs: [
-        { type: 'number', name: 'number', label: 'output 1' }
-      ],
-    },    
-  }), [])
 
   useEffect(() => {
     if (!dragInfo) {
@@ -86,116 +42,109 @@ function NodeContainer() {
       window.removeEventListener('mousemove', mouseMoveListener)
     }
   }, [dragInfo])
-  
-  const [cards, setCards] = useState([
-    { 
-      id: 1, 
-      type: 'string',
-      name: 'Aninha', 
-      position: { x: 300, y: 300 },
-      inputPorts: [
-        { id: 1, name: 'string', type: 'string', label: 'input 1' },
-      ],
-      outputPorts: [
-        { id: 1, name: 'string', type: 'string', label: 'output 1' },
-      ]
-    },
-    { 
-      id: 2,
-      type: 'number',
-      name: 'Daniel', 
-      position: { x: 100, y: 0 },
-      inputPorts: [
-        { id: 1, name: 'number', type: 'number', label: 'input 1' },
-      ],
-      outputPorts: [
-        { id: 1, name: 'number', type: 'number', label: 'output 1' },
-      ]
-    },
-    { 
-      id: 3,
-      type: 'string',
-      name: 'Camylla', 
-      position: { x: 200, y: 200 },
-      inputPorts: [
-        { id: 1, name: 'string', type: 'string', label: 'input 1' },
-      ],
-      outputPorts: [
-        { id: 1, name: 'string', type: 'string', label: 'output 1' },
-      ]
+
+  const addNode = useCallback((type, pos) => {
+    const newNode = {
+      name: Math.random().toString(36).substr(2, 9),
+      type,
+      position: pos,
+      values: {}
     }
-  ]);
 
-  const [connections, setConnections] = useState([]);
-  const [connectionsMap, setConnectionsMap] = useState(new Map());
+    onChangeState(prev => ({ ...prev, nodes: [...prev.nodes, newNode]}))
+  }, [onChangeState])
 
+  const removeNode = useCallback((name) => {
+    const node = state.nodes.find(node => node.name === name)
+    if (!node)  return
 
-  const updateConnections = useCallback((newConnections, nodeAffected) => {
-    setConnections((curConnections) => {
-      const strNodeAffected = nodeAffected?.toString()
-      const retConnections = []
-      const _connections = newConnections ?? curConnections
-      const _scale = scale
-      const _position = position
-  
-      for(const _conn of _connections) {
-        if (nodeAffected && strNodeAffected != _conn.srcNode && strNodeAffected != _conn.dstNode) {
-          retConnections.push(_conn)
-          continue;
+    const nodesToRemove = [name]
+    const nodesToAdd = []
+
+    node.connections.outputs?.forEach(conn => {
+      const otherNode = state.nodes.find(node => node.name === conn.node)
+
+      if (!otherNode) return
+
+      nodesToRemove.push(otherNode.name)
+      nodesToAdd.push({
+        ...otherNode,
+        connections: {
+          outputs: otherNode.connections.outputs,
+          inputs: otherNode.connections.inputs.filter(c => !(c.port === conn.name && c.node === node.name))
         }
-
-        const srcElem = document.getElementById(`card-${_conn.srcNode}-output-${_conn.srcPort}`);
-        const dstElem = document.getElementById(`card-${_conn.dstNode}-input-${_conn.dstPort}`);
-  
-        if (!srcElem || !dstElem) {
-          continue;
-        }
-  
-        const srcRect = srcElem.getBoundingClientRect();
-        const dstRect = dstElem.getBoundingClientRect();
-  
-        const srcPos = {
-          x: (srcRect.x + window.scrollX - _position.x + srcRect.width / 2) / _scale,
-          y: (srcRect.y + window.scrollY - _position.y + srcRect.height / 2) / _scale
-        }
-  
-        const dstPos = {
-          x: (dstRect.x + window.scrollX - _position.x + dstRect.width / 2) / _scale,
-          y: (dstRect.y + window.scrollY - _position.y + dstRect.height / 2) / _scale
-        }
-  
-        retConnections.push({
-          ..._conn,
-          srcPos,
-          dstPos
-        })
-      }
-
-      return retConnections
+      })
     })
-  }, [scale, position])
 
-  useEffect(() => {
-    updateConnections();
-  }, [scale, position, updateConnections]);
+    node.connections.inputs?.forEach(conn => {
+      const otherNode = state.nodes.find(node => node.name === conn.node)
 
-  useEffect(() => {
-  const _cm = new Map()
+      if (!otherNode) return
 
-   connections.forEach(conn => {
-      _cm.set(`src_` + conn.srcNode + "_" + conn.srcPort, conn);
-      _cm.set(`dst_` + conn.dstNode + "_" + conn.dstPort, conn);
-    });
-    setConnectionsMap(_cm)
-  }, [connections])
+      nodesToRemove.push(otherNode.name)
+      nodesToAdd.push({
+        ...otherNode,
+        connections: {
+          outputs: otherNode.connections.outputs.filter(c => !(c.port === conn.name && c.node === node.name)),
+          inputs: otherNode.connections.inputs
+        }
+      })
+    })
+
+
+
+    onChangeState(prev => ({ 
+      ...prev, 
+      nodes: [
+        ...prev.nodes.filter(node => !nodesToRemove.includes(node.name)),
+        ...nodesToAdd
+      ]
+    }))
+  }, [onChangeState, state?.nodes])
+
+  const cloneNode = useCallback((name) => {
+    const node = state.nodes.find(node => node.name === name)
+    const newNode = {
+      ...node,
+      name: Math.random().toString(36).substr(2, 9),
+      position: { x: node.position.x + 20, y: node.position.y + 20 },
+      connections: {
+        inputs: [],
+        outputs: []
+      }
+    }
+
+    onChangeState(prev => ({ ...prev, nodes: [...prev.nodes, newNode]}))
+  }, [onChangeState, state?.nodes])
+
+  const removeConnectionFromOutput = useCallback((srcNode, srcPort, dstNode, dstPort) => {
+    onChangeState(prev => ({
+      ...prev,
+      nodes: prev.nodes.map(node => {
+        if (node.name === srcNode) {
+          return {
+            ...node,
+            connections: {
+              inputs: node.connections.inputs,
+              outputs: node.connections.outputs.filter(conn => !(conn.name === srcPort && conn.node === dstNode && conn.port === dstPort))
+            }
+          }
+        } else if (node.name === dstNode) {
+          return {
+            ...node,
+            connections: {
+              inputs: node.connections.inputs.filter(conn => !(conn.name === dstPort && conn.node === srcNode && conn.port === srcPort)),
+              outputs: node.connections.outputs
+            }
+          }
+        }
+
+        return node
+      })
+    }))
+  }, [onChangeState])
 
   const screenRef = useRef()
-
-  const updateXarrow = useXarrow();
-  useEffect(() => {
-    window.addEventListener('resize', updateXarrow);
-    return () => window.removeEventListener('resize', updateXarrow);
-  }, [])
 
   const [isMoveable, setIsMoveable] = useState(false);
   const [canMove, setCanMove] = useState(true);
@@ -213,34 +162,149 @@ function NodeContainer() {
     setPosition(_position);
   }, [])
 
-  const onConnect = ({ source, target }) => {
-    const item = {
-      srcNode: source.nodeId,
-      dstNode: target.nodeId,
-      srcPort: source.portId,
-      dstPort: target.portId,
-    }
-
-    const key = `${item.srcNode}-${item.dstNode}-${item.srcPort}-${item.dstPort}`;
-    if (connectionsHash[key]) return;
-
-    const newConnections = [...connections, item];
-    updateConnections(newConnections);
-  }
-
   const gridSize = 40;
   const scaledGridSize = gridSize * scale;
   const scaledPositionX = (position.x) % scaledGridSize;
   const scaledPositionY = (position.y) % scaledGridSize;
 
-  //hashed list
-  const connectionsHash = React.useMemo(() => connections.reduce((acc, curr) => {
-    const { srcNode, dstNode, srcPort, dstPort } = curr;
-    const key = `${srcNode}-${dstNode}-${srcPort}-${dstPort}`;
-    acc[key] = curr;
-    return acc;
-  }, {})
-  , [connections]);
+  const onConnect = useCallback(({ source, target }) => {
+    if (!state?.nodes) return;
+
+    const item = {
+      srcNode: source.nodeName,
+      dstNode: target.nodeName,
+      srcPort: source.portName,
+      dstPort: target.portName,
+    }
+
+    if (item.srcNode === item.dstNode) return;
+    
+    const srcNodeIdx = state.nodes.findIndex(n => n.name === item.srcNode);
+    const dstNodeIdx = state.nodes.findIndex(n => n.name === item.dstNode);
+    
+    // deep merge
+    const srcNode = JSON.parse(JSON.stringify(state.nodes[srcNodeIdx]));
+    const dstNode = JSON.parse(JSON.stringify(state.nodes[dstNodeIdx]));
+
+    const srcPort = nodeTypes[srcNode.type].outputs.find(p => p.name === item.srcPort);
+    const dstPort = nodeTypes[dstNode.type].inputs.find(p => p.name === item.dstPort);
+
+    if (srcPort.type !== dstPort.type) return;
+
+    if (!srcNode.connections)   srcNode.connections = {};
+    if (!srcNode.connections.outputs) srcNode.connections.outputs = [];
+    if (!srcNode.connections.inputs)  srcNode.connections.inputs = [];
+
+
+    if (!dstNode.connections)   dstNode.connections = {};
+    if (!dstNode.connections.outputs) dstNode.connections.outputs = [];
+    if (!dstNode.connections.inputs)  dstNode.connections.inputs = [];
+
+    if (!srcNode.connections.outputs.find(c => c.name === dstPort.name)) {
+      srcNode.connections.outputs.push({ name: srcPort.name, node: dstNode.name, port: dstPort.name });
+    }
+
+    if (!dstNode.connections.inputs.find(c => c.name === srcPort.name)) {
+      dstNode.connections.inputs.push({ name: dstPort.name, node: srcNode.name, port: srcPort.name });
+    }
+
+    const minNodeIdx = Math.min(srcNodeIdx, dstNodeIdx);
+    const maxNodeIdx = Math.max(srcNodeIdx, dstNodeIdx);
+    const minNode = srcNodeIdx < dstNodeIdx ? srcNode : dstNode;
+    const maxNode = srcNodeIdx < dstNodeIdx ? dstNode : srcNode;
+
+    onChangeState(prev => ({
+      ...prev,
+      nodes: [
+        ...prev.nodes.slice(0, minNodeIdx),
+        minNode,
+        ...prev.nodes.slice(minNodeIdx + 1, maxNodeIdx),
+        maxNode,
+        ...prev.nodes.slice(maxNodeIdx + 1)
+      ]
+    }))
+  }, [state?.nodes, onChangeState, nodeTypes]);
+
+  const pinchOptions = useMemo(() => ({
+    step: 5,
+  }), [])
+  const panningOptions = useMemo(() => ({
+    disabled: isMoveable,
+    excluded: ['node', 'react-draggable', 'port', 'port-connector']
+  }), [isMoveable])
+
+  const wrapperStyle = useMemo(() => ({
+    height: '100vh', 
+    width: '100vw',
+    backgroundSize: `${scaledGridSize}px ${scaledGridSize}px`,
+    backgroundImage: `linear-gradient(to right, #CCCCCC 1px, transparent 1px), linear-gradient(to bottom, #CCCCCC 1px, transparent 1px)`,
+    backgroundPosition: `${scaledPositionX}px ${scaledPositionY}px`
+  }), [scaledGridSize, scaledPositionX, scaledPositionY])
+
+  const wrapperProps = useCallback((handleContextMenu) => ({
+    onDragOver: (e) => {
+      e.dataTransfer.dropEffect = "move";
+      e.dataTransfer.effectAllowed = "move";
+    },
+    onDragLeave: (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    onContextMenu: (e) => handleContextMenu(e, [
+      ...Object.values(nodeTypes).sort((a,b) => a.label.localeCompare(b.label)).map(nodeType => ({
+        label: `Adicionar ${nodeType.label}`,
+        description: nodeType.description,
+        onClick: () => {
+          const { x, y } = e.target.getBoundingClientRect();
+          const position = {
+            x: e.clientX, // - x,
+            y: e.clientY// - y
+          }
+          addNode(nodeType.type, position);
+        }
+      })),
+      {
+        label: 'Adicionar nó',
+        description: 'Adicionar nó',
+        children: [
+          {
+            label: 'Nó de entrada',
+            description: 'Nó de entrada',
+            onClick: (o) => {console.log('add input node', o)},
+            children: [
+              {
+                label: 'Nó de entrada 1',
+                description: 'Nó de entrada 1',
+                onClick: (o) => {console.log('add input node 1', o)}
+              },
+              {
+                label: 'Nó de entrada 2',
+                description: 'Nó de entrada 2',
+                onClick: (o) => {console.log('add input node 2', o)}
+              },
+            ]
+          },
+          {
+            label: 'Nó de saída',
+            description: 'Nó de saída',
+            onClick: (o) => {console.log('add output node', o)},
+            children: [
+              {
+                label: 'Nó de saída 1',
+                description: 'Nó de saída 1',
+                onClick: (o) => {console.log('add output node 1', o)}
+              },
+              {
+                label: 'Nó de saída 2',
+                description: 'Nó de saída 2',
+                onClick: (o) => {console.log('add output node 2', o)}
+              },
+            ]
+          },
+        ]
+      }
+    ])
+  }), [])
 
   return (
     <div style={{ position: 'relative', border: `1px solid blue` }}>
@@ -254,8 +318,8 @@ function NodeContainer() {
         limitToBounds={false}
         onPanning={onTransform}
         onZoom={onZoom}
-        pinch={{ step: 5 }}
-        panning={{ excluded: ['node', 'react-draggable', 'port', 'port-connector']}}
+        pinch={pinchOptions}
+        panning={panningOptions}
       >
         {({ zoomIn, zoomOut, resetTransform, setTransform, centerView, ...rest }) => (
           <>
@@ -312,55 +376,121 @@ function NodeContainer() {
               {({ handleContextMenu }) => (
                 <TransformComponent 
                   contentClass='main' 
-                  wrapperStyle={{ 
-                    height: '100vh', 
-                    width: '100vw',
-                    backgroundSize: `${scaledGridSize}px ${scaledGridSize}px`,
-                    backgroundImage: `linear-gradient(to right, #CCCCCC 1px, transparent 1px), linear-gradient(to bottom, #CCCCCC 1px, transparent 1px)`,
-                    backgroundPosition: `${scaledPositionX}px ${scaledPositionY}px`,
-                  }}
-                  wrapperProps={{
-                    onDragOver: (e) => {
-                      e.dataTransfer.dropEffect = "move";
-                      e.dataTransfer.effectAllowed = "move";
-                    },
-                    onDragLeave: (e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    },
-                    onContextMenu: (e) => handleContextMenu(e, [
-                      { label: 'Adicionar nó', onClick: () => {}}
-                    ])
-                  }}
-                  
+                  wrapperStyle={wrapperStyle}
+                  wrapperProps={wrapperProps(handleContextMenu)}
                   >
-                  {cards.map((value, index) => (
-                    <Node 
-                      key={value.id} 
-                      id={value.id}
-                      portTypes={portTypes}
-                      nodeType={nodeTypes[value.type]}
-                      settings={value}
-                      connectionsMap={connectionsMap}
-                      onChangePosition={(position) => {
-                        setCards(prev => [
-                          ...prev.slice(0, index),
-                          { ...value, position },
-                          ...prev.slice(index + 1)
-                        ])
-                        updateConnections(null, value.id);
-                      }}
-                      containerRef={screenRef}
-                      canMove={canMove}
-                      onConnect={onConnect}
-                      onContextMenu={(e) => handleContextMenu(e, [
-                        { label: 'Clonar este nó', onClick: () => {}}
-                      ])}
-                      onResize={(size) => {
-                        updateConnections(null, value.id);
-                      }}
-                      />
-                  ))}
+                  {state?.nodes?.map((node, index) => {
+                    return (
+                      <>
+                        <Node 
+                          key={node.name} 
+                          name={node.name}
+                          portTypes={portTypes}
+                          nodeType={nodeTypes?.[node.type]}
+                          value={node}
+                          onValueChange={(v) => {
+                            onChangeState(prev => ({
+                              ...prev,
+                              nodes: [
+                                ...prev.nodes.slice(0, index),
+                                { ...prev.nodes[index], values: {...v.values } },
+                                ...prev.nodes.slice(index + 1)
+                              ]
+                            }))
+                          }}
+                          onChangePosition={(position) => {
+                            console.log('onChangePosition', position)
+
+                            onChangeState(prev => ({
+                              ...prev,
+                              nodes: [
+                                ...prev.nodes.slice(0, index),
+                                { ...prev.nodes[index], position },
+                                ...prev.nodes.slice(index + 1)
+                              ]
+                            }))
+                          }}
+                          containerRef={screenRef}
+                          canMove={canMove}
+                          onConnect={onConnect}
+                          onContextMenu={(e) => handleContextMenu(e, [
+                            { label: 'Clonar este nó', onClick: () => {
+                              cloneNode(node.name)
+                            }},
+                            { 
+                              label: `Remover este nó`, 
+                              style: { color: 'red'},
+                              onClick: () => {
+                                removeNode(node.name)
+                              }
+                            }
+                          ])}
+                          onResize={(size) => {
+                            // O objetivo aqui é disparar a renderização das conexões.
+                            // Se houver um modo melhor, por favor, me avise.
+                            console.log('onResize', size)
+                            onChangeState(prev => ({
+                              ...prev,
+                              nodes: [
+                                ...prev.nodes.slice(0, index),
+                                { 
+                                  ...prev.nodes[index], 
+                                  connections: {
+                                    ...prev.nodes[index].connections,
+                                    outputs: [ ...(prev.nodes[index].connections?.outputs ?? [])],
+                                  },
+                                  size 
+                                },
+                                ...prev.nodes.slice(index + 1)
+                              ]
+                            }))
+                          }}
+                        />
+                        {node.connections?.outputs?.map((connection, index) => {
+                          const srcNode = node.name
+                          const srcPort = connection.name
+                          const dstNode = connection.node
+                          const dstPort = connection.port
+
+                          const srcElem = document.getElementById(`card-${srcNode}-output-${srcPort}`);
+                          const dstElem = document.getElementById(`card-${dstNode}-input-${dstPort}`);
+                    
+                          if (!srcElem || !dstElem) {
+                            return null;
+                          }
+                    
+                          const srcRect = srcElem.getBoundingClientRect();
+                          const dstRect = dstElem.getBoundingClientRect();
+                    
+                          const srcPos = {
+                            x: (srcRect.x + window.scrollX - position.x + srcRect.width / 2) / scale,
+                            y: (srcRect.y + window.scrollY - position.y + srcRect.height / 2) / scale
+                          }
+                    
+                          const dstPos = {
+                            x: (dstRect.x + window.scrollX - position.x + dstRect.width / 2) / scale,
+                            y: (dstRect.y + window.scrollY - position.y + dstRect.height / 2) / scale
+                          }
+
+                          return <ConnectorCurve
+                            key={`connector-${srcNode}-${srcPort}-${dstNode}-${dstPort}`}
+                            src={srcPos}
+                            dst={dstPos}
+                            scale={scale}
+                            onContextMenu={(e) => handleContextMenu(e, [
+                              {
+                                label: `Remover esta conexão`, 
+                                style: { color: 'red'},
+                                onClick: () => {
+                                  removeConnectionFromOutput(srcNode, srcPort, dstNode, dstPort)
+                                }
+                              }
+                            ])}
+                          />
+                        })}
+                      </>
+                    )
+                  })}
 
                   {dragInfo && dstDragPosition && <ConnectorCurve tmp src={{
                     x: (dragInfo.startX + window.scrollX - position.x + 5) / scale,
@@ -372,21 +502,6 @@ function NodeContainer() {
                   }}
                   scale={scale}
                   />}
-                  {connections.map((rel, index) => {
-                    return (
-                      <ConnectorCurve
-                        key={`connector-${rel.srcNode}-${rel.srcPort}-${rel.dstNode}-${rel.dstPort}`}
-                        src={rel.srcPos}
-                        dst={rel.dstPos}
-                        scale={scale}
-                        onContextMenu={(e) => handleContextMenu(e, [
-                          {label: 'Remover esta conexão', onClick: () => {
-                            updateConnections(connections.filter((c, idx) => idx !== index), '');
-                          }}
-                        ])}
-                      />
-                    )
-                  })}
                 </TransformComponent>
               )}
             </ContextMenu>      
@@ -394,7 +509,6 @@ function NodeContainer() {
         )}
       </TransformWrapper>
     </div>
-      
   );
 }
 
