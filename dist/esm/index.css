@@ -3,13 +3,11 @@
   padding: 8px;
   margin: 8px;
   background-color: #ddd;
-  cursor: move;
-}
+  cursor: move; }
 
 .container {
   width: 100%;
-  height: 100%;
-}
+  height: 100%; }
 
 .dropzone {
   display: block;
@@ -17,27 +15,23 @@
   margin: 8px;
   background-color: #eee;
   min-height: 100px;
-  border: 2px dashed #aaa;
-}
+  border: 2px dashed #aaa; }
 
 .dropzone.dragover {
-  background-color: #ddd;
-}
+  background-color: #ddd; }
 
 .node {
   background-color: white;
   border: 1px solid #ccc;
   border-radius: 5px;
   padding: 5px;
-  min-width: 450px;
-}
+  min-width: 450px; }
 
 html, body, #root {
   height: 100%;
   min-height: 100%;
   margin: 0;
-  padding: 0;
-}
+  padding: 0; }
 
 .node {
   position: absolute;
@@ -45,35 +39,29 @@ html, body, #root {
   border: 1px solid #ccc;
   border-radius: 5px;
   padding: 5px;
-  min-width: 300px;
-}
+  min-width: 300px; }
 
 svg, svg * {
   pointer-events: none;
-  z-index: 5;
-}
+  z-index: 5; }
+
 svg:hover {
-  z-index: 11;
-}
+  z-index: 11; }
 
 svg path.connector-curve {
   fill: none;
-  stroke: #ccc;
-}
+  stroke: #ccc; }
 
 svg path.tmp-connector {
   fill: none;
-  stroke: #888;
-}
+  stroke: #888; }
 
 svg:hover path.connector-curve {
   fill: none;
-  stroke: #4f4;
-}
+  stroke: #4f4; }
 
 .port-connector {
-  z-index: 10;
-}
+  z-index: 10; }
 
 .context-menu {
   position: absolute;
@@ -84,20 +72,16 @@ svg:hover path.connector-curve {
   padding: 4px;
   box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.15);
   transform: scale(1);
-  width: 200px;
-}
+  width: 200px; }
 
 .context-menu ul {
   list-style-type: none;
   margin: 0;
-  padding: 0;
-}
+  padding: 0; }
 
 .context-menu ul li {
   padding: 8px 12px;
-  cursor: pointer;
-}
+  cursor: pointer; }
 
 .context-menu ul li:hover {
-  background-color: #f2f2f2;
-}
+  background-color: #f2f2f2; }

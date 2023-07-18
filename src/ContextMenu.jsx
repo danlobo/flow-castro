@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import styles from "./ContextMenu.module.css";
 
 const ContextMenuList = ({ isFiltered, options, onSelectOption, style }) => {
   const [activeSubmenu, setActiveSubmenu] = useState(null)
@@ -38,7 +37,7 @@ const ContextMenuList = ({ isFiltered, options, onSelectOption, style }) => {
   };
 
   return (
-    <ul className={styles["context-menu"]} style={style}>
+    <ul className="context-menu" style={style}>
       {options?.filter(isFiltered)?.map((option) => {
         if (option.separator === true)
           return <li key={option.id} ><hr /></li>
@@ -132,7 +131,7 @@ export const ContextMenu = ({ children }) => {
   return (
     <>
       {children({ handleContextMenu })}
-      <div ref={menuRef} className={styles["context-menu"]} style={{ left: position.x, top: position.y, visibility: options ? 'visible' : 'hidden' }}>
+      <div ref={menuRef} className="context-menu" style={{ left: position.x, top: position.y, visibility: options ? 'visible' : 'hidden' }}>
         <input ref={searchRef} type="text" placeholder="Buscar..." autoFocus value={search ?? ''} onChange={(e) => setSearch(e.target.value)} />
         <ContextMenuList isFiltered={isFiltered} options={options} onSelectOption={handleMenuItemClick} style={{position: 'relative'}}/>
       </div>
