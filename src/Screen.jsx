@@ -10,12 +10,39 @@ import { ConnectorCurve } from './ConnectorCurve.jsx';
 import { ContextMenu } from './ContextMenu.jsx';
 import { nanoid } from 'nanoid';
 
-function NodeContainer({ portTypes, nodeTypes, state, onChangeState }) {
+function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
   const { dragInfo } = useDragContext()
   const { position, setPosition, scale, setScale } = useScreenContext();
 
   const [dstDragPosition, setDstDragPosition] = useState({ x: 0, y: 0 })
   const [pointerPosition, setPointerPosition] = useState({ x: 0, y: 0 })
+
+  const [state, setState] = useState(initialState)
+  const [shouldNotify, setShouldNotify] = useState(false)
+
+  useEffect(() => {
+    if (!initialState) return
+
+    console.log('initialState', initialState)
+
+    setScale(initialState.scale)
+    setPosition(initialState.position)
+  }, [])
+
+  const setStateAndNotify = useCallback((cb) => {
+    setState(prev => {
+      const newState = cb(prev)
+      setShouldNotify(true)
+      return newState
+    })
+  }, [setState])
+
+  useEffect(() => {
+    if (shouldNotify) {
+        onChangeState(state);
+        setShouldNotify(false);
+    }
+}, [state, shouldNotify, onChangeState]);
 
   useEffect(() => {
     if (!dragInfo) {
@@ -23,15 +50,14 @@ function NodeContainer({ portTypes, nodeTypes, state, onChangeState }) {
       return
     }
 
+    //const { startX, startY } = dragInfo
+
     const mouseMoveListener = (event) => {
       setPointerPosition({
         x: event.pageX - window.scrollX,
         y: event.pageY - window.scrollY,
       })
 
-      if (!dragInfo) return
-
-      const { startX, startY } = dragInfo
       const dx = event.pageX //- startX
       const dy = event.pageY //- startY
 
@@ -53,8 +79,14 @@ function NodeContainer({ portTypes, nodeTypes, state, onChangeState }) {
       values: {}
     }
 
-    onChangeState(prev => ({ ...prev, nodes: [...prev.nodes, newNode]}))
-  }, [onChangeState])
+    setStateAndNotify(prev => ({
+      ...prev,
+      nodes: [
+        ...prev.nodes,
+        newNode
+      ]
+    }))
+  }, [setStateAndNotify])
 
   const removeNode = useCallback((id) => {
     const node = state.nodes.find(node => node.id === id)
@@ -93,16 +125,14 @@ function NodeContainer({ portTypes, nodeTypes, state, onChangeState }) {
       })
     })
 
-
-
-    onChangeState(prev => ({ 
-      ...prev, 
+    setStateAndNotify(prev => ({
+      ...prev,
       nodes: [
         ...prev.nodes.filter(node => !nodesToRemove.includes(node.id)),
         ...nodesToAdd
       ]
     }))
-  }, [onChangeState, state?.nodes])
+  }, [state, onChangeState])
 
   const cloneNode = useCallback((id) => {
     const node = state.nodes.find(node => node.id === id)
@@ -116,35 +146,47 @@ function NodeContainer({ portTypes, nodeTypes, state, onChangeState }) {
       }
     }
 
-    onChangeState(prev => ({ ...prev, nodes: [...prev.nodes, newNode]}))
-  }, [onChangeState, state?.nodes])
+    setStateAndNotify(prev => ({
+      ...prev,
+      nodes: [
+        ...prev.nodes,
+        newNode
+      ]
+    }))
+  }, [setStateAndNotify, state])
 
   const removeConnectionFromOutput = useCallback((srcNode, srcPort, dstNode, dstPort) => {
-    onChangeState(prev => ({
-      ...prev,
-      nodes: prev.nodes.map(node => {
-        if (node.id === srcNode) {
-          return {
-            ...node,
-            connections: {
-              inputs: node.connections.inputs,
-              outputs: node.connections.outputs.filter(conn => !(conn.name === srcPort && conn.node === dstNode && conn.port === dstPort))
+    setStateAndNotify(prev => {
+      const newNodes = [
+        ...prev.nodes.map(node => {
+          if (node.id === srcNode) {
+            return {
+              ...node,
+              connections: {
+                inputs: node.connections.inputs,
+                outputs: node.connections.outputs.filter(conn => !(conn.name === srcPort && conn.node === dstNode && conn.port === dstPort))
+              }
+            }
+          } else if (node.id === dstNode) {
+            return {
+              ...node,
+              connections: {
+                inputs: node.connections.inputs.filter(conn => !(conn.name === dstPort && conn.node === srcNode && conn.port === srcPort)),
+                outputs: node.connections.outputs
+              }
             }
           }
-        } else if (node.id === dstNode) {
-          return {
-            ...node,
-            connections: {
-              inputs: node.connections.inputs.filter(conn => !(conn.name === dstPort && conn.node === srcNode && conn.port === srcPort)),
-              outputs: node.connections.outputs
-            }
-          }
-        }
 
-        return node
-      })
-    }))
-  }, [onChangeState])
+          return node
+        })
+      ]
+
+    return {
+      ...prev,
+      nodes: newNodes
+    }
+  })
+  }, [setStateAndNotify])
 
   const screenRef = useRef()
 
@@ -155,81 +197,104 @@ function NodeContainer({ portTypes, nodeTypes, state, onChangeState }) {
     const _scale = params.state.scale;
     setScale(_scale);
 
-    onChangeState(prev => ({ ...prev, scale: _scale }));
-
     const _position = {x: params.state.positionX, y: params.state.positionY };
     setPosition(_position);
-  }, [])
+  }, [setPosition, setScale])
+
+  const onZoomEnd = useCallback((params) => {
+    setStateAndNotify(prev => {
+      const _scale = params.state.scale;
+      const _position = {x: params.state.positionX, y: params.state.positionY };
+
+      return {
+        ...prev,
+        scale: _scale,
+        position: _position
+      }
+    })
+  }, [setStateAndNotify])
 
   const onTransform = useCallback((params) => {  
     const _position = {x: params.state.positionX, y: params.state.positionY };
     setPosition(_position);
+  }, [setPosition])
 
-    onChangeState(prev => ({ ...prev, position: _position }));
-  }, [])
+  const onTransformEnd = useCallback((params) => {
+    setStateAndNotify(prev => {
+
+      const _position = {x: params.state.positionX, y: params.state.positionY } 
+
+      return {
+        ...prev,
+        position: _position
+      }
+    })
+  }, [setStateAndNotify])
 
   const gridSize = 40;
-  const scaledGridSize = gridSize * scale;
-  const scaledPositionX = (position.x) % scaledGridSize;
-  const scaledPositionY = (position.y) % scaledGridSize;
+  const scaledGridSize = gridSize * (scale ?? 1);
+  const scaledPositionX = (position?.x ?? 0) % scaledGridSize;
+  const scaledPositionY = (position?.y ?? 0) % scaledGridSize;
 
   const onConnect = useCallback(({ source, target }) => {
-    if (!state?.nodes) return;
+    setStateAndNotify(prev => {
+      if (!prev?.nodes?.length) return null;
 
-    const item = {
-      srcNode: source.nodeId,
-      dstNode: target.nodeId,
-      srcPort: source.portName,
-      dstPort: target.portName,
-    }
+      const item = {
+        srcNode: source.nodeId,
+        dstNode: target.nodeId,
+        srcPort: source.portName,
+        dstPort: target.portName,
+      }
 
-    if (item.srcNode === item.dstNode) return;
-    
-    const srcNodeIdx = state.nodes.findIndex(n => n.id === item.srcNode);
-    const dstNodeIdx = state.nodes.findIndex(n => n.id === item.dstNode);
-    
-    // deep merge
-    const srcNode = JSON.parse(JSON.stringify(state.nodes[srcNodeIdx]));
-    const dstNode = JSON.parse(JSON.stringify(state.nodes[dstNodeIdx]));
+      if (item.srcNode === item.dstNode) return;
+      
+      const srcNodeIdx = prev.nodes.findIndex(n => n.id === item.srcNode);
+      const dstNodeIdx = prev.nodes.findIndex(n => n.id === item.dstNode);
+      
+      // deep merge
+      const srcNode = JSON.parse(JSON.stringify(prev.nodes[srcNodeIdx]));
+      const dstNode = JSON.parse(JSON.stringify(prev.nodes[dstNodeIdx]));
 
-    const srcPort = nodeTypes[srcNode.type].outputs.find(p => p.name === item.srcPort);
-    const dstPort = nodeTypes[dstNode.type].inputs.find(p => p.name === item.dstPort);
+      const srcPort = nodeTypes[srcNode.type].outputs(srcNode.values).find(p => p.name === item.srcPort);
+      const dstPort = nodeTypes[dstNode.type].inputs(dstNode.values).find(p => p.name === item.dstPort);
 
-    if (srcPort.type !== dstPort.type) return;
+      if (srcPort.type !== dstPort.type) return;
 
-    if (!srcNode.connections)   srcNode.connections = {};
-    if (!srcNode.connections.outputs) srcNode.connections.outputs = [];
-    if (!srcNode.connections.inputs)  srcNode.connections.inputs = [];
+      if (!srcNode.connections)   srcNode.connections = {};
+      if (!srcNode.connections.outputs) srcNode.connections.outputs = [];
+      if (!srcNode.connections.inputs)  srcNode.connections.inputs = [];
 
 
-    if (!dstNode.connections)   dstNode.connections = {};
-    if (!dstNode.connections.outputs) dstNode.connections.outputs = [];
-    if (!dstNode.connections.inputs)  dstNode.connections.inputs = [];
+      if (!dstNode.connections)   dstNode.connections = {};
+      if (!dstNode.connections.outputs) dstNode.connections.outputs = [];
+      if (!dstNode.connections.inputs)  dstNode.connections.inputs = [];
 
-    if (!srcNode.connections.outputs.find(c => c.name === dstPort.name)) {
-      srcNode.connections.outputs.push({ name: srcPort.name, node: dstNode.id, port: dstPort.name });
-    }
+      if (!srcNode.connections.outputs.find(c => c.name === dstPort.name)) {
+        srcNode.connections.outputs.push({ name: srcPort.name, node: dstNode.id, port: dstPort.name });
+      }
 
-    if (!dstNode.connections.inputs.find(c => c.name === srcPort.name)) {
-      dstNode.connections.inputs.push({ name: dstPort.name, node: srcNode.id, port: srcPort.name });
-    }
+      if (!dstNode.connections.inputs.find(c => c.name === srcPort.name)) {
+        dstNode.connections.inputs.push({ name: dstPort.name, node: srcNode.id, port: srcPort.name });
+      }
 
-    const minNodeIdx = Math.min(srcNodeIdx, dstNodeIdx);
-    const maxNodeIdx = Math.max(srcNodeIdx, dstNodeIdx);
-    const minNode = srcNodeIdx < dstNodeIdx ? srcNode : dstNode;
-    const maxNode = srcNodeIdx < dstNodeIdx ? dstNode : srcNode;
+      const minNodeIdx = Math.min(srcNodeIdx, dstNodeIdx);
+      const maxNodeIdx = Math.max(srcNodeIdx, dstNodeIdx);
+      const minNode = srcNodeIdx < dstNodeIdx ? srcNode : dstNode;
+      const maxNode = srcNodeIdx < dstNodeIdx ? dstNode : srcNode;
 
-    onChangeState(prev => ({
-      ...prev,
-      nodes: [
-        ...prev.nodes.slice(0, minNodeIdx),
-        minNode,
-        ...prev.nodes.slice(minNodeIdx + 1, maxNodeIdx),
-        maxNode,
-        ...prev.nodes.slice(maxNodeIdx + 1)
-      ]
-    }))
-  }, [state?.nodes, onChangeState, nodeTypes]);
+      return {
+        ...prev,
+        nodes: [
+          ...prev.nodes.slice(0, minNodeIdx),
+          minNode,
+          ...prev.nodes.slice(minNodeIdx + 1, maxNodeIdx),
+          maxNode,
+          ...prev.nodes.slice(maxNodeIdx + 1)
+        ]
+      }
+    })
+  }, [setStateAndNotify, nodeTypes]);
 
   const pinchOptions = useMemo(() => ({
     step: 5,
@@ -290,6 +355,20 @@ function NodeContainer({ portTypes, nodeTypes, state, onChangeState }) {
     )
   }), [nodeTypesByCategory, addNode])
 
+  const handleValueChange = useCallback((index, values) => {
+    setStateAndNotify(prev => {
+      return {
+        ...prev,
+        nodes: [
+          ...prev.nodes.slice(0, index),
+          { ...prev.nodes[index], values: {...values } },
+          ...prev.nodes.slice(index + 1)
+        ]
+      }
+    })
+  }, [setStateAndNotify])
+
+
   if (!state) return null
 
   return (
@@ -303,7 +382,9 @@ function NodeContainer({ portTypes, nodeTypes, state, onChangeState }) {
         maxScale={2}
         limitToBounds={false}
         onPanning={onTransform}
+        onPanningStop={onTransformEnd}
         onZoom={onZoom}
+        onZoomStop={onZoomEnd}
         pinch={pinchOptions}
         panning={panningOptions}
       >
@@ -376,19 +457,20 @@ function NodeContainer({ portTypes, nodeTypes, state, onChangeState }) {
                           nodeType={nodeTypes?.[node.type]}
                           value={node}
                           onValueChange={(v) => {
-                            onChangeState(prev => ({
+                            handleValueChange(index, { ...v.values })
+                          }}
+                          onChangePosition={(position) => {
+                            setState(prev => ({
                               ...prev,
                               nodes: [
                                 ...prev.nodes.slice(0, index),
-                                { ...prev.nodes[index], values: {...v.values } },
+                                { ...prev.nodes[index], position },
                                 ...prev.nodes.slice(index + 1)
                               ]
                             }))
                           }}
-                          onChangePosition={(position) => {
-                            console.log('onChangePosition', position)
-
-                            onChangeState(prev => ({
+                          onDragEnd={(position) => {
+                            setStateAndNotify(prev => ({
                               ...prev,
                               nodes: [
                                 ...prev.nodes.slice(0, index),
@@ -415,8 +497,7 @@ function NodeContainer({ portTypes, nodeTypes, state, onChangeState }) {
                           onResize={(size) => {
                             // O objetivo aqui é disparar a renderização das conexões.
                             // Se houver um modo melhor, por favor, me avise.
-                            console.log('onResize', size)
-                            onChangeState(prev => ({
+                            setState(prev => ({
                               ...prev,
                               nodes: [
                                 ...prev.nodes.slice(0, index),

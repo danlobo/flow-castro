@@ -133,7 +133,8 @@ function NodePort({
     <div ref={containerRef} style={{ 
         position: 'relative', 
         width: '100%',
-        minHeight: '20px'
+        minHeight: '20px',
+        cursor: 'crosshair'
       }} 
       className="port"
       onMouseDown={handleMouseDown}
@@ -168,12 +169,13 @@ function NodePort({
       </div>
       <div 
         style={{ position: 'relative', zIndex: 3000, width: '100%' }} 
-        onBlur={handleUpdateForm}
+        //onBlur={handleUpdateForm}
         onMouseDown={(e) => {
           e.stopPropagation();
         }}
         >
-        {direction === 'input' && !isConnected ? type.render({ value: internalValue, onChange: setInternalValue }) : null}
+        {/* {direction === 'input' && !isConnected ? type.render({ value: internalValue, onChange: setInternalValue }) : null} */}
+        {direction === 'input' && !isConnected ? type.render({ value, onChange: onValueChange }) : null}
       </div>
       <div 
         id={`card-${nodeId}-${direction}-${name}`}

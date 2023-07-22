@@ -38,12 +38,12 @@ const ContextMenuList = ({ isFiltered, options, onSelectOption, style }) => {
 
   return (
     <ul className="context-menu" style={style}>
-      {options?.filter(isFiltered)?.map((option) => {
+      {options?.filter(isFiltered)?.map((option, index) => {
         if (option.separator === true)
-          return <li key={option.id} ><hr /></li>
+          return <li key={`${option.id}-${index}`} ><hr /></li>
 
         return <li
-          key={option.label}
+          key={`${option.label}-${index}`}
           onClick={() => onSelectOption(option)}
           onMouseEnter={(e) => handleMenuItemMouseEnter(e, option.label)}
           onMouseLeave={() => handleMenuItemMouseLeave()}
@@ -131,7 +131,7 @@ export const ContextMenu = ({ children }) => {
   return (
     <>
       {children({ handleContextMenu })}
-      <div ref={menuRef} className="context-menu" style={{ left: position.x, top: position.y, visibility: options ? 'visible' : 'hidden' }}>
+      <div ref={menuRef} className="context-menu-container" style={{ left: position.x, top: position.y, visibility: options ? 'visible' : 'hidden' }}>
         <input ref={searchRef} type="text" placeholder="Buscar..." autoFocus value={search ?? ''} onChange={(e) => setSearch(e.target.value)} />
         <ContextMenuList isFiltered={isFiltered} options={options} onSelectOption={handleMenuItemClick} style={{position: 'relative'}}/>
       </div>

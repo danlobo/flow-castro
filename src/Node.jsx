@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import NodePort from './NodePort.jsx';
 import { useScreenContext } from './ScreenContext.jsx';
 
@@ -7,7 +7,8 @@ function Node({
   portTypes,
   nodeType,
   value,
-  onChangePosition, 
+  onChangePosition,
+  onDragEnd,
   onConnect, 
   containerRef, 
   onContextMenu,
@@ -48,7 +49,7 @@ function Node({
 
   const { scale: screenScale } = useScreenContext()
 
-  const handleMouseDown = (event) => {
+  const handleMouseDown = useCallback((event) => {
     // event.preventDefault();
     event.stopPropagation();
 
@@ -62,14 +63,21 @@ function Node({
       onChangePosition({ x: nodePosition.x + dx / screenScale, y: nodePosition.y + dy / screenScale });
     };
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (e) => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+
+      const dx = e.pageX - startX;
+      const dy = e.pageY - startY;
+
+      if (Math.abs(dx) >= 2 && Math.abs(dy) >= 2) {
+        onDragEnd?.({ x: nodePosition.x + dx / screenScale, y: nodePosition.y + dy / screenScale });
+      }
     };
 
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
-  };
+  }, [nodePosition, screenScale, onChangePosition, onDragEnd]);
 
   const onOutputPortConnected = useCallback(({ source, target }) => {
     console.log('onOutputPortConnected', { source, target })
@@ -90,6 +98,18 @@ function Node({
     console.log('resolvedValue', resolvedValue)
   }, [name, nodeValues, nodeType])
 
+  const nodeInputs = useMemo(() => {
+    if (typeof nodeType.inputs === 'function')
+      return nodeType.inputs(nodeValues)
+    return nodeType.inputs
+  }, [nodeType, nodeValues]);
+
+  const nodeOutputs = useMemo(() => {
+    if (typeof nodeType.outputs === 'function')
+      return nodeType.outputs(nodeValues)
+    return nodeType.outputs
+  }, [nodeType, nodeValues]);
+
   return <div
     ref={nodeRef}
     id={`card-${name}`}
@@ -97,6 +117,7 @@ function Node({
     className="node"
     style={{
       transform: `translate(${nodePosition.x}px, ${nodePosition.y}px)`,
+      cursor: 'grab'
     }}
     onMouseDown={handleMouseDown}
     onContextMenu={onContextMenu}
@@ -119,7 +140,7 @@ function Node({
         alignItems: 'flex-end',
         gap: '1rem'
       }}>
-        {nodeType?.inputs?.map((input) => {
+        {nodeInputs?.map((input) => {
           return <NodePort 
             name={input.name}
             value={nodeValues[input.name]}
@@ -150,7 +171,7 @@ function Node({
         alignItems: 'flex-start',
         gap: '1rem'
       }}>
-        {nodeType?.outputs?.map((output) => {
+        {nodeOutputs?.map((output) => {
           return <NodePort
             name={output.name}
             nodeId={nodeId}
