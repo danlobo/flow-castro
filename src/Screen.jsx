@@ -10,6 +10,7 @@ import { ConnectorCurve } from './ConnectorCurve.jsx';
 import { ContextMenu } from './ContextMenu.jsx';
 import { nanoid } from 'nanoid';
 
+
 function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
   const { dragInfo } = useDragContext()
   const { position, setPosition, scale, setScale } = useScreenContext();
@@ -19,6 +20,10 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
 
   const [state, setState] = useState(initialState)
   const [shouldNotify, setShouldNotify] = useState(false)
+
+  const debounceEvent = useCallback((fn, wait = 200, time) => (...args) =>
+    clearTimeout(time, (time = setTimeout(() => fn(...args), wait)))
+  , [])
 
   useEffect(() => {
     if (!initialState) return
@@ -81,22 +86,22 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
 
     setStateAndNotify(prev => ({
       ...prev,
-      nodes: [
-        ...(prev.nodes ?? []),
-        newNode
-      ]
+      nodes: {
+        ...(prev.nodes ?? {}),
+        [newNode.id]: newNode
+      }
     }))
   }, [setStateAndNotify])
 
   const removeNode = useCallback((id) => {
-    const node = state.nodes?.find(node => node.id === id)
+    const node = state.nodes[id]
     if (!node)  return
 
     const nodesToRemove = [id]
     const nodesToAdd = []
 
     node.connections.outputs?.forEach(conn => {
-      const otherNode = state.nodes?.find(node => node.id === conn.node)
+      const otherNode = state.nodes[conn.node]
 
       if (!otherNode) return
 
@@ -111,7 +116,7 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
     })
 
     node.connections.inputs?.forEach(conn => {
-      const otherNode = state.nodes?.find(node => node.id === conn.node)
+      const otherNode = state.nodes[conn.node]
 
       if (!otherNode) return
 
@@ -125,17 +130,29 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
       })
     })
 
-    setStateAndNotify(prev => ({
-      ...prev,
-      nodes: [
-        ...(prev.nodes?.filter(node => !nodesToRemove.includes(node.id)) ?? []),
-        ...nodesToAdd
-      ]
-    }))
-  }, [state, onChangeState])
+    // change nodes to object[id]
+
+    setStateAndNotify(prev => {
+      const newNodes = {
+        ...(prev.nodes ?? {}),
+      }
+
+      nodesToRemove.forEach(id => {
+        delete newNodes[id]
+      })
+      nodesToAdd.forEach(node => {
+        newNodes[node.id] = node
+      })
+
+      return {
+        ...prev,
+        nodes: newNodes
+      }
+    })
+  }, [state, setStateAndNotify])
 
   const cloneNode = useCallback((id) => {
-    const node = state.nodes?.find(node => node.id === id)
+    const node = state.nodes[id]
     if (!node)  return
 
     const newNode = {
@@ -150,44 +167,42 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
 
     setStateAndNotify(prev => ({
       ...prev,
-      nodes: [
-        ...(prev.nodes ?? []),
-        newNode
-      ]
+      nodes: {
+        ...(prev.nodes ?? {}),
+        [newNode.id]: newNode
+      }
     }))
   }, [setStateAndNotify, state])
 
   const removeConnectionFromOutput = useCallback((srcNode, srcPort, dstNode, dstPort) => {
     setStateAndNotify(prev => {
-      const newNodes = [
-        ...(prev.nodes?.map(node => {
-          if (node.id === srcNode) {
-            return {
-              ...node,
-              connections: {
-                inputs: node.connections.inputs,
-                outputs: node.connections.outputs.filter(conn => !(conn.name === srcPort && conn.node === dstNode && conn.port === dstPort))
-              }
-            }
-          } else if (node.id === dstNode) {
-            return {
-              ...node,
-              connections: {
-                inputs: node.connections.inputs.filter(conn => !(conn.name === dstPort && conn.node === srcNode && conn.port === srcPort)),
-                outputs: node.connections.outputs
-              }
-            }
-          }
+      const newNodes = {
+        ...(prev.nodes ?? {}),
+      }
 
-          return node
-        })  ?? [])
-      ]
+      if (!newNodes[srcNode] || !newNodes[dstNode]) return null
 
-    return {
-      ...prev,
-      nodes: newNodes
-    }
-  })
+      newNodes[srcNode] = {
+        ...newNodes[srcNode],
+        connections: {
+          ...newNodes[srcNode].connections,
+          outputs: newNodes[srcNode].connections.outputs.filter(conn => !(conn.name === srcPort && conn.node === dstNode && conn.port === dstPort))
+        }
+      }
+
+      newNodes[dstNode] = {
+        ...newNodes[dstNode],
+        connections: {
+          ...newNodes[dstNode].connections,
+          inputs: newNodes[dstNode].connections.inputs.filter(conn => !(conn.name === dstPort && conn.node === srcNode && conn.port === srcPort))
+        }
+      }
+
+      return {
+        ...prev,
+        nodes: newNodes
+      }
+    })
   }, [setStateAndNotify])
 
   const screenRef = useRef()
@@ -222,16 +237,26 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
   }, [setPosition])
 
   const onTransformEnd = useCallback((params) => {
+    console.log('onTransformEnd', params)
+
+    const {
+      state: {
+        positionX,
+        positionY,
+        scale: _scale
+      }
+    } = params
+    
+    setPosition({x: positionX, y: positionY })
+    setScale(_scale)
     setStateAndNotify(prev => {
-
-      const _position = {x: params.state.positionX, y: params.state.positionY } 
-
       return {
         ...prev,
-        position: _position
+        position: {x: positionX, y: positionY },
+        scale: _scale
       }
     })
-  }, [setStateAndNotify])
+  }, [setPosition, setScale, setStateAndNotify])
 
   const gridSize = 40;
   const scaledGridSize = gridSize * (scale ?? 1);
@@ -240,7 +265,7 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
 
   const onConnect = useCallback(({ source, target }) => {
     setStateAndNotify(prev => {
-      if (!prev?.nodes?.length) return null;
+      if (!prev?.nodes || !Object.keys(prev.nodes).length) return null;
 
       const item = {
         srcNode: source.nodeId,
@@ -251,12 +276,9 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
 
       if (item.srcNode === item.dstNode) return;
       
-      const srcNodeIdx = prev.nodes.findIndex(n => n.id === item.srcNode);
-      const dstNodeIdx = prev.nodes.findIndex(n => n.id === item.dstNode);
-      
       // deep merge
-      const srcNode = JSON.parse(JSON.stringify(prev.nodes[srcNodeIdx]));
-      const dstNode = JSON.parse(JSON.stringify(prev.nodes[dstNodeIdx]));
+      const srcNode = JSON.parse(JSON.stringify(prev.nodes[item.srcNode]));
+      const dstNode = JSON.parse(JSON.stringify(prev.nodes[item.dstNode]));
 
       const srcPort = nodeTypes[srcNode.type].outputs(srcNode.values).find(p => p.name === item.srcPort);
       const dstPort = nodeTypes[dstNode.type].inputs(dstNode.values).find(p => p.name === item.dstPort);
@@ -280,20 +302,15 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
         dstNode.connections.inputs.push({ name: dstPort.name, node: srcNode.id, port: srcPort.name });
       }
 
-      const minNodeIdx = Math.min(srcNodeIdx, dstNodeIdx);
-      const maxNodeIdx = Math.max(srcNodeIdx, dstNodeIdx);
-      const minNode = srcNodeIdx < dstNodeIdx ? srcNode : dstNode;
-      const maxNode = srcNodeIdx < dstNodeIdx ? dstNode : srcNode;
+      const nodes = {
+        ...prev.nodes,
+        [srcNode.id]: srcNode,
+        [dstNode.id]: dstNode
+      }
 
       return {
         ...prev,
-        nodes: [
-          ...prev.nodes.slice(0, minNodeIdx),
-          minNode,
-          ...prev.nodes.slice(minNodeIdx + 1, maxNodeIdx),
-          maxNode,
-          ...prev.nodes.slice(maxNodeIdx + 1)
-        ]
+        nodes
       }
     })
   }, [setStateAndNotify, nodeTypes]);
@@ -357,15 +374,17 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
     )
   }), [nodeTypesByCategory, addNode])
 
-  const handleValueChange = useCallback((index, values) => {
+  const handleValueChange = useCallback((id, values) => {
     setStateAndNotify(prev => {
       return {
         ...prev,
-        nodes: [
-          ...prev.nodes.slice(0, index),
-          { ...prev.nodes[index], values: {...values } },
-          ...prev.nodes.slice(index + 1)
-        ]
+        nodes: {
+          ...prev.nodes,
+          [id]: {
+            ...prev.nodes[id],
+            values
+          }
+        }
       }
     })
   }, [setStateAndNotify])
@@ -384,215 +403,219 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
         maxScale={2}
         limitToBounds={false}
         onPanning={onTransform}
-        onPanningStop={onTransformEnd}
         onZoom={onZoom}
-        onZoomStop={onZoomEnd}
         pinch={pinchOptions}
         panning={panningOptions}
+        onTransformed={debounceEvent(onTransformEnd, 200)}
       >
-        {({ zoomIn, zoomOut, resetTransform, setTransform, centerView, ...rest }) => (
-          <>
-            <div style={{ 
-              position: 'absolute', 
-              bottom: '40px', 
-              right: '40px', 
-              zIndex: 1000, 
-              width: '30px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              backgroundColor: 'white',
-              border: '1px solid #CCC',
-              borderRadius: '.5rem',
-              padding: '.5rem',
-              boxShadow: '0 0 5px #CCC',
-              gap: '.5rem'
-              }}
-            >
-              <button style={{ width: '30px', height: '30px' }} onClick={() => zoomIn()}>+</button>
-              <button style={{ width: '30px', height: '30px' }} onClick={() => zoomOut()}>-</button>
-              <button style={{ width: '30px', height: '30px' }} onClick={() => {
-                centerView();
-                setStateAndNotify(prev => ({
-                  ...prev,
-                  position,
-                  scale
-                }))
-              }}>C</button>
-              <button style={{ width: '30px', height: '30px' }} onClick={() => {
-                setTransform(position.x, position.y, 1);
-                setScale(1);
+        {({ zoomIn, zoomOut, resetTransform, setTransform, centerView,  ...rest }) => {
+          return (
+            <>
+              <div style={{ 
+                position: 'absolute', 
+                bottom: '40px', 
+                right: '40px', 
+                zIndex: 1000, 
+                width: '30px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: 'white',
+                border: '1px solid #CCC',
+                borderRadius: '.5rem',
+                padding: '.5rem',
+                boxShadow: '0 0 5px #CCC',
+                gap: '.5rem'
+                }}
+              >
+                <button style={{ width: '30px', height: '30px' }} onClick={() => zoomIn()}>+</button>
+                <button style={{ width: '30px', height: '30px' }} onClick={() => zoomOut()}>-</button>
+                <button style={{ width: '30px', height: '30px' }} onClick={() => {
+                  centerView();
+                  setStateAndNotify(prev => ({
+                    ...prev,
+                    position,
+                    scale
+                  }))
+                }}>C</button>
+                <button style={{ width: '30px', height: '30px' }} onClick={() => {
+                  setTransform(position.x, position.y, 1);
+                  setScale(1);
 
-                setStateAndNotify(prev => ({
-                  ...prev,
-                  position,
-                  scale: 1
-                }))
-              }}>Z</button>
-              
-              <button style={{ width: '30px', height: '30px' }} onClick={() => setCanMove(!canMove)}>{canMove ? 'L' : 'U'}</button>
-            </div>
+                  setStateAndNotify(prev => ({
+                    ...prev,
+                    position,
+                    scale: 1
+                  }))
+                }}>Z</button>
+                
+                <button style={{ width: '30px', height: '30px' }} onClick={() => setCanMove(!canMove)}>{canMove ? 'L' : 'U'}</button>
+              </div>
 
-            <div style={{ 
-              position: 'absolute', 
-              bottom: '40px', 
-              right: '150px', 
-              zIndex: 1000,
-              width: '120px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              backgroundColor: 'white',
-              border: '1px solid #CCC',
-              borderRadius: '.5rem',
-              padding: '.5rem',
-              boxShadow: '0 0 5px #CCC',
-              gap: '.5rem',
-              fontSize: '9px'
-              }}
-            >
-              <div>Scale: {scale}</div>
-              <div>Position: {JSON.stringify(position)}</div>
-              <div>Pointer: {JSON.stringify(pointerPosition)}</div>
-            </div>
-            <ContextMenu>
-              {({ handleContextMenu }) => (
-                <TransformComponent 
-                  contentClass='main' 
-                  wrapperStyle={wrapperStyle}
-                  wrapperProps={wrapperProps(handleContextMenu)}
-                  >
-                  {state?.nodes?.map((node, index) => {
-                    return (
-                      <>
-                        <Node 
-                          id={`node_${node.id}`}
-                          key={`node_${node.id}`} 
-                          name={node.name}
-                          portTypes={portTypes}
-                          nodeType={nodeTypes?.[node.type]}
-                          value={node}
-                          onValueChange={(v) => {
-                            handleValueChange(index, { ...v.values })
-                          }}
-                          onChangePosition={(position) => {
-                            setState(prev => ({
-                              ...prev,
-                              nodes: [
-                                ...prev.nodes.slice(0, index),
-                                { ...prev.nodes[index], position },
-                                ...prev.nodes.slice(index + 1)
-                              ]
-                            }))
-                          }}
-                          onDragEnd={(position) => {
-                            setStateAndNotify(prev => ({
-                              ...prev,
-                              nodes: [
-                                ...prev.nodes.slice(0, index),
-                                { ...prev.nodes[index], position },
-                                ...prev.nodes.slice(index + 1)
-                              ]
-                            }))
-                          }}
-                          containerRef={screenRef}
-                          canMove={canMove}
-                          onConnect={onConnect}
-                          onContextMenu={(e) => handleContextMenu(e, [
-                            { label: 'Clonar este nó', onClick: () => {
-                              cloneNode(node.id)
-                            }},
-                            { 
-                              label: `Remover este nó`, 
-                              style: { color: 'red'},
-                              onClick: () => {
-                                removeNode(node.id)
-                              }
-                            }
-                          ])}
-                          onResize={(size) => {
-                            // O objetivo aqui é disparar a renderização das conexões.
-                            // Se houver um modo melhor, por favor, me avise.
-                            setState(prev => ({
-                              ...prev,
-                              nodes: [
-                                ...prev.nodes.slice(0, index),
-                                { 
-                                  ...prev.nodes[index], 
-                                  connections: {
-                                    ...prev.nodes[index].connections,
-                                    outputs: [ ...(prev.nodes[index].connections?.outputs ?? [])],
-                                  },
-                                  size 
-                                },
-                                ...prev.nodes.slice(index + 1)
-                              ]
-                            }))
-                          }}
-                        />
-                        {node.connections?.outputs?.map((connection, index) => {
-                          const srcNode = node.id
-                          const srcPort = connection.name
-                          const dstNode = connection.node
-                          const dstPort = connection.port
-
-                          const srcElem = document.getElementById(`card-${srcNode}-output-${srcPort}`);
-                          const dstElem = document.getElementById(`card-${dstNode}-input-${dstPort}`);
-                    
-                          if (!srcElem || !dstElem) {
-                            return null;
-                          }
-                    
-                          const srcRect = srcElem.getBoundingClientRect();
-                          const dstRect = dstElem.getBoundingClientRect();
-                    
-                          const srcPos = {
-                            x: (srcRect.x + window.scrollX - position.x + srcRect.width / 2) / scale,
-                            y: (srcRect.y + window.scrollY - position.y + srcRect.height / 2) / scale
-                          }
-                    
-                          const dstPos = {
-                            x: (dstRect.x + window.scrollX - position.x + dstRect.width / 2) / scale,
-                            y: (dstRect.y + window.scrollY - position.y + dstRect.height / 2) / scale
-                          }
-
-                          return <ConnectorCurve
-                            key={`connector-${srcNode}-${srcPort}-${dstNode}-${dstPort}`}
-                            src={srcPos}
-                            dst={dstPos}
-                            scale={scale}
+              <div style={{ 
+                position: 'absolute', 
+                bottom: '40px', 
+                right: '150px', 
+                zIndex: 1000,
+                width: '120px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: 'white',
+                border: '1px solid #CCC',
+                borderRadius: '.5rem',
+                padding: '.5rem',
+                boxShadow: '0 0 5px #CCC',
+                gap: '.5rem',
+                fontSize: '9px'
+                }}
+              >
+                <div>Scale: {scale}</div>
+                <div>Position: {JSON.stringify(position)}</div>
+                <div>Pointer: {JSON.stringify(pointerPosition)}</div>
+              </div>
+              <ContextMenu>
+                {({ handleContextMenu }) => (
+                  <TransformComponent 
+                    contentClass='main' 
+                    wrapperStyle={wrapperStyle}
+                    wrapperProps={wrapperProps(handleContextMenu)}
+                    >
+                    {state?.nodes && Object.values(state.nodes).map((node, index) => {
+                      return (
+                        <>
+                          <Node 
+                            id={`node_${node.id}`}
+                            key={`node_${node.id}`} 
+                            name={node.name}
+                            portTypes={portTypes}
+                            nodeType={nodeTypes?.[node.type]}
+                            value={node}
+                            onValueChange={(v) => {
+                              handleValueChange(node.id, { ...v.values })
+                            }}
+                            onChangePosition={(position) => {
+                              setState(prev => ({
+                                ...prev,
+                                nodes: {
+                                  ...prev.nodes,
+                                  [node.id]: {
+                                    ...prev.nodes[node.id],
+                                    position
+                                  }
+                                }
+                              }))
+                            }}
+                            onDragEnd={(position) => {
+                              setStateAndNotify(prev => ({
+                                ...prev,
+                                nodes: {
+                                  ...prev.nodes,
+                                  [node.id]: {
+                                    ...prev.nodes[node.id],
+                                    position
+                                  }
+                                }
+                              }))
+                            }}
+                            containerRef={screenRef}
+                            canMove={canMove}
+                            onConnect={onConnect}
                             onContextMenu={(e) => handleContextMenu(e, [
-                              {
-                                label: `Remover esta conexão`, 
+                              { label: 'Clonar este nó', onClick: () => {
+                                cloneNode(node.id)
+                              }},
+                              { 
+                                label: `Remover este nó`, 
                                 style: { color: 'red'},
                                 onClick: () => {
-                                  removeConnectionFromOutput(srcNode, srcPort, dstNode, dstPort)
+                                  removeNode(node.id)
                                 }
                               }
                             ])}
+                            onResize={(size) => {
+                              // O objetivo aqui é disparar a renderização das conexões.
+                              // Se houver um modo melhor, por favor, me avise.
+                              setState(prev => ({
+                                ...prev,
+                                nodes: {
+                                  ...prev.nodes,
+                                  [node.id]: {
+                                    ...prev.nodes[node.id],
+                                    size,
+                                    connections: {
+                                      ...prev.nodes[node.id].connections,
+                                      outputs: [ ...(prev.nodes[node.id].connections?.outputs ?? [])],
+                                    }
+                                  }
+                                }
+                              }))
+                            }}
                           />
-                        })}
-                      </>
-                    )
-                  })}
+                          {node.connections?.outputs?.map((connection, index) => {
+                            const srcNode = node.id
+                            const srcPort = connection.name
+                            const dstNode = connection.node
+                            const dstPort = connection.port
 
-                  {dragInfo && dstDragPosition && <ConnectorCurve tmp src={{
-                    x: (dragInfo.startX + window.scrollX - position.x + 5) / scale,
-                    y: (dragInfo.startY + window.scrollY - position.y + 5) / scale
-                  }}
-                  dst={{
-                    x: (dstDragPosition.x + window.scrollX - position.x) / scale,
-                    y: (dstDragPosition.y + window.scrollY - position.y) / scale
-                  }}
-                  scale={scale}
-                  />}
-                </TransformComponent>
-              )}
-            </ContextMenu>      
-          </>
-        )}
+                            const srcElem = document.getElementById(`card-${srcNode}-output-${srcPort}`);
+                            const dstElem = document.getElementById(`card-${dstNode}-input-${dstPort}`);
+                      
+                            if (!srcElem || !dstElem) {
+                              return null;
+                            }
+                      
+                            const srcRect = srcElem.getBoundingClientRect();
+                            const dstRect = dstElem.getBoundingClientRect();
+                      
+                            const srcPos = {
+                              x: (srcRect.x + window.scrollX - position.x + srcRect.width / 2) / scale,
+                              y: (srcRect.y + window.scrollY - position.y + srcRect.height / 2) / scale
+                            }
+                      
+                            const dstPos = {
+                              x: (dstRect.x + window.scrollX - position.x + dstRect.width / 2) / scale,
+                              y: (dstRect.y + window.scrollY - position.y + dstRect.height / 2) / scale
+                            }
+
+                            return <ConnectorCurve
+                              key={`connector-${srcNode}-${srcPort}-${dstNode}-${dstPort}`}
+                              src={srcPos}
+                              dst={dstPos}
+                              scale={scale}
+                              onContextMenu={(e) => handleContextMenu(e, [
+                                {
+                                  label: `Remover esta conexão`, 
+                                  style: { color: 'red'},
+                                  onClick: () => {
+                                    removeConnectionFromOutput(srcNode, srcPort, dstNode, dstPort)
+                                  }
+                                }
+                              ])}
+                            />
+                          })}
+                        </>
+                      )
+                    })}
+
+                    {dragInfo && dstDragPosition && <ConnectorCurve tmp src={{
+                      x: (dragInfo.startX + window.scrollX - position.x + 5) / scale,
+                      y: (dragInfo.startY + window.scrollY - position.y + 5) / scale
+                    }}
+                    dst={{
+                      x: (dstDragPosition.x + window.scrollX - position.x) / scale,
+                      y: (dstDragPosition.y + window.scrollY - position.y) / scale
+                    }}
+                    scale={scale}
+                    />}
+                  </TransformComponent>
+                )}
+              </ContextMenu>      
+            </>
+          )
+        }}
       </TransformWrapper>
     </div>
   );
