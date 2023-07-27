@@ -82,21 +82,21 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
     setStateAndNotify(prev => ({
       ...prev,
       nodes: [
-        ...prev.nodes,
+        ...(prev.nodes ?? []),
         newNode
       ]
     }))
   }, [setStateAndNotify])
 
   const removeNode = useCallback((id) => {
-    const node = state.nodes.find(node => node.id === id)
+    const node = state.nodes?.find(node => node.id === id)
     if (!node)  return
 
     const nodesToRemove = [id]
     const nodesToAdd = []
 
     node.connections.outputs?.forEach(conn => {
-      const otherNode = state.nodes.find(node => node.id === conn.node)
+      const otherNode = state.nodes?.find(node => node.id === conn.node)
 
       if (!otherNode) return
 
@@ -111,7 +111,7 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
     })
 
     node.connections.inputs?.forEach(conn => {
-      const otherNode = state.nodes.find(node => node.id === conn.node)
+      const otherNode = state.nodes?.find(node => node.id === conn.node)
 
       if (!otherNode) return
 
@@ -128,14 +128,16 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
     setStateAndNotify(prev => ({
       ...prev,
       nodes: [
-        ...prev.nodes.filter(node => !nodesToRemove.includes(node.id)),
+        ...(prev.nodes?.filter(node => !nodesToRemove.includes(node.id)) ?? []),
         ...nodesToAdd
       ]
     }))
   }, [state, onChangeState])
 
   const cloneNode = useCallback((id) => {
-    const node = state.nodes.find(node => node.id === id)
+    const node = state.nodes?.find(node => node.id === id)
+    if (!node)  return
+
     const newNode = {
       ...node,
       id: nanoid(),
@@ -149,7 +151,7 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
     setStateAndNotify(prev => ({
       ...prev,
       nodes: [
-        ...prev.nodes,
+        ...(prev.nodes ?? []),
         newNode
       ]
     }))
@@ -158,7 +160,7 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
   const removeConnectionFromOutput = useCallback((srcNode, srcPort, dstNode, dstPort) => {
     setStateAndNotify(prev => {
       const newNodes = [
-        ...prev.nodes.map(node => {
+        ...(prev.nodes?.map(node => {
           if (node.id === srcNode) {
             return {
               ...node,
@@ -178,7 +180,7 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
           }
 
           return node
-        })
+        })  ?? [])
       ]
 
     return {
@@ -410,8 +412,24 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
             >
               <button style={{ width: '30px', height: '30px' }} onClick={() => zoomIn()}>+</button>
               <button style={{ width: '30px', height: '30px' }} onClick={() => zoomOut()}>-</button>
-              <button style={{ width: '30px', height: '30px' }} onClick={() => centerView()}>C</button>
-              <button style={{ width: '30px', height: '30px' }} onClick={() => {setTransform(position.x, position.y, 1); setScale(1);} }>Z</button>
+              <button style={{ width: '30px', height: '30px' }} onClick={() => {
+                centerView();
+                setStateAndNotify(prev => ({
+                  ...prev,
+                  position,
+                  scale
+                }))
+              }}>C</button>
+              <button style={{ width: '30px', height: '30px' }} onClick={() => {
+                setTransform(position.x, position.y, 1);
+                setScale(1);
+
+                setStateAndNotify(prev => ({
+                  ...prev,
+                  position,
+                  scale: 1
+                }))
+              }}>Z</button>
               
               <button style={{ width: '30px', height: '30px' }} onClick={() => setCanMove(!canMove)}>{canMove ? 'L' : 'U'}</button>
             </div>
