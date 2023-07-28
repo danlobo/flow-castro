@@ -9,9 +9,26 @@ import { useScreenContext } from './ScreenContext.jsx';
 import { ConnectorCurve } from './ConnectorCurve.jsx';
 import { ContextMenu } from './ContextMenu.jsx';
 import { nanoid } from 'nanoid';
+import css from './Screen.module.css';
+
+import nodeCss from './Node.module.css'
+import nodePortCss from './NodePort.module.css'
+import { useTheme } from './ThemeProvider.js';
 
 
-function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
+function Screen({ portTypes, nodeTypes, onChangeState, initialState }) {
+
+  const { currentTheme } = useTheme()
+
+  const style = {
+    '--port-size': '20px',
+    '--color-primary': currentTheme.colors.primary,
+    '--color-secondary': currentTheme.colors.secondary,
+    '--color-bg': currentTheme.colors.background,
+    '--color-text': currentTheme.colors.text,
+    '--color-hover': currentTheme.colors.hover,
+  }
+
   const { dragInfo } = useDragContext()
   const { position, setPosition, scale, setScale } = useScreenContext();
 
@@ -27,8 +44,6 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
 
   useEffect(() => {
     if (!initialState) return
-
-    console.log('initialState', initialState)
 
     setScale(initialState.scale)
     setPosition(initialState.position)
@@ -237,8 +252,6 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
   }, [setPosition])
 
   const onTransformEnd = useCallback((params) => {
-    console.log('onTransformEnd', params)
-
     const {
       state: {
         positionX,
@@ -295,11 +308,11 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
       if (!dstNode.connections.inputs)  dstNode.connections.inputs = [];
 
       if (!srcNode.connections.outputs.find(c => c.name === dstPort.name)) {
-        srcNode.connections.outputs.push({ name: srcPort.name, node: dstNode.id, port: dstPort.name });
+        srcNode.connections.outputs.push({ name: srcPort.name, node: dstNode.id, port: dstPort.name, type: srcPort.type });
       }
 
       if (!dstNode.connections.inputs.find(c => c.name === srcPort.name)) {
-        dstNode.connections.inputs.push({ name: dstPort.name, node: srcNode.id, port: srcPort.name });
+        dstNode.connections.inputs.push({ name: dstPort.name, node: srcNode.id, port: srcPort.name, type: srcPort.type });
       }
 
       const nodes = {
@@ -320,16 +333,17 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
   }), [])
   const panningOptions = useMemo(() => ({
     disabled: isMoveable,
-    excluded: ['node', 'react-draggable', 'port', 'port-connector']
+    excluded: [nodeCss.node, 'react-draggable', nodePortCss.port, nodePortCss.portConnector]
   }), [isMoveable])
 
   const wrapperStyle = useMemo(() => ({
     height: '100vh', 
     width: '100vw',
+    backgroundColor: currentTheme.colors.background,
     backgroundSize: `${scaledGridSize}px ${scaledGridSize}px`,
-    backgroundImage: `linear-gradient(to right, #CCCCCC 1px, transparent 1px), linear-gradient(to bottom, #CCCCCC 1px, transparent 1px)`,
+    backgroundImage: `linear-gradient(to right, ${currentTheme.colors.hover} 1px, transparent 1px), linear-gradient(to bottom, ${currentTheme.colors.hover} 1px, transparent 1px)`,
     backgroundPosition: `${scaledPositionX}px ${scaledPositionY}px`
-  }), [scaledGridSize, scaledPositionX, scaledPositionY])
+  }), [scaledGridSize, scaledPositionX, scaledPositionY, currentTheme])
 
 
   const nodeTypesByCategory = useMemo(() => {
@@ -393,7 +407,7 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
   if (!state) return null
 
   return (
-    <div style={{ position: 'relative', border: `1px solid blue` }}>
+    <div className={css.container} style={style} ref={screenRef}>
       <TransformWrapper
         initialScale={state?.scale ?? 1}
         initialPositionX={state?.position?.x ?? 0}
@@ -411,27 +425,10 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
         {({ zoomIn, zoomOut, resetTransform, setTransform, centerView,  ...rest }) => {
           return (
             <>
-              <div style={{ 
-                position: 'absolute', 
-                bottom: '40px', 
-                right: '40px', 
-                zIndex: 1000, 
-                width: '30px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                backgroundColor: 'white',
-                border: '1px solid #CCC',
-                borderRadius: '.5rem',
-                padding: '.5rem',
-                boxShadow: '0 0 5px #CCC',
-                gap: '.5rem'
-                }}
-              >
-                <button style={{ width: '30px', height: '30px' }} onClick={() => zoomIn()}>+</button>
-                <button style={{ width: '30px', height: '30px' }} onClick={() => zoomOut()}>-</button>
-                <button style={{ width: '30px', height: '30px' }} onClick={() => {
+              <div className={[css.panel, css.controlsPanel].join(' ')}>
+                <button className={css.controlButton} onClick={() => zoomIn()}>+</button>
+                <button className={css.controlButton} onClick={() => zoomOut()}>-</button>
+                <button className={css.controlButton} onClick={() => {
                   centerView();
                   setStateAndNotify(prev => ({
                     ...prev,
@@ -439,7 +436,7 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
                     scale
                   }))
                 }}>C</button>
-                <button style={{ width: '30px', height: '30px' }} onClick={() => {
+                <button className={css.controlButton} onClick={() => {
                   setTransform(position.x, position.y, 1);
                   setScale(1);
 
@@ -450,31 +447,12 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
                   }))
                 }}>Z</button>
                 
-                <button style={{ width: '30px', height: '30px' }} onClick={() => setCanMove(!canMove)}>{canMove ? 'L' : 'U'}</button>
+                <button className={css.controlButton} onClick={() => setCanMove(!canMove)}>{canMove ? 'L' : 'U'}</button>
               </div>
 
-              <div style={{ 
-                position: 'absolute', 
-                bottom: '40px', 
-                right: '150px', 
-                zIndex: 1000,
-                width: '120px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                backgroundColor: 'white',
-                border: '1px solid #CCC',
-                borderRadius: '.5rem',
-                padding: '.5rem',
-                boxShadow: '0 0 5px #CCC',
-                gap: '.5rem',
-                fontSize: '9px'
-                }}
-              >
+              <div className={[css.panel, css.statusPanel].join(' ')}>
                 <div>Scale: {scale}</div>
                 <div>Position: {JSON.stringify(position)}</div>
-                <div>Pointer: {JSON.stringify(pointerPosition)}</div>
               </div>
               <ContextMenu>
                 {({ handleContextMenu }) => (
@@ -559,41 +537,45 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
                             const srcPort = connection.name
                             const dstNode = connection.node
                             const dstPort = connection.port
+                            const connType = connection.type
 
                             const srcElem = document.getElementById(`card-${srcNode}-output-${srcPort}`);
                             const dstElem = document.getElementById(`card-${dstNode}-input-${dstPort}`);
-                      
-                            if (!srcElem || !dstElem) {
+
+
+                            const contRect = screenRef.current?.getBoundingClientRect();
+                            if (!srcElem || !dstElem || !contRect) {
                               return null;
                             }
-                      
+
                             const srcRect = srcElem.getBoundingClientRect();
                             const dstRect = dstElem.getBoundingClientRect();
                       
                             const srcPos = {
-                              x: (srcRect.x + window.scrollX - position.x + srcRect.width / 2) / scale,
-                              y: (srcRect.y + window.scrollY - position.y + srcRect.height / 2) / scale
+                              x: (srcRect.x + window.scrollX - position.x - contRect.left + srcRect.width / 2) / scale,
+                              y: (srcRect.y + window.scrollY - position.y - contRect.top + srcRect.height / 2) / scale
                             }
                       
                             const dstPos = {
-                              x: (dstRect.x + window.scrollX - position.x + dstRect.width / 2) / scale,
-                              y: (dstRect.y + window.scrollY - position.y + dstRect.height / 2) / scale
+                              x: (dstRect.x + window.scrollX - position.x - contRect.left + dstRect.width / 2) / scale,
+                              y: (dstRect.y + window.scrollY - position.y - contRect.top + dstRect.height / 2) / scale
                             }
 
                             return <ConnectorCurve
                               key={`connector-${srcNode}-${srcPort}-${dstNode}-${dstPort}`}
+                              type={portTypes[connType]}
                               src={srcPos}
                               dst={dstPos}
                               scale={scale}
                               onContextMenu={(e) => handleContextMenu(e, [
-                                {
+                                canMove ? {
                                   label: `Remover esta conexão`, 
                                   style: { color: 'red'},
                                   onClick: () => {
                                     removeConnectionFromOutput(srcNode, srcPort, dstNode, dstPort)
                                   }
-                                }
-                              ])}
+                                } : null
+                              ].filter(Boolean))}
                             />
                           })}
                         </>
@@ -621,4 +603,4 @@ function NodeContainer({ portTypes, nodeTypes, onChangeState, initialState }) {
   );
 }
 
-export default NodeContainer;
+export default Screen;

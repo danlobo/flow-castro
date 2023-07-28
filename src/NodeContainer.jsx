@@ -2,12 +2,11 @@ import { DragContextProvider } from './DragContext.jsx';
 import { ScreenContextProvider } from './ScreenContext.jsx';
 import Screen from './Screen.jsx';
 
-
-function NodeContainer(props) {
+function NodeContainer({ theme, themes, state, ...props}) {
   return (
-    <ScreenContextProvider initialState={props.state}>
+    <ScreenContextProvider initialState={state}>
       <DragContextProvider>
-        <Screen {...props} />
+        <Screen {...props}/>
       </DragContextProvider>
     </ScreenContextProvider>
   );

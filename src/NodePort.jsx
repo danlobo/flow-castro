@@ -1,6 +1,8 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDragContext } from './DragContext.jsx';
 import { useScreenContext } from './ScreenContext.jsx';
+import css from './NodePort.module.css'
+import { useTheme } from './ThemeProvider.js';
 
 const globalToLocal = (globalX, globalY, translate, scale) => {
   const localX = (globalX) / scale;
@@ -12,29 +14,25 @@ function NodePort({
     name, 
     type, 
     nodeId,
-    label, 
+    label,
+    hidePort,
     onConnected, 
     isConnected, 
     direction, 
     value,
-    onValueChange
+    onValueChange,
+    canMove
   }) {
+  const { currentTheme } = useTheme()
   const { position: screenPosition, scale: screenScale } = useScreenContext()
   const { dragInfo, setDragInfo } = useDragContext()
 
   const [internalValue, setInternalValue] = useState(value)
 
   const shapeStyles = useMemo(() => ({
-    circle: {
-      borderRadius: '50%',
-    },
-    square: {
-      borderRadius: '0%',
-    },
-    diamond: {
-      borderRadius: '0%',
-      transform: 'rotate(45deg)',
-    },
+    circle: css.circle,
+    square: css.square,
+    diamond: css.diamond,
   }), [])
 
   useEffect(() => {
@@ -58,8 +56,6 @@ function NodePort({
     e.preventDefault()
     e.stopPropagation()
 
-    console.log('handleUpdateForm', internalValue)
-
     onValueChange?.(internalValue)
   }, [internalValue])
 
@@ -78,6 +74,8 @@ function NodePort({
   const [pointerPos, setPointerPos] = useState({ x: 0, y: 0 })
   
   const handleMouseDown = (event) => {
+    if (hidePort || !canMove) return
+
     //event.preventDefault();
     event.stopPropagation();
 
@@ -114,11 +112,7 @@ function NodePort({
       if (!_dragInfo) return
 
       const targets = document.elementsFromPoint(e.pageX - window.scrollX, e.pageY - window.scrollY);
-      const target = targets.find(t => t.classList?.contains('port-overlay') && t.dataset.portDirection.toString() !== direction.toString() && t.dataset.portType.toString() === type.type?.toString())
-      
-      console.log('targets', targets)
-      console.log('target', target)
-      console.log('dragInfo', _dragInfo)
+      const target = targets.find(t => t.classList?.contains(css.portOverlay) && t.dataset.portDirection.toString() !== direction.toString() && t.dataset.portType.toString() === type.type?.toString())
 
       if (target) {
        onConnected?.({ source: { nodeId, portName: name }, target: { nodeId: target.dataset.nodeId, portName: target.dataset.portName } });
@@ -131,44 +125,35 @@ function NodePort({
 
   return (
     <div ref={containerRef} style={{ 
-        position: 'relative', 
-        width: '100%',
-        minHeight: '20px',
-        cursor: 'crosshair'
+        cursor: !hidePort && canMove ? 'crosshair' : null
       }} 
-      className="port"
+      className={css.port}
       onMouseDown={handleMouseDown}
     >
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: direction === 'input' ? '-20px' : 0,
-        right: direction === 'output' ? '-20px' : 0,
-        width: '100%',
-        height: '100%',
-        zIndex: 2000,
-        // borderRadius: '4px',
-        // backgroundColor: 'rgba(0,0,0,0.1)',
-        padding: '0 15px',
-        borderTopLeftRadius: direction === 'input' ? '15px' : null,
-        borderBottomLeftRadius: direction === 'input' ? '15px' : null,
-        borderTopRightRadius: direction === 'output' ? '15px' : null,
-        borderBottomRightRadius: direction === 'output' ? '15px' : null,
-      }} 
-      className="port-overlay" 
-      id={`card-${nodeId}-${direction}-${name}-overlay`}
-      data-port-name={name}
-      data-port-type={type.type}
-      data-port-direction={direction}
-      data-node-id={nodeId}
-      >
-      </div>
+      {!hidePort && (
+        <div style={{
+          left: direction === 'input' ? 'calc( var(--port-size) * -1.5 )' : 'calc( var(--port-size) * 1.5 )',
+          right: 0,
+          borderTopLeftRadius: direction === 'input' ? '15px' : null,
+          borderBottomLeftRadius: direction === 'input' ? '15px' : null,
+          borderTopRightRadius: direction === 'output' ? '15px' : null,
+          borderBottomRightRadius: direction === 'output' ? '15px' : null,
+        }} 
+        className={css.portOverlay} 
+        id={`card-${nodeId}-${direction}-${name}-overlay`}
+        data-port-name={name}
+        data-port-type={type.type}
+        data-port-direction={direction}
+        data-node-id={nodeId}
+        >
+        </div>
+      )}
         
-      <div style={{ fontSize: '10px', display: 'flex', justifyContent: direction === 'input' ? 'flex-start' : 'flex-end' }}>
+      <div className={css.label} style={{ justifyContent: direction === 'input' ? 'flex-start' : 'flex-end' }}>
         <span>{label}</span>
       </div>
       <div 
-        style={{ position: 'relative', zIndex: 3000, width: '100%' }} 
+        className={css.formContainer}
         //onBlur={handleUpdateForm}
         onMouseDown={(e) => {
           e.stopPropagation();
@@ -177,23 +162,19 @@ function NodePort({
         {/* {direction === 'input' && !isConnected ? type.render({ value: internalValue, onChange: setInternalValue }) : null} */}
         {direction === 'input' && !isConnected ? type.render({ value, onChange: onValueChange }) : null}
       </div>
-      <div 
-        id={`card-${nodeId}-${direction}-${name}`}
-        ref={connectorRef}
-        style={{
-          width: '10px',
-          height: '10px',
-          background: type.color,
-          border: isConnected ? '2px solid #fff' : '2px solid #000',
-          cursor: 'pointer',
-          position: 'absolute',
-          left: direction === 'input' ? '-15px' : null,
-          right: direction === 'output' ? '-15px' : null,
-          top: 'calc(50% - 5px)',
-          ...(shapeStyles[type?.shape ?? 'circle'] ?? {})
-        }}
-        className='port-connector'
-      />
+      {!hidePort && (
+        <div 
+          id={`card-${nodeId}-${direction}-${name}`}
+          ref={connectorRef}
+          style={{
+            background: currentTheme.ports?.[type?.type ?? 'default']?.color ?? currentTheme.ports?.default?.color ?? currentTheme.colors.background,
+            borderColor: isConnected ? currentTheme.colors.hover : currentTheme.colors.text,
+            left: direction === 'input' ? 'calc( var(--port-size) * -1 - 4px )' : null,
+            right: direction === 'output' ? 'calc( var(--port-size) * -1 - 4px )' : null,
+          }}
+          className={[css.portConnector, shapeStyles[type?.shape ?? 'circle'] ?? null].filter(Boolean).join(' ')}
+        />
+      )}
     </div>
   );
 }

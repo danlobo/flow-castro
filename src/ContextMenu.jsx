@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import css from './ContextMenu.module.css'
 
 const ContextMenuList = ({ isFiltered, options, onSelectOption, style }) => {
   const [activeSubmenu, setActiveSubmenu] = useState(null)
@@ -37,7 +38,7 @@ const ContextMenuList = ({ isFiltered, options, onSelectOption, style }) => {
   };
 
   return (
-    <ul className="context-menu" style={style}>
+    <ul className={css.contextMenu} style={style}>
       {options?.filter(isFiltered)?.map((option, index) => {
         if (option.separator === true)
           return <li key={`${option.id}-${index}`} ><hr /></li>
@@ -48,12 +49,12 @@ const ContextMenuList = ({ isFiltered, options, onSelectOption, style }) => {
           onMouseEnter={(e) => handleMenuItemMouseEnter(e, option.label)}
           onMouseLeave={() => handleMenuItemMouseLeave()}
         >
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <div style={{ flex: '1 1 auto', display: 'flex', flexDirection: 'column' }}>
-              <div style={option.style}>{option.label}</div>
-              {option.description && <div style={{ color: 'gray', fontSize: '.8rem', fontStyle: 'italic' }}>{option.description}</div>}
+          <div className={css.contextMenuItemContainer}>
+            <div className={css.contextMenuItemLabelContainer}>
+              <div className={css.contextMenuItemLabel} style={option.style}>{option.label}</div>
+              {option.description && <div className={css.contextMenuItemDescription}>{option.description}</div>}
             </div>
-            {option.children && <div style={{ flex: '0 0 auto', fontSize: '.8rem', color: 'gray' }}>▶</div>}
+            {option.children && <div className={css.contextMenuItemSubMenu}>▶</div>}
           </div>
 
           {option.children && option.label === activeSubmenu && (
@@ -61,8 +62,8 @@ const ContextMenuList = ({ isFiltered, options, onSelectOption, style }) => {
                 isFiltered={isFiltered}
                 options={option.children.map((o) => ({ ...o, _parent: option }))}
                 onSelectOption={onSelectOption}
+                className={css.submenu}
                 style={{
-                  position: 'absolute', 
                   [submenuDirection]: '100%', 
                   top: submenuDirectionVertical === 'top' ? activeSubmenuPosition : null, 
                   bottom: submenuDirectionVertical === 'bottom' ? 0 : null 
@@ -131,10 +132,10 @@ export const ContextMenu = ({ children }) => {
   return (
     <>
       {children({ handleContextMenu })}
-      <div ref={menuRef} className="context-menu-container" style={{ left: position.x, top: position.y, visibility: options ? 'visible' : 'hidden' }}>
+      {options?.length ? <div ref={menuRef} className={css.container} style={{ left: position.x, top: position.y, visibility: options ? 'visible' : 'hidden' }}>
         <input ref={searchRef} type="text" placeholder="Buscar..." autoFocus value={search ?? ''} onChange={(e) => setSearch(e.target.value)} />
         <ContextMenuList isFiltered={isFiltered} options={options} onSelectOption={handleMenuItemClick} style={{position: 'relative'}}/>
-      </div>
+      </div> : null}
     </>
   )
 };

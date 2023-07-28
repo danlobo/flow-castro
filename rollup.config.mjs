@@ -14,23 +14,28 @@ import babel from '@rollup/plugin-babel';
 import replace from '@rollup/plugin-replace'
 import scss from 'rollup-plugin-scss'
 
+import css from '@modular-css/rollup'
+
+import autoprefixer from 'autoprefixer'
+
 const packageJson = JSON.parse(fs.readFileSync('./package.json'));
 
 const config = [
   {
     input: 'src/index.js',
-    preserveModules: true,
     output: [
       {
         dir: 'dist/cjs',
         format: 'cjs',
         sourcemap: true,
-        name: 'lib'
+        name: 'lib',
+        preserveModules: true
       },
       {
         dir: 'dist/esm',
         format: 'esm',
-        sourcemap: true
+        sourcemap: true,
+        preserveModules: true
       }
     ],
     plugins: [
@@ -45,11 +50,6 @@ const config = [
       replace({preventAssignment: true,
         'process.env.NODE_ENV': JSON.stringify('dev')
       }),
-      scss({
-        include: ['src/**/*.css'],
-        fileName: 'index.css',
-      }),
-      commonjs(),
       babel({
         babelHelpers: 'bundled',
         presets: [[
@@ -67,14 +67,23 @@ const config = [
         plugins: ["@babel/plugin-proposal-nullish-coalescing-operator"],
         exclude: "node_modules/**"
       }),
+      commonjs(),
       // jsx( {factory: 'React.createElement'} ),
       // typescript({ tsconfig: './tsconfig.json' }),
-      // postcss({
-      //   extract: 'index.css',
-      //   modules: true,
-      //   namedExports: true,
-      //   include: ['src/**/*.css'],
+      // css({
+      //   namedExports: false
       // }),
+      postcss({
+        sourceMap: true,
+        autoModules: false,
+        extract: true,
+        inject: false,
+        modules: true,
+        // namedExports: true,
+        plugins: [autoprefixer()],
+        // namedExports: true,
+        // include: ['src/**/*.css'],
+      }),
       //terser(),
       // serve({
       //   // open: true,

@@ -1,0 +1,51 @@
+.port {
+  position: relative;
+  width: 100%;
+  min-height: calc( var(--port-size) + 4px);
+}
+
+.portOverlay {
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2000;
+  /* border-radius: 4px;
+  background-color: rgba(0,0,0,0.1); */
+  padding: 0 calc( var(--port-size) * 1.5 );
+}
+
+.label {
+  font-size: 10px;
+  display: flex;
+}
+
+.formContainer {
+  position: relative;
+  z-index: 3000;
+  width: 100%;
+}
+
+.portConnector {
+  width: var(--port-size);
+  height: var(--port-size);
+  cursor: pointer;
+  position: absolute;
+  top: calc(50% - var(--port-size) / 2);
+  z-index: 10;
+  border-width: 2px;
+  border-style: solid;
+}
+
+.circle {
+  border-radius: 50%;
+}
+
+.square {
+  border-radius: 0%;
+}
+
+.diamond {
+  border-radius: 0%;
+  transform: rotate(45deg);
+}

@@ -1,0 +1,37 @@
+.container {
+  position: relative;
+  border: 1px solid blue;
+}
+
+.panel {
+  position: absolute;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  background-color: white;
+  border: 1px solid #CCC;
+  border-radius: .5rem;
+  padding: .5rem;
+  box-shadow: 0 0 5px #CCC;
+  gap: .5rem;
+}
+
+.controlsPanel {
+  bottom: 40px;
+  right: 40px; 
+  width: 30px;
+}
+
+.statusPanel {
+  bottom: 40px;
+  right: 80px; 
+  width: 120px;
+  font-size: 9px;
+}
+
+.controlButton {
+  width: 30px;
+  height: 30px;
+}

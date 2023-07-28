@@ -1,0 +1,33 @@
+.container {
+  pointer-events: none;
+  z-index: 5;
+  /* border: 1px solid red; */
+  position: absolute;
+  top: -5px;
+  left: -5px;
+}
+
+/* svg, svg * {
+  pointer-events: none;
+  z-index: 5;
+} */
+
+.container:hover {
+  z-index: 11;
+}
+
+.path {
+  fill: none;
+  position: relative; 
+  pointer-events: all;
+  stroke: #ccc;
+}
+
+.pathTmp {
+  stroke: #888;
+}
+
+.path:hover, .pathTmp:hover {
+  fill: none;
+  stroke: #4f4 !important;
+}

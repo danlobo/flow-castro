@@ -1,12 +1,15 @@
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import NodePort from './NodePort.jsx';
 import { useScreenContext } from './ScreenContext.jsx';
+import css from './Node.module.css'
+import { useTheme } from './ThemeProvider.js';
 
 function Node({ 
   name, 
   portTypes,
   nodeType,
   value,
+  canMove,
   onChangePosition,
   onDragEnd,
   onConnect, 
@@ -15,6 +18,8 @@ function Node({
   onResize,
   onValueChange
 }) {
+  const { currentTheme } = useTheme()
+
   const nodeRef = useRef()
   useEffect(() => {
     const currentRef = nodeRef.current
@@ -50,6 +55,8 @@ function Node({
   const { scale: screenScale } = useScreenContext()
 
   const handleMouseDown = useCallback((event) => {
+    if (!canMove) return
+
     // event.preventDefault();
     event.stopPropagation();
 
@@ -80,12 +87,10 @@ function Node({
   }, [nodePosition, screenScale, onChangePosition, onDragEnd]);
 
   const onOutputPortConnected = useCallback(({ source, target }) => {
-    console.log('onOutputPortConnected', { source, target })
     onConnect?.({ source, target })
   }, [onConnect])
 
   const onInputPortConnected = useCallback(({ source, target }) => {
-    console.log('onInputPortConnected', { source, target })
     onConnect?.({ source: target, target: source })
   }, [onConnect])
 
@@ -95,7 +100,6 @@ function Node({
     e.stopPropagation()
 
     const resolvedValue = nodeType?.resolve?.(nodeValues)
-    console.log('resolvedValue', resolvedValue)
   }, [name, nodeValues, nodeType])
 
   const nodeInputs = useMemo(() => {
@@ -114,32 +118,26 @@ function Node({
     ref={nodeRef}
     id={`card-${name}`}
     key={`card-${name}`}
-    className="node"
+    className={css.node}
     style={{
+      backgroundColor: currentTheme?.nodes?.[nodeType?.type]?.body?.background ?? currentTheme?.nodes?.common?.body?.background,
+      border: currentTheme?.nodes?.[nodeType?.type]?.body?.border ?? currentTheme?.nodes?.common?.body?.border,
+      color: currentTheme?.nodes?.[nodeType?.type]?.body?.color ?? currentTheme?.nodes?.common?.body?.color,
       transform: `translate(${nodePosition.x}px, ${nodePosition.y}px)`,
-      cursor: 'grab'
+      cursor: canMove ? 'grab' : null
     }}
     onMouseDown={handleMouseDown}
     onContextMenu={onContextMenu}
   >
-    <div style={{ padding: '0 1rem' }}>
+    <div className={css.title} style={{
+      backgroundColor: currentTheme?.nodes?.[nodeType?.type]?.background ?? currentTheme?.nodes?.common?.title?.background,
+      color: currentTheme?.nodes?.[nodeType?.type]?.color ?? currentTheme?.nodes?.common?.title?.color,
+    }}>
         <h3>{name}</h3>
     </div>
-        
-    {/* <img
-      className="zoom-and-pan-image"
-      src="https://picsum.photos/300/200"
-      alt="Example"
-    /> */}
 
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ 
-        width: '100%', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'flex-end',
-        gap: '1rem'
-      }}>
+    <div className={css.container}>
+      <div className={[css.portsContainer, css.inputPortsContainer].join(' ')}>
         {nodeInputs?.map((input) => {
           return <NodePort 
             name={input.name}
@@ -158,19 +156,15 @@ function Node({
             type={portTypes[input.type]}
             direction="input" 
             label={input.label}
+            hidePort={Boolean(input.hidePort)}
             containerRef={containerRef}
             isConnected={value.connections?.inputs?.some((c) => c.name === input.name)}
             onConnected={onInputPortConnected}
+            canMove={canMove}
           />
         })}
       </div>
-      <div style={{ 
-        width: '100%', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'flex-start',
-        gap: '1rem'
-      }}>
+      <div className={[css.portsContainer, css.outputPortsContainer].join(' ')}>
         {nodeOutputs?.map((output) => {
           return <NodePort
             name={output.name}
@@ -182,6 +176,7 @@ function Node({
             containerRef={containerRef}
             isConnected={value.connections?.outputs?.some((c) => c.name === output.name)}
             onConnected={onOutputPortConnected}
+            canMove={canMove}
           />
         })}
       </div>

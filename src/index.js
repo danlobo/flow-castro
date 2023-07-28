@@ -1,4 +1,4 @@
 import NodeContainer from './NodeContainer.jsx';
-import './styles.css'
+import { ThemeProvider, useTheme } from './ThemeProvider.js';
 
-export default NodeContainer;
+export { NodeContainer, ThemeProvider, useTheme };
