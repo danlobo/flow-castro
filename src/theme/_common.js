@@ -2,6 +2,7 @@ import { deepMerge } from "../util/deepMerge";
 
 export function build(theme) {
   const _common = {
+    roundness: 0,
     nodes: {
       common: {
         padding: 2,
@@ -13,7 +14,7 @@ export function build(theme) {
         },
         body: {
           background: theme.colors.background,
-          border: `1px solid ${theme.colors.hover}`,
+          border: `1px solid ${theme.colors.border}`,
           color: theme.colors.text
         }
       }
@@ -27,10 +28,14 @@ export function build(theme) {
     buttons: {
       default: {
         backgroundColor: theme.colors.background,
-        border: `1px solid ${theme.colors.text}`,
-        color: theme.colors.text,
-        roundness: 0
+        border: `1px solid ${theme.colors.border}`,
+        color: theme.colors.text
       }
+    },
+    contextMenu: {
+      background: theme.colors.background,
+      border: `1px solid ${theme.colors.border}`,
+      color: theme.colors.text
     }
   }
 
