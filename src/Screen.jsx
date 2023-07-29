@@ -14,6 +14,7 @@ import css from './Screen.module.css';
 import nodeCss from './Node.module.css'
 import nodePortCss from './NodePort.module.css'
 import { useTheme } from './ThemeProvider.js';
+import Button from './Button.jsx';
 
 
 function Screen({ portTypes, nodeTypes, onChangeState, initialState }) {
@@ -262,14 +263,17 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState }) {
     
     setPosition({x: positionX, y: positionY })
     setScale(_scale)
-    setStateAndNotify(prev => {
-      return {
-        ...prev,
-        position: {x: positionX, y: positionY },
-        scale: _scale
-      }
-    })
-  }, [setPosition, setScale, setStateAndNotify])
+
+    debounceEvent((px, py, s) => {
+      setStateAndNotify(prev => {
+        return {
+          ...prev,
+          position: {x: px, y: py },
+          scale: s
+        }
+      })
+    }, 200)(positionX, positionY, _scale)
+  }, [setPosition, setScale, setStateAndNotify, debounceEvent])
 
   const gridSize = 40;
   const scaledGridSize = gridSize * (scale ?? 1);
@@ -420,23 +424,23 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState }) {
         onZoom={onZoom}
         pinch={pinchOptions}
         panning={panningOptions}
-        onTransformed={debounceEvent(onTransformEnd, 200)}
+        onTransformed={onTransformEnd}
       >
         {({ zoomIn, zoomOut, resetTransform, setTransform, centerView,  ...rest }) => {
           return (
             <>
               <div className={[css.panel, css.controlsPanel].join(' ')}>
-                <button className={css.controlButton} onClick={() => zoomIn()}>+</button>
-                <button className={css.controlButton} onClick={() => zoomOut()}>-</button>
-                <button className={css.controlButton} onClick={() => {
+                <Button className={css.controlButton} onClick={() => zoomIn()}>+</Button>
+                <Button className={css.controlButton} onClick={() => zoomOut()}>-</Button>
+                <Button className={css.controlButton} onClick={() => {
                   centerView();
                   setStateAndNotify(prev => ({
                     ...prev,
                     position,
                     scale
                   }))
-                }}>C</button>
-                <button className={css.controlButton} onClick={() => {
+                }}>C</Button>
+                <Button className={css.controlButton} onClick={() => {
                   setTransform(position.x, position.y, 1);
                   setScale(1);
 
@@ -445,9 +449,9 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState }) {
                     position,
                     scale: 1
                   }))
-                }}>Z</button>
+                }}>Z</Button>
                 
-                <button className={css.controlButton} onClick={() => setCanMove(!canMove)}>{canMove ? 'L' : 'U'}</button>
+                <Button className={css.controlButton} onClick={() => setCanMove(!canMove)}>{canMove ? 'L' : 'U'}</Button>
               </div>
 
               <div className={[css.panel, css.statusPanel].join(' ')}>
@@ -552,13 +556,13 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState }) {
                             const dstRect = dstElem.getBoundingClientRect();
                       
                             const srcPos = {
-                              x: (srcRect.x + window.scrollX - position.x - contRect.left + srcRect.width / 2) / scale,
-                              y: (srcRect.y + window.scrollY - position.y - contRect.top + srcRect.height / 2) / scale
+                              x: (srcRect.x - position.x - contRect.left + srcRect.width / 2) / scale,
+                              y: (srcRect.y - position.y - contRect.top + srcRect.height / 2) / scale
                             }
                       
                             const dstPos = {
-                              x: (dstRect.x + window.scrollX - position.x - contRect.left + dstRect.width / 2) / scale,
-                              y: (dstRect.y + window.scrollY - position.y - contRect.top + dstRect.height / 2) / scale
+                              x: (dstRect.x - position.x - contRect.left + dstRect.width / 2) / scale,
+                              y: (dstRect.y - position.y - contRect.top + dstRect.height / 2) / scale
                             }
 
                             return <ConnectorCurve

@@ -25,9 +25,11 @@ export function build(theme) {
       
     },
     buttons: {
-      primary: {
-        color: 'white',
-        bg: 'primary'
+      default: {
+        backgroundColor: theme.colors.background,
+        border: `1px solid ${theme.colors.text}`,
+        color: theme.colors.text,
+        roundness: 0
       }
     }
   }

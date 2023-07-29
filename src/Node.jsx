@@ -3,6 +3,7 @@ import NodePort from './NodePort.jsx';
 import { useScreenContext } from './ScreenContext.jsx';
 import css from './Node.module.css'
 import { useTheme } from './ThemeProvider.js';
+import Button from './Button.jsx';
 
 function Node({ 
   name, 
@@ -182,9 +183,9 @@ function Node({
       </div>
 
       <div>
-        <button onClick={handleResolveClick}>
+        <Button onClick={handleResolveClick}>
           Resolve
-        </button>
+        </Button>
       </div>
     </div>
 

@@ -10,11 +10,11 @@
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
-  background-color: white;
-  border: 1px solid #CCC;
+  background-color: var(--color-background);
+  border: 1px solid var(--color-hover);
   border-radius: .5rem;
   padding: .5rem;
-  box-shadow: 0 0 5px #CCC;
+  box-shadow: 0 0 5px var(--color-hover);
   gap: .5rem;
 }
 
