@@ -160,7 +160,7 @@ function NodePort({
         }}
         >
         {/* {direction === 'input' && !isConnected ? type.render({ value: internalValue, onChange: setInternalValue }) : null} */}
-        {direction === 'input' && !isConnected ? type.render({ value, onChange: onValueChange }) : null}
+        {(direction === 'input' && !isConnected && type.render?.({ value, onChange: onValueChange })) ?? null}
       </div>
       {!hidePort && (
         <div 

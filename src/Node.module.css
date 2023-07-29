@@ -8,6 +8,9 @@
 
 .node input, .node textarea, .node select {
   background-color: var(--color-hover);
+  border: none;
+  border-bottom: 1px solid var(--color-text);
+  color: var(--color-text);
 }
 
 .title {

@@ -95,14 +95,6 @@ function Node({
     onConnect?.({ source: target, target: source })
   }, [onConnect])
 
-
-  const handleResolveClick = useCallback((e) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    const resolvedValue = nodeType?.resolve?.(nodeValues)
-  }, [name, nodeValues, nodeType])
-
   const nodeInputs = useMemo(() => {
     if (typeof nodeType.inputs === 'function')
       return nodeType.inputs(nodeValues)
@@ -181,14 +173,7 @@ function Node({
           />
         })}
       </div>
-
-      <div>
-        <Button onClick={handleResolveClick}>
-          Resolve
-        </Button>
-      </div>
     </div>
-
   </div>
 }
 

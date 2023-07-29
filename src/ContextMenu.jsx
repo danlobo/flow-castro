@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import css from './ContextMenu.module.css'
+import { useTheme } from "./ThemeProvider";
 
 const ContextMenuList = ({ isFiltered, options, onSelectOption, style }) => {
   const [activeSubmenu, setActiveSubmenu] = useState(null)
@@ -77,6 +78,8 @@ const ContextMenuList = ({ isFiltered, options, onSelectOption, style }) => {
 
 
 export const ContextMenu = ({ children }) => {
+  const { currentTheme } = useTheme()
+
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [options, setOptions] = useState(null);
   const [search, setSearch] = useState('')

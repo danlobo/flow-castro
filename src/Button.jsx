@@ -7,7 +7,7 @@ const Button = ({ children, ...props }) => {
           backgroundColor: currentTheme.buttons.default.backgroundColor,
           border: currentTheme.buttons.default.border,
           color: currentTheme.buttons.default.color,
-          borderRadius: currentTheme.buttons.default.roundness,
+          borderRadius: currentTheme.roundness,
         }}>{children}</button>
     )
 }

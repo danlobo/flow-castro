@@ -21,13 +21,16 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState }) {
 
   const { currentTheme } = useTheme()
 
+  const PORT_SIZE = 20
+
   const style = {
-    '--port-size': '20px',
+    '--port-size': `${PORT_SIZE}px`,
     '--color-primary': currentTheme.colors.primary,
     '--color-secondary': currentTheme.colors.secondary,
     '--color-bg': currentTheme.colors.background,
     '--color-text': currentTheme.colors.text,
     '--color-hover': currentTheme.colors.hover,
+    '--roundness': currentTheme.roundness,
   }
 
   const { dragInfo } = useDragContext()
@@ -410,6 +413,8 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState }) {
 
   if (!state) return null
 
+  const contRect = screenRef.current?.getBoundingClientRect();
+
   return (
     <div className={css.container} style={style} ref={screenRef}>
       <TransformWrapper
@@ -546,8 +551,6 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState }) {
                             const srcElem = document.getElementById(`card-${srcNode}-output-${srcPort}`);
                             const dstElem = document.getElementById(`card-${dstNode}-input-${dstPort}`);
 
-
-                            const contRect = screenRef.current?.getBoundingClientRect();
                             if (!srcElem || !dstElem || !contRect) {
                               return null;
                             }
@@ -586,16 +589,16 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState }) {
                       )
                     })}
 
-                    {dragInfo && dstDragPosition && <ConnectorCurve tmp src={{
-                      x: (dragInfo.startX + window.scrollX - position.x + 5) / scale,
-                      y: (dragInfo.startY + window.scrollY - position.y + 5) / scale
+                    {dragInfo && dstDragPosition ? <ConnectorCurve tmp src={{
+                      x: (dragInfo.startX - contRect.left - position.x + (PORT_SIZE / 2) - 2) / scale,
+                      y: (dragInfo.startY - contRect.top - position.y + (PORT_SIZE / 2) - 2) / scale
                     }}
                     dst={{
-                      x: (dstDragPosition.x + window.scrollX - position.x) / scale,
-                      y: (dstDragPosition.y + window.scrollY - position.y) / scale
+                      x: (dstDragPosition.x - window.scrollX - contRect.left - position.x) / scale,
+                      y: (dstDragPosition.y - window.scrollY - contRect.top - position.y) / scale
                     }}
                     scale={scale}
-                    />}
+                    /> : null}
                   </TransformComponent>
                 )}
               </ContextMenu>      

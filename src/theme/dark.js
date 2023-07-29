@@ -6,7 +6,8 @@ const theme = {
     secondary: '#008800',
     background: '#222',
     text: '#DDD',
-    hover: '#333'
+    hover: '#333',
+    border: '#888'
   }
 }
 

@@ -2,6 +2,10 @@
   position: relative;
   width: 100%;
   min-height: calc( var(--port-size) + 4px);
+
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
 }
 
 .portOverlay {
