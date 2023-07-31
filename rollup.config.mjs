@@ -29,13 +29,20 @@ const config = [
         format: 'cjs',
         sourcemap: true,
         name: 'lib',
-        preserveModules: true
+        //preserveModules: true
       },
       {
         dir: 'dist/esm',
         format: 'esm',
         sourcemap: true,
-        preserveModules: true
+        //preserveModules: true
+      },
+      {
+        file: 'dist/iife/index.js',
+        format: 'iife',
+        sourcemap: true,
+        name: 'lib',
+        globals: {}
       }
     ],
     plugins: [
@@ -53,15 +60,6 @@ const config = [
       babel({
         babelHelpers: 'bundled',
         presets: [[
-          '@babel/env',
-          {
-            modules: false,
-            targets: {
-              esmodules: true,
-            },
-          },
-        ],
-        [
           "@babel/preset-react", {"runtime": "automatic"}
         ]],
         plugins: ["@babel/plugin-proposal-nullish-coalescing-operator"],
