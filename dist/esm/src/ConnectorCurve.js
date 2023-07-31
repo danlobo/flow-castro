@@ -3,7 +3,7 @@ import { useTheme } from './ThemeProvider.js';
 import { jsx } from 'react/jsx-runtime';
 
 function ConnectorCurve(_ref) {
-  var _currentTheme$connect, _currentTheme$connect2, _currentTheme$connect3;
+  var _currentTheme$connect, _currentTheme$connect2;
   var {
     type,
     src,
@@ -44,7 +44,7 @@ function ConnectorCurve(_ref) {
     className: css.container,
     children: /*#__PURE__*/jsx("path", {
       style: {
-        stroke: (_currentTheme$connect = (_currentTheme$connect2 = currentTheme.connections) === null || _currentTheme$connect2 === void 0 ? void 0 : (_currentTheme$connect3 = _currentTheme$connect2[type === null || type === void 0 ? void 0 : type.type]) === null || _currentTheme$connect3 === void 0 ? void 0 : _currentTheme$connect3.color) !== null && _currentTheme$connect !== void 0 ? _currentTheme$connect : '#ccc',
+        stroke: (_currentTheme$connect = (_currentTheme$connect2 = currentTheme.connections) === null || _currentTheme$connect2 === void 0 || (_currentTheme$connect2 = _currentTheme$connect2[type === null || type === void 0 ? void 0 : type.type]) === null || _currentTheme$connect2 === void 0 ? void 0 : _currentTheme$connect2.color) !== null && _currentTheme$connect !== void 0 ? _currentTheme$connect : '#ccc',
         strokeWidth: Math.max(4, 5 * scale)
       },
       className: [css.path, tmp ? css.pathTmp : null].filter(Boolean).join(' '),

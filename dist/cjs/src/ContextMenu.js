@@ -45,7 +45,7 @@ var ContextMenuList = _ref => {
   return /*#__PURE__*/jsxRuntime.jsx("ul", {
     className: ContextMenu_module.contextMenu,
     style: style,
-    children: options === null || options === void 0 ? void 0 : (_options$filter = options.filter(isFiltered)) === null || _options$filter === void 0 ? void 0 : _options$filter.map((option, index) => {
+    children: options === null || options === void 0 || (_options$filter = options.filter(isFiltered)) === null || _options$filter === void 0 ? void 0 : _options$filter.map((option, index) => {
       if (option.separator === true) return /*#__PURE__*/jsxRuntime.jsx("li", {
         children: /*#__PURE__*/jsxRuntime.jsx("hr", {})
       }, "".concat(option.id, "-").concat(index));
@@ -131,11 +131,11 @@ var ContextMenu = _ref2 => {
     };
   }, []);
   var isFiltered = option => {
-    var _option$label$toLower, _option$label, _option$label$toLower2, _option$description$t, _option$description, _option$description$t2;
+    var _option$label$toLower, _option$label, _option$description$t, _option$description;
     if (!(search !== null && search !== void 0 && search.length)) return true;
     var _search = search.toLocaleLowerCase();
-    if (((_option$label$toLower = (_option$label = option.label) === null || _option$label === void 0 ? void 0 : (_option$label$toLower2 = _option$label.toLowerCase()) === null || _option$label$toLower2 === void 0 ? void 0 : _option$label$toLower2.indexOf(_search)) !== null && _option$label$toLower !== void 0 ? _option$label$toLower : -1) > -1) return true;
-    if (((_option$description$t = (_option$description = option.description) === null || _option$description === void 0 ? void 0 : (_option$description$t2 = _option$description.toLowerCase()) === null || _option$description$t2 === void 0 ? void 0 : _option$description$t2.indexOf(_search)) !== null && _option$description$t !== void 0 ? _option$description$t : -1) > -1) return true;
+    if (((_option$label$toLower = (_option$label = option.label) === null || _option$label === void 0 || (_option$label = _option$label.toLowerCase()) === null || _option$label === void 0 ? void 0 : _option$label.indexOf(_search)) !== null && _option$label$toLower !== void 0 ? _option$label$toLower : -1) > -1) return true;
+    if (((_option$description$t = (_option$description = option.description) === null || _option$description === void 0 || (_option$description = _option$description.toLowerCase()) === null || _option$description === void 0 ? void 0 : _option$description.indexOf(_search)) !== null && _option$description$t !== void 0 ? _option$description$t : -1) > -1) return true;
     return false;
   };
   return /*#__PURE__*/jsxRuntime.jsxs(jsxRuntime.Fragment, {

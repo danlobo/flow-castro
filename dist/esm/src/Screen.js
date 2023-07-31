@@ -410,8 +410,8 @@ function Screen(_ref) {
     ref: screenRef,
     children: /*#__PURE__*/jsx(TransformWrapper, {
       initialScale: (_state$scale = state === null || state === void 0 ? void 0 : state.scale) !== null && _state$scale !== void 0 ? _state$scale : 1,
-      initialPositionX: (_state$position$x = state === null || state === void 0 ? void 0 : (_state$position = state.position) === null || _state$position === void 0 ? void 0 : _state$position.x) !== null && _state$position$x !== void 0 ? _state$position$x : 0,
-      initialPositionY: (_state$position$y = state === null || state === void 0 ? void 0 : (_state$position2 = state.position) === null || _state$position2 === void 0 ? void 0 : _state$position2.y) !== null && _state$position$y !== void 0 ? _state$position$y : 0,
+      initialPositionX: (_state$position$x = state === null || state === void 0 || (_state$position = state.position) === null || _state$position === void 0 ? void 0 : _state$position.x) !== null && _state$position$x !== void 0 ? _state$position$x : 0,
+      initialPositionY: (_state$position$y = state === null || state === void 0 || (_state$position2 = state.position) === null || _state$position2 === void 0 ? void 0 : _state$position2.y) !== null && _state$position$y !== void 0 ? _state$position$y : 0,
       disabled: isMoveable,
       minScale: .25,
       maxScale: 2,
@@ -484,7 +484,7 @@ function Screen(_ref) {
                 wrapperStyle: wrapperStyle,
                 wrapperProps: wrapperProps(handleContextMenu),
                 children: [(state === null || state === void 0 ? void 0 : state.nodes) && Object.values(state.nodes).map((node, index) => {
-                  var _node$connections, _node$connections$out2;
+                  var _node$connections;
                   return /*#__PURE__*/jsxs(Fragment, {
                     children: [/*#__PURE__*/jsx(Node, {
                       id: "node_".concat(node.id),
@@ -547,7 +547,7 @@ function Screen(_ref) {
                           });
                         });
                       }
-                    }, "node_".concat(node.id)), (_node$connections = node.connections) === null || _node$connections === void 0 ? void 0 : (_node$connections$out2 = _node$connections.outputs) === null || _node$connections$out2 === void 0 ? void 0 : _node$connections$out2.map((connection, index) => {
+                    }, "node_".concat(node.id)), (_node$connections = node.connections) === null || _node$connections === void 0 || (_node$connections = _node$connections.outputs) === null || _node$connections === void 0 ? void 0 : _node$connections.map((connection, index) => {
                       var srcNode = node.id;
                       var srcPort = connection.name;
                       var dstNode = connection.node;

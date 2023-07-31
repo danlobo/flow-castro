@@ -16,7 +16,7 @@ var globalToLocal = (globalX, globalY, translate, scale) => {
   };
 };
 function NodePort(_ref) {
-  var _ref2, _type$render, _ref3, _currentTheme$ports$c, _currentTheme$ports, _currentTheme$ports2, _type$type2, _currentTheme$ports3, _currentTheme$ports3$, _shapeStyles, _type$shape;
+  var _ref2, _type$render, _ref3, _currentTheme$ports$c, _currentTheme$ports, _type$type2, _currentTheme$ports2, _shapeStyles, _type$shape;
   var {
     name,
     type,
@@ -174,7 +174,7 @@ function NodePort(_ref) {
       id: "card-".concat(nodeId, "-").concat(direction, "-").concat(name),
       ref: connectorRef,
       style: {
-        background: (_ref3 = (_currentTheme$ports$c = (_currentTheme$ports = currentTheme.ports) === null || _currentTheme$ports === void 0 ? void 0 : (_currentTheme$ports2 = _currentTheme$ports[(_type$type2 = type === null || type === void 0 ? void 0 : type.type) !== null && _type$type2 !== void 0 ? _type$type2 : 'default']) === null || _currentTheme$ports2 === void 0 ? void 0 : _currentTheme$ports2.color) !== null && _currentTheme$ports$c !== void 0 ? _currentTheme$ports$c : (_currentTheme$ports3 = currentTheme.ports) === null || _currentTheme$ports3 === void 0 ? void 0 : (_currentTheme$ports3$ = _currentTheme$ports3.default) === null || _currentTheme$ports3$ === void 0 ? void 0 : _currentTheme$ports3$.color) !== null && _ref3 !== void 0 ? _ref3 : currentTheme.colors.background,
+        background: (_ref3 = (_currentTheme$ports$c = (_currentTheme$ports = currentTheme.ports) === null || _currentTheme$ports === void 0 || (_currentTheme$ports = _currentTheme$ports[(_type$type2 = type === null || type === void 0 ? void 0 : type.type) !== null && _type$type2 !== void 0 ? _type$type2 : 'default']) === null || _currentTheme$ports === void 0 ? void 0 : _currentTheme$ports.color) !== null && _currentTheme$ports$c !== void 0 ? _currentTheme$ports$c : (_currentTheme$ports2 = currentTheme.ports) === null || _currentTheme$ports2 === void 0 || (_currentTheme$ports2 = _currentTheme$ports2.default) === null || _currentTheme$ports2 === void 0 ? void 0 : _currentTheme$ports2.color) !== null && _ref3 !== void 0 ? _ref3 : currentTheme.colors.background,
         borderColor: isConnected ? currentTheme.colors.hover : currentTheme.colors.text,
         left: direction === 'input' ? 'calc( var(--port-size) * -1 - 4px )' : null,
         right: direction === 'output' ? 'calc( var(--port-size) * -1 - 4px )' : null
