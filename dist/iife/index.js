@@ -163,18 +163,21 @@ var lib = (function (exports, React, jsxRuntime) {
   const ThemeProvider = ({
     children,
     themes,
-    initialTheme = 'light'
+    theme = 'light'
   }) => {
-    const [theme, setTheme] = React.useState(null);
-    const [themeName, setThemeName] = React.useState(initialTheme);
+    const [currentTheme, setCurrentTheme] = React.useState(null);
+    const [themeName, setThemeName] = React.useState(theme);
     React.useEffect(() => {
-      setTheme(deepMerge({}, _themes[themeName], themes[themeName], themes.common));
+      setCurrentTheme(deepMerge({}, _themes[themeName], themes[themeName], themes.common));
     }, [themeName, themes]);
-    if (!theme) return null;
+    React.useEffect(() => {
+      setThemeName(theme);
+    }, [theme]);
+    if (!currentTheme) return null;
     return /*#__PURE__*/jsxRuntime.jsx(ThemeContext.Provider, {
       value: {
         themeName,
-        currentTheme: theme,
+        currentTheme,
         setThemeName
       },
       children: children

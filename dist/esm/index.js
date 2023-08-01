@@ -163,18 +163,21 @@ const ThemeContext = /*#__PURE__*/React.createContext(_defaultTheme);
 const ThemeProvider = ({
   children,
   themes,
-  initialTheme = 'light'
+  theme = 'light'
 }) => {
-  const [theme, setTheme] = useState(null);
-  const [themeName, setThemeName] = useState(initialTheme);
+  const [currentTheme, setCurrentTheme] = useState(null);
+  const [themeName, setThemeName] = useState(theme);
   useEffect(() => {
-    setTheme(deepMerge({}, _themes[themeName], themes[themeName], themes.common));
+    setCurrentTheme(deepMerge({}, _themes[themeName], themes[themeName], themes.common));
   }, [themeName, themes]);
-  if (!theme) return null;
+  useEffect(() => {
+    setThemeName(theme);
+  }, [theme]);
+  if (!currentTheme) return null;
   return /*#__PURE__*/jsx(ThemeContext.Provider, {
     value: {
       themeName,
-      currentTheme: theme,
+      currentTheme,
       setThemeName
     },
     children: children

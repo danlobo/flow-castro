@@ -18,21 +18,24 @@ const _defaultTheme = {
 
 const ThemeContext = React.createContext(_defaultTheme);
 
-export const ThemeProvider = ({ children, themes, initialTheme = 'light' }) => {
-  const [theme, setTheme] = useState(null);
-  const [themeName, setThemeName] = useState(initialTheme);
+export const ThemeProvider = ({ children, themes, theme = 'light' }) => {
+  const [currentTheme, setCurrentTheme] = useState(null);
+  const [themeName, setThemeName] = useState(theme);
 
   useEffect(() => {
-    setTheme(deepMerge({}, _themes[themeName], themes[themeName], themes.common));
+    setCurrentTheme(deepMerge({}, _themes[themeName], themes[themeName], themes.common));
   }, [themeName, themes])
 
+  useEffect(() => {
+    setThemeName(theme)
+  }, [theme])
 
-  if (!theme) return null
+  if (!currentTheme) return null
 
   return (
     <ThemeContext.Provider value={{ 
       themeName, 
-      currentTheme: theme,
+      currentTheme,
       setThemeName
     }}>
       {children}

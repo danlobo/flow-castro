@@ -36,13 +36,6 @@ const config = [
         format: 'esm',
         sourcemap: true,
         //preserveModules: true
-      },
-      {
-        file: 'dist/iife/index.js',
-        format: 'iife',
-        sourcemap: true,
-        name: 'lib',
-        globals: {}
       }
     ],
     plugins: [
