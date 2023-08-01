@@ -20,7 +20,7 @@
 }
 
 .NodePort-module_label__4Kc0j {
-  font-size: 10px;
+  font-size: 1rem;
   display: flex;
 }
 
@@ -191,7 +191,8 @@
 }
 .Screen-module_container__zkIN3 {
   position: relative;
-  border: 1px solid blue;
+  width: 100%;
+  height: 100%;
 }
 
 .Screen-module_panel__P8WaY {
