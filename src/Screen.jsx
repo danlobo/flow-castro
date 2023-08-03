@@ -16,8 +16,18 @@ import nodePortCss from './NodePort.module.css'
 import { useTheme } from './ThemeProvider.js';
 import Button from './Button.jsx';
 
+import { i } from './util/i18n.js';
 
-function Screen({ portTypes, nodeTypes, onChangeState, initialState }) {
+const defaultI18n = {
+  'contextMenu.search': 'Search',
+  'contextMenu.add': 'Add {nodeType}',
+  'contextMenu.removeThisNode': 'Remove this node',
+  'contextMenu.cloneThisNode': 'Clone this node',
+  'contextMenu.removeThisConnection': 'Remove this connection',
+}
+
+function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defaultI18n }) {
+
 
   const { currentTheme } = useTheme()
 
@@ -355,6 +365,8 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState }) {
 
   const nodeTypesByCategory = useMemo(() => {
     const categories = Object.values(nodeTypes).reduce((acc, nodeType) => {
+      if (nodeType.root) return acc;
+
       const _category = nodeType.category ?? '...';
       if (!acc[_category]) acc[_category] = [];
       acc[_category].push(nodeType);
@@ -379,21 +391,22 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState }) {
     onContextMenu: (e) => handleContextMenu(e, nodeTypesByCategory
       .map(({ category, nodeTypes }) => ({
         label: category,
-        children: nodeTypes.sort((a,b) => a.label.localeCompare(b.label)).map(nodeType => ({
-          label: `Adicionar ${nodeType.label}`,
+        children: nodeTypes.filter(t => !t.root).sort((a,b) => a.label.localeCompare(b.label)).map(nodeType => ({
+          label: i(i18n, 'contextMenu.add', {nodeType: nodeType.label}, 'Add ' + nodeType.label),
           description: nodeType.description,
           onClick: () => {
             const { x, y } = e.target.getBoundingClientRect();
-            const position = {
-              x: e.clientX, // - x,
-              y: e.clientY// - y
+            console.log(position)
+            const _position = {
+              x: (e.clientX - position.x - x) / scale,
+              y: (e.clientY - position.y - y) / scale
             }
-            addNode(nodeType, position);
+            addNode(nodeType, _position);
           }
         }))
       }))
     )
-  }), [nodeTypesByCategory, addNode])
+  }), [nodeTypesByCategory, addNode, position])
 
   const handleValueChange = useCallback((id, values) => {
     setStateAndNotify(prev => {
@@ -463,7 +476,7 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState }) {
                 <div>Scale: {scale}</div>
                 <div>Position: {JSON.stringify(position)}</div>
               </div>
-              <ContextMenu>
+              <ContextMenu containerRef={screenRef} i18n={i18n}>
                 {({ handleContextMenu }) => (
                   <TransformComponent 
                     contentClass='main' 
@@ -511,11 +524,11 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState }) {
                             canMove={canMove}
                             onConnect={onConnect}
                             onContextMenu={(e) => handleContextMenu(e, [
-                              { label: 'Clonar este nó', onClick: () => {
+                              { label: i(i18n, 'contextMenu.cloneThisNode', {}, 'Clone this node'), onClick: () => {
                                 cloneNode(node.id)
                               }},
                               { 
-                                label: `Remover este nó`, 
+                                label: i(i18n, 'contextMenu.removeThisNode', {}, 'Remove this node'), 
                                 style: { color: 'red'},
                                 onClick: () => {
                                   removeNode(node.id)
@@ -576,7 +589,7 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState }) {
                               scale={scale}
                               onContextMenu={(e) => handleContextMenu(e, [
                                 canMove ? {
-                                  label: `Remover esta conexão`, 
+                                  label: i(i18n, 'contextMenu.removeThisConnection', {}, 'Remove this connection'), 
                                   style: { color: 'red'},
                                   onClick: () => {
                                     removeConnectionFromOutput(srcNode, srcPort, dstNode, dstPort)

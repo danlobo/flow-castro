@@ -2309,6 +2309,12 @@ function ConnectorCurve({
 
 var css$1 = {"container":"ContextMenu-module_container__kpcIH","contextMenu":"ContextMenu-module_contextMenu__xllaM","contextMenuItemContainer":"ContextMenu-module_contextMenuItemContainer__T7rR2","contextMenuItemLabelContainer":"ContextMenu-module_contextMenuItemLabelContainer__fkrNo","contextMenuItemLabel":"ContextMenu-module_contextMenuItemLabel__IJE3x","contextMenuItemDescription":"ContextMenu-module_contextMenuItemDescription__wVBWj","contextMenuItemSubMenu":"ContextMenu-module_contextMenuItemSubMenu__n6J-S","submenu":"ContextMenu-module_submenu__7UZMP"};
 
+function i(ctx, key, params = {}, defaultValue = '') {
+  if (!ctx || !key) return defaultValue;
+  const template = ctx[key].replace(/\{(\w+)\}/gim, (match, p1) => params[p1] || p1);
+  return ctx[template] || defaultValue;
+}
+
 const ContextMenuList = ({
   isFiltered,
   options,
@@ -2343,6 +2349,7 @@ const ContextMenuList = ({
   const handleMenuItemMouseLeave = () => {
     setActiveSubmenu(null);
   };
+  if (!options?.length) return null;
   return /*#__PURE__*/jsxRuntime.jsx("ul", {
     className: css$1.contextMenu,
     style: style,
@@ -2389,6 +2396,8 @@ const ContextMenuList = ({
   });
 };
 const ContextMenu = ({
+  containerRef,
+  i18n,
   children
 }) => {
   useTheme();
@@ -2401,13 +2410,20 @@ const ContextMenu = ({
   const menuRef = React.useRef(null);
   const searchRef = React.useRef(null);
   const handleContextMenu = (e, options) => {
+    var _containerRef$current;
     e.preventDefault();
     e.stopPropagation();
     setTimeout(() => searchRef.current?.focus(), 0);
+    const containerRect = (_containerRef$current = containerRef.current?.getBoundingClientRect()) !== null && _containerRef$current !== void 0 ? _containerRef$current : {
+      left: 0,
+      top: 0
+    };
+    const x = e.clientX - containerRect.left;
+    const y = e.clientY - containerRect.top;
     setOptions(options);
     setPosition({
-      x: e.clientX,
-      y: e.clientY
+      x,
+      y
     });
   };
   const handleMenuItemClick = option => {
@@ -2449,7 +2465,7 @@ const ContextMenu = ({
       children: [/*#__PURE__*/jsxRuntime.jsx("input", {
         ref: searchRef,
         type: "text",
-        placeholder: "Buscar...",
+        placeholder: i(i18n, 'contextMenu.search', {}, 'Search'),
         autoFocus: true,
         value: search !== null && search !== void 0 ? search : '',
         onChange: e => setSearch(e.target.value)
@@ -2482,11 +2498,19 @@ let nanoid = (size = 21) =>
 
 var css = {"container":"Screen-module_container__zkIN3","panel":"Screen-module_panel__P8WaY","controlsPanel":"Screen-module_controlsPanel__qhiH0","statusPanel":"Screen-module_statusPanel__9lLEm","controlButton":"Screen-module_controlButton__mTn3T"};
 
+const defaultI18n = {
+  'contextMenu.search': 'Search',
+  'contextMenu.add': 'Add {nodeType}',
+  'contextMenu.removeThisNode': 'Remove this node',
+  'contextMenu.cloneThisNode': 'Clone this node',
+  'contextMenu.removeThisConnection': 'Remove this connection'
+};
 function Screen({
   portTypes,
   nodeTypes,
   onChangeState,
-  initialState
+  initialState,
+  i18n = defaultI18n
 }) {
   var _position$x, _position$y, _state$scale, _state$position$x, _state$position$y;
   const {
@@ -2821,6 +2845,7 @@ function Screen({
   const nodeTypesByCategory = React.useMemo(() => {
     const categories = Object.values(nodeTypes).reduce((acc, nodeType) => {
       var _nodeType$category;
+      if (nodeType.root) return acc;
       const _category = (_nodeType$category = nodeType.category) !== null && _nodeType$category !== void 0 ? _nodeType$category : '...';
       if (!acc[_category]) acc[_category] = [];
       acc[_category].push(nodeType);
@@ -2845,22 +2870,26 @@ function Screen({
       nodeTypes
     }) => ({
       label: category,
-      children: nodeTypes.sort((a, b) => a.label.localeCompare(b.label)).map(nodeType => ({
-        label: `Adicionar ${nodeType.label}`,
+      children: nodeTypes.filter(t => !t.root).sort((a, b) => a.label.localeCompare(b.label)).map(nodeType => ({
+        label: i(i18n, 'contextMenu.add', {
+          nodeType: nodeType.label
+        }, 'Add ' + nodeType.label),
         description: nodeType.description,
         onClick: () => {
-          e.target.getBoundingClientRect();
-          const position = {
-            x: e.clientX,
-            // - x,
-            y: e.clientY // - y
+          const {
+            x,
+            y
+          } = e.target.getBoundingClientRect();
+          console.log(position);
+          const _position = {
+            x: (e.clientX - position.x - x) / scale,
+            y: (e.clientY - position.y - y) / scale
           };
-
-          addNode(nodeType, position);
+          addNode(nodeType, _position);
         }
       }))
     })))
-  }), [nodeTypesByCategory, addNode]);
+  }), [nodeTypesByCategory, addNode, position]);
   const handleValueChange = React.useCallback((id, values) => {
     setStateAndNotify(prev => {
       return {
@@ -2949,6 +2978,8 @@ function Screen({
               children: ["Position: ", JSON.stringify(position)]
             })]
           }), /*#__PURE__*/jsxRuntime.jsx(ContextMenu, {
+            containerRef: screenRef,
+            i18n: i18n,
             children: ({
               handleContextMenu
             }) => /*#__PURE__*/jsxRuntime.jsxs(TransformComponent, {
@@ -2996,12 +3027,12 @@ function Screen({
                     canMove: canMove,
                     onConnect: onConnect,
                     onContextMenu: e => handleContextMenu(e, [{
-                      label: 'Clonar este nó',
+                      label: i(i18n, 'contextMenu.cloneThisNode', {}, 'Clone this node'),
                       onClick: () => {
                         cloneNode(node.id);
                       }
                     }, {
-                      label: `Remover este nó`,
+                      label: i(i18n, 'contextMenu.removeThisNode', {}, 'Remove this node'),
                       style: {
                         color: 'red'
                       },
@@ -3057,7 +3088,7 @@ function Screen({
                       dst: dstPos,
                       scale: scale,
                       onContextMenu: e => handleContextMenu(e, [canMove ? {
-                        label: `Remover esta conexão`,
+                        label: i(i18n, 'contextMenu.removeThisConnection', {}, 'Remove this connection'),
                         style: {
                           color: 'red'
                         },

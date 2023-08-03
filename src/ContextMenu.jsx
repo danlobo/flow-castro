@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import css from './ContextMenu.module.css'
 import { useTheme } from "./ThemeProvider";
+import { i } from "./util/i18n.js";
 
 const ContextMenuList = ({ isFiltered, options, onSelectOption, style }) => {
   const [activeSubmenu, setActiveSubmenu] = useState(null)
@@ -37,6 +38,8 @@ const ContextMenuList = ({ isFiltered, options, onSelectOption, style }) => {
   const handleMenuItemMouseLeave = () => {
     setActiveSubmenu(null);
   };
+
+  if (!options?.length) return null
 
   return (
     <ul className={css.contextMenu} style={style}>
@@ -77,7 +80,7 @@ const ContextMenuList = ({ isFiltered, options, onSelectOption, style }) => {
 }
 
 
-export const ContextMenu = ({ children }) => {
+export const ContextMenu = ({ containerRef, i18n, children }) => {
   const { currentTheme } = useTheme()
 
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -92,9 +95,13 @@ export const ContextMenu = ({ children }) => {
     e.stopPropagation();
 
     setTimeout(() => searchRef.current?.focus(), 0)
+
+    const containerRect = containerRef.current?.getBoundingClientRect() ?? { left: 0, top: 0 };
+    const x = e.clientX - containerRect.left;
+    const y = e.clientY - containerRect.top;
     
     setOptions(options);
-    setPosition({ x: e.clientX, y: e.clientY });
+    setPosition({ x, y });
   };
 
   const handleMenuItemClick = (option) => {
@@ -136,7 +143,7 @@ export const ContextMenu = ({ children }) => {
     <>
       {children({ handleContextMenu })}
       {options?.length ? <div ref={menuRef} className={css.container} style={{ left: position.x, top: position.y, visibility: options ? 'visible' : 'hidden' }}>
-        <input ref={searchRef} type="text" placeholder="Buscar..." autoFocus value={search ?? ''} onChange={(e) => setSearch(e.target.value)} />
+        <input ref={searchRef} type="text" placeholder={i(i18n, 'contextMenu.search', {}, 'Search')} autoFocus value={search ?? ''} onChange={(e) => setSearch(e.target.value)} />
         <ContextMenuList isFiltered={isFiltered} options={options} onSelectOption={handleMenuItemClick} style={{position: 'relative'}}/>
       </div> : null}
     </>
