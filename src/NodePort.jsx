@@ -166,9 +166,12 @@ function NodePort({
         <div 
           id={`card-${nodeId}-${direction}-${name}`}
           ref={connectorRef}
+          data-port-connector-name={name}
+          data-port-connector-type={type.type}
+          data-port-connector-direction={direction}
+          data-port-connector-connected={Boolean(isConnected)}
           style={{
             background: currentTheme.ports?.[type?.type ?? 'default']?.color ?? currentTheme.ports?.default?.color ?? currentTheme.colors.background,
-            borderColor: isConnected ? currentTheme.colors.hover : currentTheme.colors.text,
             left: direction === 'input' ? 'calc( var(--port-size) * -1 - 4px )' : null,
             right: direction === 'output' ? 'calc( var(--port-size) * -1 - 4px )' : null,
           }}

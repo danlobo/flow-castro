@@ -484,6 +484,7 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
                     wrapperProps={wrapperProps(handleContextMenu)}
                     >
                     {state?.nodes && Object.values(state.nodes).map((node, index) => {
+                      const nodeDef = nodeTypes[node.type]
                       return (
                         <>
                           <Node 
@@ -524,16 +525,19 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
                             canMove={canMove}
                             onConnect={onConnect}
                             onContextMenu={(e) => handleContextMenu(e, [
-                              { label: i(i18n, 'contextMenu.cloneThisNode', {}, 'Clone this node'), onClick: () => {
-                                cloneNode(node.id)
-                              }},
-                              { 
+                              !nodeDef.root
+                              ? { label: i(i18n, 'contextMenu.cloneThisNode', {}, 'Clone this node'), onClick: () => {
+                                    cloneNode(node.id)
+                                }} 
+                              : null, 
+                              !nodeDef.root
+                              ? { 
                                 label: i(i18n, 'contextMenu.removeThisNode', {}, 'Remove this node'), 
                                 style: { color: 'red'},
                                 onClick: () => {
                                   removeNode(node.id)
                                 }
-                              }
+                              } : null
                             ])}
                             onResize={(size) => {
                               // O objetivo aqui é disparar a renderização das conexões.

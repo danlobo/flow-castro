@@ -128,7 +128,7 @@ const theme$1 = {
   colors: {
     primary: '#0000ff',
     secondary: '#00ff00',
-    background: '#ffffff',
+    background: '#ffffffcc',
     text: '#000000',
     hover: '#f2f2f2',
     border: '#888'
@@ -140,7 +140,7 @@ const theme = {
   colors: {
     primary: '#000088',
     secondary: '#008800',
-    background: '#222',
+    background: '#222D',
     text: '#DDD',
     hover: '#333',
     border: '#888'
@@ -347,9 +347,12 @@ function NodePort({
     }), !hidePort && /*#__PURE__*/jsx("div", {
       id: `card-${nodeId}-${direction}-${name}`,
       ref: connectorRef,
+      "data-port-connector-name": name,
+      "data-port-connector-type": type.type,
+      "data-port-connector-direction": direction,
+      "data-port-connector-connected": Boolean(isConnected),
       style: {
         background: (_ref2 = (_currentTheme$ports$c = currentTheme.ports?.[(_type$type = type?.type) !== null && _type$type !== void 0 ? _type$type : 'default']?.color) !== null && _currentTheme$ports$c !== void 0 ? _currentTheme$ports$c : currentTheme.ports?.default?.color) !== null && _ref2 !== void 0 ? _ref2 : currentTheme.colors.background,
-        borderColor: isConnected ? currentTheme.colors.hover : currentTheme.colors.text,
         left: direction === 'input' ? 'calc( var(--port-size) * -1 - 4px )' : null,
         right: direction === 'output' ? 'calc( var(--port-size) * -1 - 4px )' : null
       },
@@ -500,8 +503,8 @@ function Node({
     children: [/*#__PURE__*/jsx("div", {
       className: nodeCss.title,
       style: {
-        backgroundColor: (_currentTheme$nodes$n4 = currentTheme?.nodes?.[nodeType?.type]?.background) !== null && _currentTheme$nodes$n4 !== void 0 ? _currentTheme$nodes$n4 : currentTheme?.nodes?.common?.title?.background,
-        color: (_currentTheme$nodes$n5 = currentTheme?.nodes?.[nodeType?.type]?.color) !== null && _currentTheme$nodes$n5 !== void 0 ? _currentTheme$nodes$n5 : currentTheme?.nodes?.common?.title?.color
+        backgroundColor: (_currentTheme$nodes$n4 = currentTheme?.nodes?.[nodeType?.type]?.title?.background) !== null && _currentTheme$nodes$n4 !== void 0 ? _currentTheme$nodes$n4 : currentTheme?.nodes?.common?.title?.background,
+        color: (_currentTheme$nodes$n5 = currentTheme?.nodes?.[nodeType?.type]?.title?.color) !== null && _currentTheme$nodes$n5 !== void 0 ? _currentTheme$nodes$n5 : currentTheme?.nodes?.common?.title?.color
       },
       children: /*#__PURE__*/jsx("h3", {
         children: name
@@ -511,6 +514,8 @@ function Node({
       children: [/*#__PURE__*/jsx("div", {
         className: [nodeCss.portsContainer, nodeCss.inputPortsContainer].join(' '),
         children: nodeInputs?.map(input => {
+          const portType = portTypes[input.type];
+          const hidePort = input.hidePort != null ? input.hidePort : portType.hidePort;
           return /*#__PURE__*/jsx(NodePort$1, {
             name: input.name,
             value: nodeValues[input.name],
@@ -527,7 +532,7 @@ function Node({
             type: portTypes[input.type],
             direction: "input",
             label: input.label,
-            hidePort: Boolean(input.hidePort),
+            hidePort: Boolean(hidePort),
             containerRef: containerRef,
             isConnected: value.connections?.inputs?.some(c => c.name === input.name),
             onConnected: onInputPortConnected,
@@ -2447,18 +2452,22 @@ const ContextMenu = ({
     const _search = search.toLocaleLowerCase();
     if (((_option$label$toLower = option.label?.toLowerCase()?.indexOf(_search)) !== null && _option$label$toLower !== void 0 ? _option$label$toLower : -1) > -1) return true;
     if (((_option$description$t = option.description?.toLowerCase()?.indexOf(_search)) !== null && _option$description$t !== void 0 ? _option$description$t : -1) > -1) return true;
+
+    // TODO isso não é muito eficiente.
+    if (option.children?.length && option.children?.some(it => isFiltered(it))) return true;
     return false;
   };
+  const nonNullOptions = options?.filter(it => Boolean(it));
   return /*#__PURE__*/jsxs(Fragment, {
     children: [children({
       handleContextMenu
-    }), options?.length ? /*#__PURE__*/jsxs("div", {
+    }), nonNullOptions?.length ? /*#__PURE__*/jsxs("div", {
       ref: menuRef,
       className: css$1.container,
       style: {
         left: position.x,
         top: position.y,
-        visibility: options ? 'visible' : 'hidden'
+        visibility: nonNullOptions ? 'visible' : 'hidden'
       },
       children: [/*#__PURE__*/jsx("input", {
         ref: searchRef,
@@ -2469,7 +2478,7 @@ const ContextMenu = ({
         onChange: e => setSearch(e.target.value)
       }), /*#__PURE__*/jsx(ContextMenuList, {
         isFiltered: isFiltered,
-        options: options,
+        options: nonNullOptions,
         onSelectOption: handleMenuItemClick,
         style: {
           position: 'relative'
@@ -2985,6 +2994,7 @@ function Screen({
               wrapperStyle: wrapperStyle,
               wrapperProps: wrapperProps(handleContextMenu),
               children: [state?.nodes && Object.values(state.nodes).map((node, index) => {
+                const nodeDef = nodeTypes[node.type];
                 return /*#__PURE__*/jsxs(Fragment, {
                   children: [/*#__PURE__*/jsx(Node$1, {
                     id: `node_${node.id}`,
@@ -3024,12 +3034,12 @@ function Screen({
                     containerRef: screenRef,
                     canMove: canMove,
                     onConnect: onConnect,
-                    onContextMenu: e => handleContextMenu(e, [{
+                    onContextMenu: e => handleContextMenu(e, [!nodeDef.root ? {
                       label: i(i18n, 'contextMenu.cloneThisNode', {}, 'Clone this node'),
                       onClick: () => {
                         cloneNode(node.id);
                       }
-                    }, {
+                    } : null, !nodeDef.root ? {
                       label: i(i18n, 'contextMenu.removeThisNode', {}, 'Remove this node'),
                       style: {
                         color: 'red'
@@ -3037,7 +3047,7 @@ function Screen({
                       onClick: () => {
                         removeNode(node.id);
                       }
-                    }]),
+                    } : null]),
                     onResize: size => {
                       // O objetivo aqui é disparar a renderização das conexões.
                       // Se houver um modo melhor, por favor, me avise.

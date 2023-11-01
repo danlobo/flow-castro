@@ -136,15 +136,20 @@ export const ContextMenu = ({ containerRef, i18n, children }) => {
     if ((option.description?.toLowerCase()?.indexOf(_search) ?? -1) > -1)
       return true
 
+    // TODO isso não é muito eficiente.
+    if (option.children?.length && option.children?.some(it => isFiltered(it)))
+      return true
+
     return false
   }
 
+  const nonNullOptions = options?.filter(it => Boolean(it))
   return (
     <>
       {children({ handleContextMenu })}
-      {options?.length ? <div ref={menuRef} className={css.container} style={{ left: position.x, top: position.y, visibility: options ? 'visible' : 'hidden' }}>
+      {nonNullOptions?.length ? <div ref={menuRef} className={css.container} style={{ left: position.x, top: position.y, visibility: nonNullOptions ? 'visible' : 'hidden' }}>
         <input ref={searchRef} type="text" placeholder={i(i18n, 'contextMenu.search', {}, 'Search')} autoFocus value={search ?? ''} onChange={(e) => setSearch(e.target.value)} />
-        <ContextMenuList isFiltered={isFiltered} options={options} onSelectOption={handleMenuItemClick} style={{position: 'relative'}}/>
+        <ContextMenuList isFiltered={isFiltered} options={nonNullOptions} onSelectOption={handleMenuItemClick} style={{position: 'relative'}}/>
       </div> : null}
     </>
   )

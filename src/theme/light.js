@@ -4,7 +4,7 @@ const theme = {
   colors: {
     primary: '#0000ff',
     secondary: '#00ff00',
-    background: '#ffffff',
+    background: '#ffffffcc',
     text: '#000000',
     hover: '#f2f2f2',
     border: '#888'

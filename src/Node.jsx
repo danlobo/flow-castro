@@ -123,8 +123,8 @@ function Node({
     onContextMenu={onContextMenu}
   >
     <div className={css.title} style={{
-      backgroundColor: currentTheme?.nodes?.[nodeType?.type]?.background ?? currentTheme?.nodes?.common?.title?.background,
-      color: currentTheme?.nodes?.[nodeType?.type]?.color ?? currentTheme?.nodes?.common?.title?.color,
+      backgroundColor: currentTheme?.nodes?.[nodeType?.type]?.title?.background ?? currentTheme?.nodes?.common?.title?.background,
+      color: currentTheme?.nodes?.[nodeType?.type]?.title?.color ?? currentTheme?.nodes?.common?.title?.color,
     }}>
         <h3>{name}</h3>
     </div>
@@ -132,6 +132,10 @@ function Node({
     <div className={css.container}>
       <div className={[css.portsContainer, css.inputPortsContainer].join(' ')}>
         {nodeInputs?.map((input) => {
+          const portType = portTypes[input.type]
+
+          const hidePort = input.hidePort != null ? input.hidePort : portType.hidePort
+
           return <NodePort 
             name={input.name}
             value={nodeValues[input.name]}
@@ -149,7 +153,7 @@ function Node({
             type={portTypes[input.type]}
             direction="input" 
             label={input.label}
-            hidePort={Boolean(input.hidePort)}
+            hidePort={Boolean(hidePort)}
             containerRef={containerRef}
             isConnected={value.connections?.inputs?.some((c) => c.name === input.name)}
             onConnected={onInputPortConnected}
