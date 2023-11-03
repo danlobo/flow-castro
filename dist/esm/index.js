@@ -2503,7 +2503,7 @@ let nanoid = (size = 21) =>
     return id
   }, '');
 
-var css = {"container":"Screen-module_container__zkIN3","panel":"Screen-module_panel__P8WaY","controlsPanel":"Screen-module_controlsPanel__qhiH0","statusPanel":"Screen-module_statusPanel__9lLEm","controlButton":"Screen-module_controlButton__mTn3T"};
+var css = {"container":"Screen-module_container__zkIN3","panel":"Screen-module_panel__P8WaY","controlsPanelVertical":"Screen-module_controlsPanelVertical__-1YKq","controlsPanelHorizontal":"Screen-module_controlsPanelHorizontal__LSyOH","statusPanel":"Screen-module_statusPanel__9lLEm","controlButton":"Screen-module_controlButton__mTn3T"};
 
 const defaultI18n = {
   'contextMenu.search': 'Search',
@@ -2721,6 +2721,7 @@ function Screen({
   const screenRef = useRef();
   const [isMoveable, setIsMoveable] = useState(false);
   const [canMove, setCanMove] = useState(true);
+  const [snapToGrid, setSnapToGrid] = useState(false);
   const onZoom = useCallback(params => {
     const _scale = params.state.scale;
     setScale(_scale);
@@ -2911,6 +2912,9 @@ function Screen({
       };
     });
   }, [setStateAndNotify]);
+  const handleSnapToGrid = useCallback(() => {
+    setSnapToGrid(prev => !prev);
+  }, []);
   if (!state) return null;
   const contRect = screenRef.current?.getBoundingClientRect();
   return /*#__PURE__*/jsx("div", {
@@ -2940,7 +2944,7 @@ function Screen({
       }) => {
         return /*#__PURE__*/jsxs(Fragment, {
           children: [/*#__PURE__*/jsxs("div", {
-            className: [css.panel, css.controlsPanel].join(' '),
+            className: [css.panel, css.controlsPanelVertical].join(' '),
             children: [/*#__PURE__*/jsx(Button, {
               className: css.controlButton,
               onClick: () => zoomIn(),
@@ -2977,6 +2981,13 @@ function Screen({
               onClick: () => setCanMove(!canMove),
               children: canMove ? 'L' : 'U'
             })]
+          }), /*#__PURE__*/jsx("div", {
+            className: [css.panel, css.controlsPanelHorizontal].join(' '),
+            children: /*#__PURE__*/jsxs(Button, {
+              className: css.controlButton,
+              onClick: handleSnapToGrid,
+              children: ["Sn ", snapToGrid ? 'v' : 'x']
+            })
           }), /*#__PURE__*/jsxs("div", {
             className: [css.panel, css.statusPanel].join(' '),
             children: [/*#__PURE__*/jsxs("div", {
@@ -3008,25 +3019,39 @@ function Screen({
                       });
                     },
                     onChangePosition: position => {
+                      const pos = {
+                        ...position
+                      };
+                      if (snapToGrid) {
+                        pos.x = Math.round(pos.x / gridSize) * gridSize;
+                        pos.y = Math.round(pos.y / gridSize) * gridSize;
+                      }
                       setState(prev => ({
                         ...prev,
                         nodes: {
                           ...prev.nodes,
                           [node.id]: {
                             ...prev.nodes[node.id],
-                            position
+                            position: pos
                           }
                         }
                       }));
                     },
                     onDragEnd: position => {
+                      const pos = {
+                        ...position
+                      };
+                      if (snapToGrid) {
+                        pos.x = Math.round(pos.x / gridSize) * gridSize;
+                        pos.y = Math.round(pos.y / gridSize) * gridSize;
+                      }
                       setStateAndNotify(prev => ({
                         ...prev,
                         nodes: {
                           ...prev.nodes,
                           [node.id]: {
                             ...prev.nodes[node.id],
-                            position
+                            position: pos
                           }
                         }
                       }));

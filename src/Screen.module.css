@@ -20,14 +20,21 @@
   gap: .5rem;
 }
 
-.controlsPanel {
-  bottom: 40px;
+.controlsPanelVertical {
+  bottom: 80px;
   right: 40px; 
   width: 30px;
 }
 
-.statusPanel {
+.controlsPanelHorizontal {
   bottom: 40px;
+  right: 80px; 
+  height: 30px;
+  flex-direction: row;
+}
+
+.statusPanel {
+  bottom: 80px;
   right: 80px; 
   width: 120px;
   font-size: 9px;

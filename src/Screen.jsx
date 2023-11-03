@@ -238,6 +238,7 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
 
   const [isMoveable, setIsMoveable] = useState(false);
   const [canMove, setCanMove] = useState(true);
+  const [snapToGrid, setSnapToGrid] = useState(false);
 
   const onZoom = useCallback((params) => {
     const _scale = params.state.scale;
@@ -423,6 +424,9 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
     })
   }, [setStateAndNotify])
 
+  const handleSnapToGrid = useCallback(() => {
+    setSnapToGrid(prev => !prev)
+  }, [])
 
   if (!state) return null
 
@@ -447,7 +451,7 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
         {({ zoomIn, zoomOut, resetTransform, setTransform, centerView,  ...rest }) => {
           return (
             <>
-              <div className={[css.panel, css.controlsPanel].join(' ')}>
+              <div className={[css.panel, css.controlsPanelVertical].join(' ')}>
                 <Button className={css.controlButton} onClick={() => zoomIn()}>+</Button>
                 <Button className={css.controlButton} onClick={() => zoomOut()}>-</Button>
                 <Button className={css.controlButton} onClick={() => {
@@ -470,6 +474,10 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
                 }}>Z</Button>
                 
                 <Button className={css.controlButton} onClick={() => setCanMove(!canMove)}>{canMove ? 'L' : 'U'}</Button>
+              </div>
+
+              <div className={[css.panel, css.controlsPanelHorizontal].join(' ')}>
+                <Button className={css.controlButton} onClick={handleSnapToGrid}>Sn {snapToGrid ? 'v' : 'x' }</Button>
               </div>
 
               <div className={[css.panel, css.statusPanel].join(' ')}>
@@ -498,25 +506,36 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
                               handleValueChange(node.id, { ...v.values })
                             }}
                             onChangePosition={(position) => {
+                              const pos = { ...position }
+                              if (snapToGrid) {
+                                pos.x = Math.round(pos.x / gridSize) * gridSize;
+                                pos.y = Math.round(pos.y / gridSize) * gridSize;
+                              }
+
                               setState(prev => ({
                                 ...prev,
                                 nodes: {
                                   ...prev.nodes,
                                   [node.id]: {
                                     ...prev.nodes[node.id],
-                                    position
+                                    position: pos
                                   }
                                 }
                               }))
                             }}
                             onDragEnd={(position) => {
+                              const pos = { ...position }
+                              if (snapToGrid) {
+                                pos.x = Math.round(pos.x / gridSize) * gridSize;
+                                pos.y = Math.round(pos.y / gridSize) * gridSize;
+                              }
                               setStateAndNotify(prev => ({
                                 ...prev,
                                 nodes: {
                                   ...prev.nodes,
                                   [node.id]: {
                                     ...prev.nodes[node.id],
-                                    position
+                                    position: pos
                                   }
                                 }
                               }))

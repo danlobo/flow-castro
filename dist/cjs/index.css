@@ -209,14 +209,21 @@
   gap: .5rem;
 }
 
-.Screen-module_controlsPanel__qhiH0 {
-  bottom: 40px;
+.Screen-module_controlsPanelVertical__-1YKq {
+  bottom: 80px;
   right: 40px; 
   width: 30px;
 }
 
-.Screen-module_statusPanel__9lLEm {
+.Screen-module_controlsPanelHorizontal__LSyOH {
   bottom: 40px;
+  right: 80px; 
+  height: 30px;
+  flex-direction: row;
+}
+
+.Screen-module_statusPanel__9lLEm {
+  bottom: 80px;
   right: 80px; 
   width: 120px;
   font-size: 9px;
