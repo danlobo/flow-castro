@@ -2596,6 +2596,146 @@ function Screen({
   }, [state, shouldNotify, onChangeState]);
   const screenRef = React.useRef();
   const contRect = screenRef.current?.getBoundingClientRect();
+  const wrapperRef = React.useRef();
+  React.useEffect(() => {
+    const srr = screenRef.current;
+    if (!srr) return;
+    const focusHandler = () => {
+      console.log('focus', document.activeElement);
+    };
+    const keyHandler = e => {
+      const inside = screenRef.current === document.activeElement;
+      if (!inside) return;
+      switch (e.key.toLowerCase()) {
+        case 'delete':
+        case 'backspace':
+          console.log('delete');
+
+          //delete selected nodes
+          removeNodes(selectedNodes);
+          break;
+        case 'escape':
+          console.log('escape');
+          setSelectedNodes([]);
+          break;
+      }
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key.toLowerCase()) {
+          case 'a':
+            console.log('select all');
+            e.preventDefault();
+            e.stopPropagation();
+
+            //select all nodes
+            setSelectedNodes(Object.keys(state.nodes));
+            break;
+          case 'c':
+            console.log('copy');
+            e.preventDefault();
+            e.stopPropagation();
+
+            //copy selected to clipboard
+            const _selectedNodes = {};
+            for (const nodeId of selectedNodes) {
+              _selectedNodes[nodeId] = state.nodes[nodeId];
+            }
+            console.log('selected', _selectedNodes);
+            const data = JSON.stringify(_selectedNodes);
+            navigator.clipboard.writeText(data);
+            break;
+          case 'v':
+            console.log('paste');
+            //paste from clipboard
+
+            e.preventDefault();
+            e.stopPropagation();
+            navigator.clipboard.readText().then(data => {
+              console.log('clipboard', data);
+              try {
+                const _nodes = JSON.parse(data);
+                console.log('clipboard', _nodes);
+
+                // validate nodes
+                const jsonNodes = Object.values(_nodes).filter(node => !node.root);
+                let valid = true;
+                for (const node of jsonNodes) {
+                  if (!nodeTypes[node.type]) {
+                    console.log('invalid node type', node.type);
+                    valid = false;
+                    break;
+                  }
+                  if (!node.position) {
+                    console.log('invalid node position', node.position);
+                    valid = false;
+                    break;
+                  }
+                  if (!node.connections?.inputs || !node.connections?.outputs) {
+                    console.log('invalid node connections', node.connections);
+                    valid = false;
+                    break;
+                  }
+                }
+                if (!valid) return;
+
+                // find node with minimum x position from nodes
+                const nodeWithMinX = jsonNodes.reduce((acc, node) => {
+                  var _acc$position$x;
+                  if (node.position.x < ((_acc$position$x = acc?.position?.x) !== null && _acc$position$x !== void 0 ? _acc$position$x : Number.POSITIVE_INFINITY)) return node;
+                  return acc;
+                }, null);
+                const delta = {
+                  x: nodeWithMinX.position.x,
+                  y: nodeWithMinX.position.y
+                };
+                const {
+                  x,
+                  y
+                } = screenRef.current.getBoundingClientRect();
+                const pos = {
+                  x: (pointerPosition.x - x - position.x) / scale,
+                  y: (pointerPosition.y - y - position.y) / scale
+                };
+                console.log('positioning', pointerPosition, x, y, position);
+                const nodes = jsonNodes.map(node => ({
+                  ...node,
+                  id: nanoid(),
+                  position: {
+                    x: node.position.x - delta.x + pos.x,
+                    y: node.position.y - delta.y + pos.y
+                  },
+                  connections: {
+                    inputs: [],
+                    outputs: []
+                  }
+                }));
+                setStateAndNotify(prev => ({
+                  ...prev,
+                  nodes: {
+                    ...prev.nodes,
+                    ...nodes.reduce((acc, node) => {
+                      acc[node.id] = node;
+                      return acc;
+                    }, {})
+                  }
+                }));
+                setSelectedNodes(nodes.map(n => n.id));
+              } catch (err) {
+                console.log('invalid clipboard data', err);
+              }
+            });
+            break;
+        }
+      }
+    };
+    srr.addEventListener('focus', focusHandler);
+    srr.addEventListener('blur', focusHandler);
+    srr.addEventListener('keydown', keyHandler);
+    return () => {
+      srr.removeEventListener('focus', focusHandler);
+      srr.removeEventListener('blur', focusHandler);
+      srr.removeEventListener('keydown', keyHandler);
+    };
+  }, [screenRef.current, selectedNodes, state, position, scale, pointerPosition]);
   const handleMouseDown = React.useCallback(event => {
     // event.preventDefault();
     event.stopPropagation();
@@ -2683,6 +2823,20 @@ function Screen({
     window.addEventListener('mouseup', handleMouseUp);
   }, [position, scale, state]);
   React.useEffect(() => {
+    //const { startX, startY } = dragInfo
+
+    const mouseMoveListener = event => {
+      setPointerPosition({
+        x: event.pageX - window.scrollX,
+        y: event.pageY - window.scrollY
+      });
+    };
+    window.addEventListener('mousemove', mouseMoveListener);
+    return () => {
+      window.removeEventListener('mousemove', mouseMoveListener);
+    };
+  }, []);
+  React.useEffect(() => {
     if (!dragInfo) {
       setDstDragPosition(null);
       return;
@@ -2691,10 +2845,6 @@ function Screen({
     //const { startX, startY } = dragInfo
 
     const mouseMoveListener = event => {
-      setPointerPosition({
-        x: event.pageX - window.scrollX,
-        y: event.pageY - window.scrollY
-      });
       const dx = event.pageX; //- startX
       const dy = event.pageY; //- startY
 
@@ -3009,7 +3159,12 @@ function Screen({
         }
       }))
     }))),
-    onMouseDown: selectMode ? handleMouseDown : null
+    onMouseDown: selectMode ? handleMouseDown : null,
+    onClick: e => {
+      if (e.target === wrapperRef.current.instance.wrapperComponent) screenRef.current.focus({
+        preventScroll: true
+      });
+    }
   }), [state, selectMode, nodeTypesByCategory, addNode, position, scale]);
   const handleValueChange = React.useCallback((id, values) => {
     setStateAndNotify(prev => {
@@ -3037,6 +3192,7 @@ function Screen({
     className: css.container,
     style: style,
     ref: screenRef,
+    tabIndex: 0,
     children: /*#__PURE__*/jsxRuntime.jsx(TransformWrapper, {
       initialScale: (_state$scale = state?.scale) !== null && _state$scale !== void 0 ? _state$scale : 1,
       initialPositionX: (_state$position$x = state?.position?.x) !== null && _state$position$x !== void 0 ? _state$position$x : 0,
@@ -3050,6 +3206,7 @@ function Screen({
       pinch: pinchOptions,
       panning: panningOptions,
       onTransformed: onTransformEnd,
+      ref: wrapperRef,
       children: ({
         zoomIn,
         zoomOut,
