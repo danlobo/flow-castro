@@ -3165,6 +3165,9 @@ function Screen({
                       const pos = {
                         ...position
                       };
+                      const _selectedNodes = selectedNodes;
+                      if (!_selectedNodes.includes(node.id)) _selectedNodes.length = 0;
+                      setSelectedNodes(_selectedNodes);
                       setState(prev => ({
                         ...prev,
                         nodes: Object.values(prev.nodes).reduce((acc, n) => {
@@ -3183,7 +3186,7 @@ function Screen({
                               ...n,
                               position: pos
                             };
-                          } else if (selectedNodes.includes(n.id)) {
+                          } else if (_selectedNodes.includes(n.id)) {
                             acc[n.id] = {
                               ...n,
                               position: {
@@ -3202,6 +3205,9 @@ function Screen({
                       const pos = {
                         ...position
                       };
+                      const _selectedNodes = selectedNodes;
+                      if (!_selectedNodes.includes(node.id)) _selectedNodes.length = 0;
+                      setSelectedNodes(_selectedNodes);
                       setStateAndNotify(prev => ({
                         ...prev,
                         nodes: Object.values(prev.nodes).reduce((acc, n) => {
@@ -3220,7 +3226,7 @@ function Screen({
                               ...n,
                               position: pos
                             };
-                          } else if (selectedNodes.includes(n.id)) {
+                          } else if (_selectedNodes.includes(n.id)) {
                             acc[n.id] = {
                               ...n,
                               position: {
