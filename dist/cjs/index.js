@@ -364,7 +364,7 @@ function NodePort({
 }
 var NodePort$1 = /*#__PURE__*/React.memo(NodePort);
 
-var nodeCss = {"node":"Node-module_node__yVhqG","title":"Node-module_title__IkogO","container":"Node-module_container__PfJft","portsContainer":"Node-module_portsContainer__3s5BH","inputPortsContainer":"Node-module_inputPortsContainer__FPkYh","outputPortsContainer":"Node-module_outputPortsContainer__qYiul"};
+var nodeCss = {"node":"Node-module_node__yVhqG","selected":"Node-module_selected__bA-o1","title":"Node-module_title__IkogO","container":"Node-module_container__PfJft","portsContainer":"Node-module_portsContainer__3s5BH","inputPortsContainer":"Node-module_inputPortsContainer__FPkYh","outputPortsContainer":"Node-module_outputPortsContainer__qYiul"};
 
 const Button = ({
   children,
@@ -391,7 +391,9 @@ function Node({
   nodeType,
   value,
   canMove,
+  isSelected,
   onChangePosition,
+  onDragStart,
   onDragEnd,
   onConnect,
   containerRef,
@@ -440,6 +442,10 @@ function Node({
     event.stopPropagation();
     const startX = event.pageX;
     const startY = event.pageY;
+    onDragStart?.({
+      x: nodePosition.x,
+      y: nodePosition.y
+    });
     const handleMouseMove = event => {
       const dx = event.pageX - startX;
       const dy = event.pageY - startY;
@@ -462,7 +468,7 @@ function Node({
     };
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
-  }, [nodePosition, screenScale, onChangePosition, onDragEnd]);
+  }, [nodePosition, screenScale, onChangePosition, onDragStart, onDragEnd]);
   const onOutputPortConnected = React.useCallback(({
     source,
     target
@@ -491,8 +497,8 @@ function Node({
   }, [nodeType, nodeValues]);
   return /*#__PURE__*/jsxRuntime.jsxs("div", {
     ref: nodeRef,
-    id: `card-${name}`,
-    className: nodeCss.node,
+    id: `card-${nodeId}`,
+    className: [nodeCss.node, isSelected ? nodeCss.selected : ''].join(' '),
     style: {
       backgroundColor: (_currentTheme$nodes$n = currentTheme?.nodes?.[nodeType?.type]?.body?.background) !== null && _currentTheme$nodes$n !== void 0 ? _currentTheme$nodes$n : currentTheme?.nodes?.common?.body?.background,
       border: (_currentTheme$nodes$n2 = currentTheme?.nodes?.[nodeType?.type]?.body?.border) !== null && _currentTheme$nodes$n2 !== void 0 ? _currentTheme$nodes$n2 : currentTheme?.nodes?.common?.body?.border,
@@ -558,7 +564,7 @@ function Node({
         })
       })]
     })]
-  }, `card-${name}`);
+  }, `card-${nodeId}`);
 }
 var Node$1 = /*#__PURE__*/React.memo(Node);
 
@@ -2554,6 +2560,20 @@ function Screen({
   });
   const [state, setState] = React.useState(initialState);
   const [shouldNotify, setShouldNotify] = React.useState(false);
+  const [selectMode, setSelectMode] = React.useState(false);
+  const [selectedNodes, setSelectedNodes] = React.useState([]);
+  const [selectStartPoint, setSelectStartPoint] = React.useState({
+    x: 0,
+    y: 0
+  });
+  const [selectEndPoint, setSelectEndPoint] = React.useState({
+    x: 0,
+    y: 0
+  });
+  React.useState({
+    x: 0,
+    y: 0
+  });
   const debounceEvent = React.useCallback((fn, wait = 200, time) => (...args) => clearTimeout(time, time = setTimeout(() => fn(...args), wait)), []);
   React.useEffect(() => {
     if (!initialState) return;
@@ -2573,6 +2593,93 @@ function Screen({
       setShouldNotify(false);
     }
   }, [state, shouldNotify, onChangeState]);
+  const screenRef = React.useRef();
+  const contRect = screenRef.current?.getBoundingClientRect();
+  const handleMouseDown = React.useCallback(event => {
+    // event.preventDefault();
+    event.stopPropagation();
+    const startX = event.pageX + window.scrollX;
+    const startY = event.pageY + window.scrollY;
+
+    // if (selectMode) {
+    const pos = {
+      x: startX,
+      y: startY
+    };
+    setSelectStartPoint(pos);
+    setSelectEndPoint(pos);
+
+    // }
+
+    const handleMouseMove = event => {
+      const dx = event.pageX + window.scrollX;
+      const dy = event.pageY + window.scrollY;
+
+      // if (selectMode) {
+      setSelectEndPoint({
+        x: dx,
+        y: dy
+      });
+      // } else {
+      // onChangePosition({ x: nodePosition.x + dx / screenScale, y: nodePosition.y + dy / screenScale });
+      // }
+    };
+
+    const handleMouseUp = e => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      const dx = e.pageX + window.scrollX;
+      const dy = e.pageY + window.scrollY;
+      if (Math.abs(dx) >= 2 && Math.abs(dy) >= 2) {
+        // if (selectMode) {
+        const _posEnd = {
+          x: dx,
+          y: dy
+        };
+        setSelectEndPoint(_posEnd);
+
+        // find all nodes in the selection, save the ids in selectedNodes
+        const _selectedNodes = [];
+        const nodes = Object.values(state.nodes);
+        nodes.forEach(node => {
+          const {
+            x,
+            y,
+            width,
+            height
+          } = document.getElementById(`card-${node.id}`).getBoundingClientRect();
+          //detect if node is inside selection
+          const p1 = {
+            x: Math.min(pos.x, _posEnd.x),
+            y: Math.min(pos.y, _posEnd.y)
+          };
+          const p2 = {
+            x: Math.max(pos.x, _posEnd.x),
+            y: Math.max(pos.y, _posEnd.y)
+          };
+          if (x > p1.x && x + width < p2.x && y > p1.y && y + height < p2.y) {
+            _selectedNodes.push(node.id);
+          }
+        });
+        console.log('selectedNodes', _selectedNodes);
+        setSelectedNodes(_selectedNodes);
+        // } else {
+        //   onDragEnd?.({ x: nodePosition.x + dx / screenScale, y: nodePosition.y + dy / screenScale });
+        // }
+      }
+
+      setSelectStartPoint({
+        x: 0,
+        y: 0
+      });
+      setSelectEndPoint({
+        x: 0,
+        y: 0
+      });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  }, [position, scale, state]);
   React.useEffect(() => {
     if (!dragInfo) {
       setDstDragPosition(null);
@@ -2720,7 +2827,6 @@ function Screen({
       };
     });
   }, [setStateAndNotify]);
-  const screenRef = React.useRef();
   const [isMoveable, setIsMoveable] = React.useState(false);
   const [canMove, setCanMove] = React.useState(true);
   const [snapToGrid, setSnapToGrid] = React.useState(false);
@@ -2898,8 +3004,9 @@ function Screen({
           addNode(nodeType, _position);
         }
       }))
-    })))
-  }), [nodeTypesByCategory, addNode, position]);
+    }))),
+    onMouseDown: selectMode ? handleMouseDown : null
+  }), [selectMode, nodeTypesByCategory, addNode, position]);
   const handleValueChange = React.useCallback((id, values) => {
     setStateAndNotify(prev => {
       return {
@@ -2917,8 +3024,11 @@ function Screen({
   const handleSnapToGrid = React.useCallback(() => {
     setSnapToGrid(prev => !prev);
   }, []);
+  const handleSelectMode = React.useCallback(() => {
+    setSelectMode(!selectMode);
+    if (selectMode) setSelectedNodes([]);
+  }, [selectMode]);
   if (!state) return null;
-  const contRect = screenRef.current?.getBoundingClientRect();
   return /*#__PURE__*/jsxRuntime.jsx("div", {
     className: css.container,
     style: style,
@@ -2944,8 +3054,32 @@ function Screen({
         centerView,
         ...rest
       }) => {
+        const localStartPoint = contRect ? {
+          x: selectStartPoint.x - contRect.left,
+          y: selectStartPoint.y - contRect.top
+        } : {
+          x: 0,
+          y: 0
+        };
+        const localEndPoint = contRect ? {
+          x: selectEndPoint.x - contRect.left,
+          y: selectEndPoint.y - contRect.top
+        } : {
+          x: 0,
+          y: 0
+        };
         return /*#__PURE__*/jsxRuntime.jsxs(jsxRuntime.Fragment, {
-          children: [/*#__PURE__*/jsxRuntime.jsxs("div", {
+          children: [localStartPoint.x !== localEndPoint.x && localStartPoint.y !== localEndPoint.y && /*#__PURE__*/jsxRuntime.jsx("div", {
+            style: {
+              position: 'absolute',
+              transform: `translate(${Math.min(localStartPoint.x, localEndPoint.x)}px, ${Math.min(localStartPoint.y, localEndPoint.y)}px)`,
+              width: Math.abs(localEndPoint.x - localStartPoint.x),
+              height: Math.abs(localEndPoint.y - localStartPoint.y),
+              border: '3px dashed black',
+              backgroundColor: 'rgba(0,0,0,0.1)',
+              pointerEvents: 'none'
+            }
+          }), /*#__PURE__*/jsxRuntime.jsxs("div", {
             className: [css.panel, css.controlsPanelVertical].join(' '),
             children: [/*#__PURE__*/jsxRuntime.jsx(Button, {
               className: css.controlButton,
@@ -2983,13 +3117,17 @@ function Screen({
               onClick: () => setCanMove(!canMove),
               children: canMove ? 'L' : 'U'
             })]
-          }), /*#__PURE__*/jsxRuntime.jsx("div", {
+          }), /*#__PURE__*/jsxRuntime.jsxs("div", {
             className: [css.panel, css.controlsPanelHorizontal].join(' '),
-            children: /*#__PURE__*/jsxRuntime.jsxs(Button, {
+            children: [/*#__PURE__*/jsxRuntime.jsxs(Button, {
               className: css.controlButton,
               onClick: handleSnapToGrid,
-              children: ["Sn ", snapToGrid ? 'v' : 'x']
-            })
+              children: ["Sn", snapToGrid ? 'v' : 'x']
+            }), /*#__PURE__*/jsxRuntime.jsxs(Button, {
+              className: css.controlButton,
+              onClick: handleSelectMode,
+              children: ["Se", selectMode ? 'S' : 'M']
+            })]
           }), /*#__PURE__*/jsxRuntime.jsxs("div", {
             className: [css.panel, css.statusPanel].join(' '),
             children: [/*#__PURE__*/jsxRuntime.jsxs("div", {
@@ -3015,6 +3153,7 @@ function Screen({
                     portTypes: portTypes,
                     nodeType: nodeTypes?.[node.type],
                     value: node,
+                    isSelected: selectedNodes.includes(node.id),
                     onValueChange: v => {
                       handleValueChange(node.id, {
                         ...v.values
@@ -3024,38 +3163,74 @@ function Screen({
                       const pos = {
                         ...position
                       };
-                      if (snapToGrid) {
-                        pos.x = Math.round(pos.x / gridSize) * gridSize;
-                        pos.y = Math.round(pos.y / gridSize) * gridSize;
-                      }
                       setState(prev => ({
                         ...prev,
-                        nodes: {
-                          ...prev.nodes,
-                          [node.id]: {
-                            ...prev.nodes[node.id],
-                            position: pos
+                        nodes: Object.values(prev.nodes).reduce((acc, n) => {
+                          const delta = {
+                            x: pos.x - prev.nodes[node.id].position.x,
+                            y: pos.y - prev.nodes[node.id].position.y
+                          };
+                          if (snapToGrid) {
+                            pos.x = Math.round(pos.x / gridSize) * gridSize;
+                            pos.y = Math.round(pos.y / gridSize) * gridSize;
+                            delta.x = pos.x - prev.nodes[node.id].position.x;
+                            delta.y = pos.y - prev.nodes[node.id].position.y;
                           }
-                        }
+                          if (n.id === node.id) {
+                            acc[n.id] = {
+                              ...n,
+                              position: pos
+                            };
+                          } else if (selectedNodes.includes(n.id)) {
+                            acc[n.id] = {
+                              ...n,
+                              position: {
+                                x: n.position.x + delta.x,
+                                y: n.position.y + delta.y
+                              }
+                            };
+                          } else {
+                            acc[n.id] = n;
+                          }
+                          return acc;
+                        }, {})
                       }));
                     },
                     onDragEnd: position => {
                       const pos = {
                         ...position
                       };
-                      if (snapToGrid) {
-                        pos.x = Math.round(pos.x / gridSize) * gridSize;
-                        pos.y = Math.round(pos.y / gridSize) * gridSize;
-                      }
                       setStateAndNotify(prev => ({
                         ...prev,
-                        nodes: {
-                          ...prev.nodes,
-                          [node.id]: {
-                            ...prev.nodes[node.id],
-                            position: pos
+                        nodes: Object.values(prev.nodes).reduce((acc, n) => {
+                          const delta = {
+                            x: pos.x - prev.nodes[node.id].position.x,
+                            y: pos.y - prev.nodes[node.id].position.y
+                          };
+                          if (snapToGrid) {
+                            pos.x = Math.round(pos.x / gridSize) * gridSize;
+                            pos.y = Math.round(pos.y / gridSize) * gridSize;
+                            delta.x = pos.x - prev.nodes[node.id].position.x;
+                            delta.y = pos.y - prev.nodes[node.id].position.y;
                           }
-                        }
+                          if (n.id === node.id) {
+                            acc[n.id] = {
+                              ...n,
+                              position: pos
+                            };
+                          } else if (selectedNodes.includes(n.id)) {
+                            acc[n.id] = {
+                              ...n,
+                              position: {
+                                x: n.position.x + delta.x,
+                                y: n.position.y + delta.y
+                              }
+                            };
+                          } else {
+                            acc[n.id] = n;
+                          }
+                          return acc;
+                        }, {})
                       }));
                     },
                     containerRef: screenRef,

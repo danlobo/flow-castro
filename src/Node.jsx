@@ -11,7 +11,9 @@ function Node({
   nodeType,
   value,
   canMove,
+  isSelected,
   onChangePosition,
+  onDragStart,
   onDragEnd,
   onConnect, 
   containerRef, 
@@ -39,7 +41,7 @@ function Node({
     name: nodeName,
     position: nodePosition, 
     values: nodeValues
-  } = value
+  } = value;
 
   useEffect(() => {
     if (nodeId == null)
@@ -64,6 +66,8 @@ function Node({
     const startX = event.pageX;
     const startY = event.pageY;
 
+    onDragStart?.({ x: nodePosition.x, y: nodePosition.y });
+
     const handleMouseMove = (event) => {
       const dx = event.pageX - startX;
       const dy = event.pageY - startY;
@@ -85,7 +89,7 @@ function Node({
 
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
-  }, [nodePosition, screenScale, onChangePosition, onDragEnd]);
+  }, [nodePosition, screenScale, onChangePosition, onDragStart, onDragEnd]);
 
   const onOutputPortConnected = useCallback(({ source, target }) => {
     onConnect?.({ source, target })
@@ -109,9 +113,9 @@ function Node({
 
   return <div
     ref={nodeRef}
-    id={`card-${name}`}
-    key={`card-${name}`}
-    className={css.node}
+    id={`card-${nodeId}`}
+    key={`card-${nodeId}`}
+    className={[css.node, isSelected ? css.selected : ''].join(' ')}
     style={{
       backgroundColor: currentTheme?.nodes?.[nodeType?.type]?.body?.background ?? currentTheme?.nodes?.common?.body?.background,
       border: currentTheme?.nodes?.[nodeType?.type]?.body?.border ?? currentTheme?.nodes?.common?.body?.border,

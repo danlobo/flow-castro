@@ -52,6 +52,13 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
   const [state, setState] = useState(initialState)
   const [shouldNotify, setShouldNotify] = useState(false)
 
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedNodes, setSelectedNodes] = useState([])
+  const [selectStartPoint, setSelectStartPoint] = useState({ x: 0, y: 0 })
+  const [selectEndPoint, setSelectEndPoint] = useState({ x: 0, y: 0 })
+
+  const [nodeDragStartPosition, setNodeDragStartPosition] = useState({ x: 0, y: 0 })
+
   const debounceEvent = useCallback((fn, wait = 200, time) => (...args) =>
     clearTimeout(time, (time = setTimeout(() => fn(...args), wait)))
   , [])
@@ -76,7 +83,82 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
         onChangeState(state);
         setShouldNotify(false);
     }
-}, [state, shouldNotify, onChangeState]);
+  }, [state, shouldNotify, onChangeState]);
+
+  const screenRef = useRef()
+  const contRect = screenRef.current?.getBoundingClientRect();
+
+  const handleMouseDown = useCallback((event) => {
+    // event.preventDefault();
+    event.stopPropagation();
+
+    const startX = event.pageX + window.scrollX;
+    const startY = event.pageY + window.scrollY;
+
+    // if (selectMode) {
+      const pos = { x: startX, y: startY }
+      setSelectStartPoint(pos)
+      setSelectEndPoint(pos)
+
+    // }
+
+    const handleMouseMove = (event) => {
+      const dx = event.pageX + window.scrollX;
+      const dy = event.pageY + window.scrollY;
+
+      // if (selectMode) {
+        setSelectEndPoint({ x: (dx), y: (dy) })
+      // } else {
+        // onChangePosition({ x: nodePosition.x + dx / screenScale, y: nodePosition.y + dy / screenScale });
+      // }
+    };
+
+    const handleMouseUp = (e) => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+
+      const dx = e.pageX + window.scrollX;
+      const dy = e.pageY + window.scrollY;
+
+      if (Math.abs(dx) >= 2 && Math.abs(dy) >= 2) {
+        // if (selectMode) {
+          const _posEnd = { x: dx, y: dy }
+          setSelectEndPoint(_posEnd)
+
+          // find all nodes in the selection, save the ids in selectedNodes
+          const _selectedNodes = []
+          const nodes = Object.values(state.nodes)
+          nodes.forEach((node) => {
+            const { x, y, width, height } = document.getElementById(`card-${node.id}`).getBoundingClientRect()
+            //detect if node is inside selection
+            const p1 = {
+              x: Math.min(pos.x, _posEnd.x),
+              y: Math.min(pos.y, _posEnd.y)
+            }
+
+            const p2 = {
+              x: Math.max(pos.x, _posEnd.x),
+              y: Math.max(pos.y, _posEnd.y)
+            }
+
+            if (x > p1.x && x + width < p2.x && y > p1.y && y + height < p2.y) {
+              _selectedNodes.push(node.id)
+            }
+          })
+
+          console.log('selectedNodes', _selectedNodes)
+          setSelectedNodes(_selectedNodes)
+        // } else {
+        //   onDragEnd?.({ x: nodePosition.x + dx / screenScale, y: nodePosition.y + dy / screenScale });
+        // }
+      }
+      setSelectStartPoint({ x: 0, y: 0 })
+      setSelectEndPoint({ x: 0, y: 0 })
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  }, [position, scale, state]);
 
   useEffect(() => {
     if (!dragInfo) {
@@ -233,8 +315,6 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
       }
     })
   }, [setStateAndNotify])
-
-  const screenRef = useRef()
 
   const [isMoveable, setIsMoveable] = useState(false);
   const [canMove, setCanMove] = useState(true);
@@ -406,8 +486,9 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
           }
         }))
       }))
-    )
-  }), [nodeTypesByCategory, addNode, position])
+    ),
+    onMouseDown: selectMode ? handleMouseDown : null
+  }), [selectMode, nodeTypesByCategory, addNode, position])
 
   const handleValueChange = useCallback((id, values) => {
     setStateAndNotify(prev => {
@@ -428,9 +509,14 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
     setSnapToGrid(prev => !prev)
   }, [])
 
-  if (!state) return null
+  const handleSelectMode = useCallback(() => {
+    setSelectMode(!selectMode)
 
-  const contRect = screenRef.current?.getBoundingClientRect();
+    if (selectMode)
+      setSelectedNodes([])
+  }, [selectMode])
+
+  if (!state) return null
 
   return (
     <div className={css.container} style={style} ref={screenRef}>
@@ -449,8 +535,30 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
         onTransformed={onTransformEnd}
       >
         {({ zoomIn, zoomOut, resetTransform, setTransform, centerView,  ...rest }) => {
+
+          const localStartPoint = contRect ? {
+            x: selectStartPoint.x - contRect.left,
+            y: selectStartPoint.y - contRect.top
+          } : {x: 0, y: 0}
+          const localEndPoint = contRect ? {
+            x: selectEndPoint.x - contRect.left,
+            y: selectEndPoint.y - contRect.top
+          } : {x: 0, y: 0}
+
           return (
             <>
+            {localStartPoint.x !== localEndPoint.x && localStartPoint.y !== localEndPoint.y && (
+              <div style={{
+                position: 'absolute',
+                transform: `translate(${Math.min(localStartPoint.x, localEndPoint.x)}px, ${Math.min(localStartPoint.y, localEndPoint.y)}px)`,
+                width: Math.abs(localEndPoint.x - localStartPoint.x),
+                height: Math.abs(localEndPoint.y - localStartPoint.y),
+                border: '3px dashed black',
+                backgroundColor: 'rgba(0,0,0,0.1)',
+                pointerEvents: 'none'
+              }}></div>
+            )}
+
               <div className={[css.panel, css.controlsPanelVertical].join(' ')}>
                 <Button className={css.controlButton} onClick={() => zoomIn()}>+</Button>
                 <Button className={css.controlButton} onClick={() => zoomOut()}>-</Button>
@@ -477,7 +585,8 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
               </div>
 
               <div className={[css.panel, css.controlsPanelHorizontal].join(' ')}>
-                <Button className={css.controlButton} onClick={handleSnapToGrid}>Sn {snapToGrid ? 'v' : 'x' }</Button>
+              <Button className={css.controlButton} onClick={handleSnapToGrid}>Sn{snapToGrid ? 'v' : 'x' }</Button>
+              <Button className={css.controlButton} onClick={handleSelectMode}>Se{selectMode ? 'S' : 'M' }</Button>
               </div>
 
               <div className={[css.panel, css.statusPanel].join(' ')}>
@@ -502,42 +611,84 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
                             portTypes={portTypes}
                             nodeType={nodeTypes?.[node.type]}
                             value={node}
+                            isSelected={selectedNodes.includes(node.id)}
                             onValueChange={(v) => {
                               handleValueChange(node.id, { ...v.values })
                             }}
                             onChangePosition={(position) => {
                               const pos = { ...position }
-                              if (snapToGrid) {
-                                pos.x = Math.round(pos.x / gridSize) * gridSize;
-                                pos.y = Math.round(pos.y / gridSize) * gridSize;
-                              }
 
                               setState(prev => ({
                                 ...prev,
-                                nodes: {
-                                  ...prev.nodes,
-                                  [node.id]: {
-                                    ...prev.nodes[node.id],
-                                    position: pos
+                                nodes: Object.values(prev.nodes).reduce((acc, n) => {
+                                  const delta = {
+                                    x: pos.x - prev.nodes[node.id].position.x,
+                                    y: pos.y - prev.nodes[node.id].position.y
                                   }
-                                }
+    
+                                  if (snapToGrid) {
+                                    pos.x = Math.round(pos.x / gridSize) * gridSize;
+                                    pos.y = Math.round(pos.y / gridSize) * gridSize;
+                                    delta.x = pos.x - prev.nodes[node.id].position.x
+                                    delta.y = pos.y - prev.nodes[node.id].position.y
+                                  }
+
+                                  if (n.id === node.id) {
+                                    acc[n.id] = {
+                                      ...n,
+                                      position: pos,
+                                    }
+                                  } else if (selectedNodes.includes(n.id)) {
+                                    acc[n.id] = {
+                                      ...n,
+                                      position: {
+                                        x: n.position.x + delta.x,
+                                        y: n.position.y + delta.y
+                                      }
+                                    }
+                                  } else {
+                                    acc[n.id] = n
+                                  }
+                                  return acc
+                                }, {})
                               }))
                             }}
                             onDragEnd={(position) => {
                               const pos = { ...position }
-                              if (snapToGrid) {
-                                pos.x = Math.round(pos.x / gridSize) * gridSize;
-                                pos.y = Math.round(pos.y / gridSize) * gridSize;
-                              }
+                              
                               setStateAndNotify(prev => ({
                                 ...prev,
-                                nodes: {
-                                  ...prev.nodes,
-                                  [node.id]: {
-                                    ...prev.nodes[node.id],
-                                    position: pos
+                                nodes: Object.values(prev.nodes).reduce((acc, n) => {
+                                  const delta = {
+                                    x: pos.x - prev.nodes[node.id].position.x,
+                                    y: pos.y - prev.nodes[node.id].position.y
                                   }
-                                }
+    
+                                  if (snapToGrid) {
+                                    pos.x = Math.round(pos.x / gridSize) * gridSize;
+                                    pos.y = Math.round(pos.y / gridSize) * gridSize;
+                                    delta.x = pos.x - prev.nodes[node.id].position.x
+                                    delta.y = pos.y - prev.nodes[node.id].position.y
+                                  }
+
+                                  if (n.id === node.id) {
+                                    acc[n.id] = {
+                                      ...n,
+                                      position: pos,
+                                    }
+                                  } else if (selectedNodes.includes(n.id)) {
+                                    acc[n.id] = {
+                                      ...n,
+                                      position: {
+                                        x: n.position.x + delta.x,
+                                        y: n.position.y + delta.y
+                                      }
+                                    }
+                                  } else {
+                                    acc[n.id] = n
+                                  }
+                                  return acc
+                                }, {})
                               }))
                             }}
                             containerRef={screenRef}
