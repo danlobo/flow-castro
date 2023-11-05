@@ -2320,7 +2320,7 @@ var css$1 = {"container":"ContextMenu-module_container__kpcIH","contextMenu":"Co
 
 function i(ctx, key, params = {}, defaultValue = '') {
   if (!ctx || !key) return defaultValue;
-  const template = ctx[key].replace(/\{(\w+)\}/gim, (match, p1) => params[p1] || p1);
+  const template = ctx[key]?.replace(/\{(\w+)\}/gim, (match, p1) => params[p1] || p1);
   return template || defaultValue;
 }
 
@@ -2515,6 +2515,7 @@ const defaultI18n = {
   'contextMenu.search': 'Search',
   'contextMenu.add': 'Add {nodeType}',
   'contextMenu.removeThisNode': 'Remove this node',
+  'contextMenu.removeSelectedNodes': 'Remove selected nodes',
   'contextMenu.cloneThisNode': 'Clone this node',
   'contextMenu.removeThisConnection': 'Remove this connection'
 };
@@ -2640,6 +2641,7 @@ function Screen({
         const _selectedNodes = [];
         const nodes = Object.values(state.nodes);
         nodes.forEach(node => {
+          console.log("picking", node.id);
           const {
             x,
             y,
@@ -2723,38 +2725,40 @@ function Screen({
       };
     });
   }, [setStateAndNotify]);
-  const removeNode = useCallback(id => {
-    const node = state.nodes[id];
-    if (!node) return;
-    const nodesToRemove = [id];
+  const removeNodes = useCallback(ids => {
+    const nodesToRemove = [...ids];
     const nodesToAdd = [];
-    node.connections.outputs?.forEach(conn => {
-      const otherNode = state.nodes[conn.node];
-      if (!otherNode) return;
-      nodesToRemove.push(otherNode.id);
-      nodesToAdd.push({
-        ...otherNode,
-        connections: {
-          outputs: otherNode.connections.outputs,
-          inputs: otherNode.connections.inputs.filter(c => !(c.port === conn.name && c.node === node.id))
-        }
+    for (const nodeId of ids) {
+      const node = state.nodes[nodeId];
+      if (!node) continue;
+      node.connections.outputs?.forEach(conn => {
+        const otherNode = state.nodes[conn.node];
+        if (!otherNode || ids.includes(otherNode.id)) return;
+        nodesToRemove.push(otherNode.id);
+        nodesToAdd.push({
+          ...otherNode,
+          connections: {
+            outputs: otherNode.connections.outputs,
+            inputs: otherNode.connections.inputs.filter(c => !(c.port === conn.name && c.node === node.id))
+          }
+        });
       });
-    });
-    node.connections.inputs?.forEach(conn => {
-      const otherNode = state.nodes[conn.node];
-      if (!otherNode) return;
-      nodesToRemove.push(otherNode.id);
-      nodesToAdd.push({
-        ...otherNode,
-        connections: {
-          outputs: otherNode.connections.outputs.filter(c => !(c.port === conn.name && c.node === node.id)),
-          inputs: otherNode.connections.inputs
-        }
+      node.connections.inputs?.forEach(conn => {
+        const otherNode = state.nodes[conn.node];
+        if (!otherNode || ids.includes(otherNode.id)) return;
+        nodesToRemove.push(otherNode.id);
+        nodesToAdd.push({
+          ...otherNode,
+          connections: {
+            outputs: otherNode.connections.outputs.filter(c => !(c.port === conn.name && c.node === node.id)),
+            inputs: otherNode.connections.inputs
+          }
+        });
       });
-    });
+    }
 
     // change nodes to object[id]
-
+    setSelectedNodes([]);
     setStateAndNotify(prev => {
       var _prev$nodes2;
       const newNodes = {
@@ -3004,7 +3008,7 @@ function Screen({
       }))
     }))),
     onMouseDown: selectMode ? handleMouseDown : null
-  }), [selectMode, nodeTypesByCategory, addNode, position]);
+  }), [state, selectMode, nodeTypesByCategory, addNode, position, scale]);
   const handleValueChange = useCallback((id, values) => {
     setStateAndNotify(prev => {
       return {
@@ -3245,7 +3249,15 @@ function Screen({
                         color: 'red'
                       },
                       onClick: () => {
-                        removeNode(node.id);
+                        removeNodes([node.id]);
+                      }
+                    } : null, selectedNodes?.length > 0 ? {
+                      label: i(i18n, 'contextMenu.removeSelectedNodes', {}, 'Remove selected nodes'),
+                      style: {
+                        color: 'red'
+                      },
+                      onClick: () => {
+                        removeNodes(selectedNodes);
                       }
                     } : null]),
                     onResize: size => {
