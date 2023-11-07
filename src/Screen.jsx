@@ -405,7 +405,7 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
       for(const conn of node.connections.outputs) {
         const otherNode = state.nodes[conn.node]
 
-        if (!otherNode || ids.includes(otherNode.id)) return
+        if (!otherNode || ids.includes(otherNode.id)) continue
 
         if (!nodesToRemove.includes(otherNode.id))
           nodesToRemove.push(otherNode.id)
@@ -420,7 +420,7 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
       for(const conn of node.connections.inputs) {
         const otherNode = state.nodes[conn.node]
 
-        if (!otherNode || ids.includes(otherNode.id)) return
+        if (!otherNode || ids.includes(otherNode.id)) continue
 
         if (!nodesToRemove.includes(otherNode.id))
           nodesToRemove.push(otherNode.id)
