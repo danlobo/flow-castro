@@ -3983,6 +3983,7 @@ function Screen({
     });
   }, [setStateAndNotify]);
   const removeNodes = useCallback(ids => {
+    const idsNoRoot = ids.filter(id => !nodeTypes[state.nodes[id].type].root);
     const nodesToRemove = [...ids];
     const nodesToAdd = {};
     for (const nodeId of ids) {
@@ -3990,7 +3991,7 @@ function Screen({
       if (!node) continue;
       for (const conn of node.connections.outputs) {
         const otherNode = state.nodes[conn.node];
-        if (!otherNode || ids.includes(otherNode.id)) continue;
+        if (!otherNode || idsNoRoot.includes(otherNode.id)) continue;
         if (!nodesToRemove.includes(otherNode.id)) nodesToRemove.push(otherNode.id);
         if (!nodesToAdd[otherNode.id]) nodesToAdd[otherNode.id] = {
           ...otherNode
@@ -4000,7 +4001,7 @@ function Screen({
       }
       for (const conn of node.connections.inputs) {
         const otherNode = state.nodes[conn.node];
-        if (!otherNode || ids.includes(otherNode.id)) continue;
+        if (!otherNode || idsNoRoot.includes(otherNode.id)) continue;
         if (!nodesToRemove.includes(otherNode.id)) nodesToRemove.push(otherNode.id);
         if (!nodesToAdd[otherNode.id]) nodesToAdd[otherNode.id] = {
           ...otherNode
@@ -4017,7 +4018,7 @@ function Screen({
       const newNodes = {
         ...((_prev$nodes2 = prev.nodes) !== null && _prev$nodes2 !== void 0 ? _prev$nodes2 : {})
       };
-      nodesToRemove.forEach(id => {
+      nodesToRemove.filter(id => !nodeTypes[state.nodes[id].type].root).forEach(id => {
         delete newNodes[id];
       });
       Object.values(nodesToAdd).forEach(node => {

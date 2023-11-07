@@ -395,6 +395,7 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
   }, [setStateAndNotify])
 
   const removeNodes = useCallback((ids) => {
+    const idsNoRoot = ids.filter(id => !nodeTypes[state.nodes[id].type].root)
     const nodesToRemove = [...ids]
     const nodesToAdd = {}
 
@@ -405,7 +406,7 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
       for(const conn of node.connections.outputs) {
         const otherNode = state.nodes[conn.node]
 
-        if (!otherNode || ids.includes(otherNode.id)) continue
+        if (!otherNode || idsNoRoot.includes(otherNode.id)) continue
 
         if (!nodesToRemove.includes(otherNode.id))
           nodesToRemove.push(otherNode.id)
@@ -420,7 +421,7 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
       for(const conn of node.connections.inputs) {
         const otherNode = state.nodes[conn.node]
 
-        if (!otherNode || ids.includes(otherNode.id)) continue
+        if (!otherNode || idsNoRoot.includes(otherNode.id)) continue
 
         if (!nodesToRemove.includes(otherNode.id))
           nodesToRemove.push(otherNode.id)
@@ -441,7 +442,7 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
         ...(prev.nodes ?? {}),
       }
 
-      nodesToRemove.forEach(id => {
+      nodesToRemove.filter(id => !nodeTypes[state.nodes[id].type].root).forEach(id => {
         delete newNodes[id]
       })
       Object.values(nodesToAdd).forEach(node => {
