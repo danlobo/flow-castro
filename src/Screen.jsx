@@ -18,6 +18,20 @@ import Button from './Button.jsx';
 
 import { i } from './util/i18n.js';
 
+import Icon from '@mdi/react'
+import { 
+  mdiMagnifyPlus, 
+  mdiMagnifyMinus, 
+  mdiSetCenter, 
+  mdiMagnifyScan, 
+  mdiLock, 
+  mdiGrid, 
+  mdiGridOff, 
+  mdiSelectDrag, 
+  mdiCursorMove, 
+  mdiLockOpenVariant 
+} from '@mdi/js'
+
 const defaultI18n = {
   'contextMenu.search': 'Search',
   'contextMenu.add': 'Add {nodeType}',
@@ -497,7 +511,7 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
 
   const [isMoveable, setIsMoveable] = useState(false);
   const [canMove, setCanMove] = useState(true);
-  const [snapToGrid, setSnapToGrid] = useState(false);
+  const [snapToGrid, setSnapToGrid] = useState(true);
 
   const onZoom = useCallback((params) => {
     const _scale = params.state.scale;
@@ -743,8 +757,12 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
             )}
 
               <div className={[css.panel, css.controlsPanelVertical].join(' ')}>
-                <Button className={css.controlButton} onClick={() => zoomIn()}>+</Button>
-                <Button className={css.controlButton} onClick={() => zoomOut()}>-</Button>
+                <Button className={css.controlButton} onClick={() => zoomIn()}>
+                  <Icon path={mdiMagnifyPlus} size={0.6} />
+                </Button>
+                <Button className={css.controlButton} onClick={() => zoomOut()}>
+                <Icon path={mdiMagnifyMinus} size={0.6} />
+                </Button>
                 <Button className={css.controlButton} onClick={() => {
                   centerView();
                   setStateAndNotify(prev => ({
@@ -752,7 +770,10 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
                     position,
                     scale
                   }))
-                }}>C</Button>
+                }}>
+                  <Icon path={mdiSetCenter} size={0.6} />
+
+                </Button>
                 <Button className={css.controlButton} onClick={() => {
                   setTransform(position.x, position.y, 1);
                   setScale(1);
@@ -762,14 +783,22 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
                     position,
                     scale: 1
                   }))
-                }}>Z</Button>
+                }}>
+                  <Icon path={mdiMagnifyScan} size={0.6} />
+                </Button>
                 
-                <Button className={css.controlButton} onClick={() => setCanMove(!canMove)}>{canMove ? 'L' : 'U'}</Button>
+                <Button className={css.controlButton} onClick={() => setCanMove(!canMove)}>
+                  <Icon path={canMove ? mdiLockOpenVariant : mdiLock} size={0.6} />
+                </Button>
               </div>
 
               <div className={[css.panel, css.controlsPanelHorizontal].join(' ')}>
-              <Button className={css.controlButton} onClick={handleSnapToGrid}>Sn{snapToGrid ? 'v' : 'x' }</Button>
-              <Button className={css.controlButton} onClick={handleSelectMode}>Se{selectMode ? 'S' : 'M' }</Button>
+              <Button className={css.controlButton} onClick={handleSnapToGrid}>
+                <Icon path={snapToGrid ? mdiGrid : mdiGridOff} size={0.6} />
+              </Button>
+              <Button className={css.controlButton} onClick={handleSelectMode}>
+                <Icon path={selectMode ? mdiSelectDrag : mdiCursorMove} size={0.6} />
+              </Button>
               </div>
 
               <div className={[css.panel, css.statusPanel].join(' ')}>

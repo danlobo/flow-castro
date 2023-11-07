@@ -130,7 +130,7 @@ function Node({
       backgroundColor: currentTheme?.nodes?.[nodeType?.type]?.title?.background ?? currentTheme?.nodes?.common?.title?.background,
       color: currentTheme?.nodes?.[nodeType?.type]?.title?.color ?? currentTheme?.nodes?.common?.title?.color,
     }}>
-        <h3>{name}</h3>
+        <h3 style={{ textAlign: 'center' }}>{name}</h3>
     </div>
 
     <div className={css.container}>
