@@ -3990,7 +3990,7 @@ function Screen({
       if (!node) continue;
       for (const conn of node.connections.outputs) {
         const otherNode = state.nodes[conn.node];
-        if (!otherNode || ids.includes(otherNode.id)) return;
+        if (!otherNode || ids.includes(otherNode.id)) continue;
         if (!nodesToRemove.includes(otherNode.id)) nodesToRemove.push(otherNode.id);
         if (!nodesToAdd[otherNode.id]) nodesToAdd[otherNode.id] = {
           ...otherNode
@@ -4000,7 +4000,7 @@ function Screen({
       }
       for (const conn of node.connections.inputs) {
         const otherNode = state.nodes[conn.node];
-        if (!otherNode || ids.includes(otherNode.id)) return;
+        if (!otherNode || ids.includes(otherNode.id)) continue;
         if (!nodesToRemove.includes(otherNode.id)) nodesToRemove.push(otherNode.id);
         if (!nodesToAdd[otherNode.id]) nodesToAdd[otherNode.id] = {
           ...otherNode
