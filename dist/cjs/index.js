@@ -2600,9 +2600,7 @@ function Screen({
   React.useEffect(() => {
     const srr = screenRef.current;
     if (!srr) return;
-    const focusHandler = () => {
-      console.log('focus', document.activeElement);
-    };
+    const focusHandler = () => {};
     const keyHandler = e => {
       const inside = screenRef.current === document.activeElement;
       if (!inside) return;
@@ -2879,34 +2877,30 @@ function Screen({
   }, [setStateAndNotify]);
   const removeNodes = React.useCallback(ids => {
     const nodesToRemove = [...ids];
-    const nodesToAdd = [];
+    const nodesToAdd = {};
     for (const nodeId of ids) {
       const node = state.nodes[nodeId];
       if (!node) continue;
-      node.connections.outputs?.forEach(conn => {
+      for (const conn of node.connections.outputs) {
         const otherNode = state.nodes[conn.node];
         if (!otherNode || ids.includes(otherNode.id)) return;
-        nodesToRemove.push(otherNode.id);
-        nodesToAdd.push({
-          ...otherNode,
-          connections: {
-            outputs: otherNode.connections.outputs,
-            inputs: otherNode.connections.inputs.filter(c => !(c.port === conn.name && c.node === node.id))
-          }
-        });
-      });
-      node.connections.inputs?.forEach(conn => {
+        if (!nodesToRemove.includes(otherNode.id)) nodesToRemove.push(otherNode.id);
+        if (!nodesToAdd[otherNode.id]) nodesToAdd[otherNode.id] = {
+          ...otherNode
+        };
+        nodesToAdd[otherNode.id].connections.outputs = [...otherNode.connections.outputs];
+        nodesToAdd[otherNode.id].connections.inputs = otherNode.connections.inputs.filter(c => !(c.port === conn.name && c.node === node.id));
+      }
+      for (const conn of node.connections.inputs) {
         const otherNode = state.nodes[conn.node];
         if (!otherNode || ids.includes(otherNode.id)) return;
-        nodesToRemove.push(otherNode.id);
-        nodesToAdd.push({
-          ...otherNode,
-          connections: {
-            outputs: otherNode.connections.outputs.filter(c => !(c.port === conn.name && c.node === node.id)),
-            inputs: otherNode.connections.inputs
-          }
-        });
-      });
+        if (!nodesToRemove.includes(otherNode.id)) nodesToRemove.push(otherNode.id);
+        if (!nodesToAdd[otherNode.id]) nodesToAdd[otherNode.id] = {
+          ...otherNode
+        };
+        nodesToAdd[otherNode.id].connections.outputs = otherNode.connections.outputs.filter(c => !(c.port === conn.name && c.node === node.id));
+        nodesToAdd[otherNode.id].connections.inputs = [...otherNode.connections.inputs];
+      }
     }
 
     // change nodes to object[id]
@@ -2919,7 +2913,7 @@ function Screen({
       nodesToRemove.forEach(id => {
         delete newNodes[id];
       });
-      nodesToAdd.forEach(node => {
+      Object.values(nodesToAdd).forEach(node => {
         newNodes[node.id] = node;
       });
       return {

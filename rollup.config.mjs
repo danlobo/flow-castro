@@ -56,7 +56,8 @@ const config = [
           "@babel/preset-react", {"runtime": "automatic"}
         ]],
         plugins: ["@babel/plugin-proposal-nullish-coalescing-operator"],
-        exclude: "node_modules/**"
+        exclude: "node_modules/**",
+        sourceMaps: true
       }),
       commonjs(),
       // jsx( {factory: 'React.createElement'} ),
