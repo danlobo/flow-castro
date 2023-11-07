@@ -599,11 +599,11 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
       if (!dstNode.connections.outputs) dstNode.connections.outputs = [];
       if (!dstNode.connections.inputs)  dstNode.connections.inputs = [];
 
-      if (!srcNode.connections.outputs.find(c => c.name === dstPort.name)) {
+      if (!srcNode.connections.outputs.find(c => c.node === dstNode.id && c.name === dstPort.name)) {
         srcNode.connections.outputs.push({ name: srcPort.name, node: dstNode.id, port: dstPort.name, type: srcPort.type });
       }
 
-      if (!dstNode.connections.inputs.find(c => c.name === srcPort.name)) {
+      if (!dstNode.connections.inputs.find(c => c.node === srcNode.id && c.name === srcPort.name)) {
         dstNode.connections.inputs.push({ name: dstPort.name, node: srcNode.id, port: srcPort.name, type: srcPort.type });
       }
 
