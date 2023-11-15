@@ -2268,7 +2268,7 @@ React.forwardRef(function (props, ref) {
 
 var css$2 = {"container":"ConnectorCurve-module_container__pqaPv","path":"ConnectorCurve-module_path__CjFPJ","pathTmp":"ConnectorCurve-module_pathTmp__g4cyl"};
 
-function ConnectorCurve({
+function ConnectorCurveForward({
   type,
   src,
   dst,
@@ -2317,6 +2317,115 @@ function ConnectorCurve({
       onContextMenu: onContextMenu
     })
   });
+}
+function ConnectorCurveBackward({
+  type,
+  src,
+  dst,
+  scale,
+  tmp,
+  onContextMenu,
+  position,
+  index,
+  n1Box,
+  n2Box
+}) {
+  var _currentTheme$connect2;
+  const {
+    currentTheme
+  } = useTheme();
+  if (!src || !dst) {
+    return;
+  }
+  ({
+    x: -(dst.x - src.x) + 5,
+    y: -(dst.y - src.y) + 5
+  });
+  const rect = {
+    x: Math.min(n1Box.x, n2Box.x),
+    y: Math.min(n1Box.y, n2Box.y),
+    width: Math.abs(n2Box.x - n1Box.x) + Math.max(n1Box.w, n2Box.w) / scale,
+    height: Math.abs(n2Box.y - n1Box.y) + Math.max(n1Box.h, n2Box.h) / scale
+  };
+  const offset = 100;
+  const curve = 20;
+  const border = 10;
+  const points = [{
+    x: (n1Box.x > n2Box.x || n2Box.y < n1Box.y ? rect.width : src.x - rect.x - border) + offset + (15 - index) * (offset / 15) + 5,
+    y: src.y - rect.y + offset + 5
+  }, {
+    x: (n1Box.x > n2Box.x || n2Box.y < n1Box.y ? dst.x - rect.x + border : 0) + 5,
+    y: dst.y - rect.y + offset + 5
+  }];
+  const d = `M ${src.x + 10 - rect.x + offset} ${points[0].y}` +
+  // .
+  ` L${points[0].x - curve - border},${points[0].y} Q${points[0].x - border},${points[0].y} ${points[0].x - border},${points[0].y - curve}` +
+  // __
+  ` L${points[0].x - border},${border + curve} Q${points[0].x - border},${border} ${points[0].x - curve - border}, ${border}` +
+  // |
+  ` L${points[1].x + border + curve},${border} Q${points[1].x + border},${border} ${points[1].x + border},${border + curve}` +
+  // --
+  ` L${points[1].x + border},${points[1].y - curve} Q${points[1].x + border},${points[1].y} ${points[1].x + curve + border},${points[1].y}` +
+  // |
+  ` L${dst.x - rect.x + border + offset},${points[1].y}`; // --.
+
+  return /*#__PURE__*/jsx("svg", {
+    style: {
+      transform: `translate(${rect.x - offset}px, ${rect.y - offset}px)`,
+      width: rect.width + offset * 2,
+      height: rect.height + offset * 2,
+      zIndex: tmp ? 1000 : -1
+    },
+    className: css$2.container,
+    children: /*#__PURE__*/jsx("path", {
+      style: {
+        stroke: (_currentTheme$connect2 = currentTheme.connections?.[type?.type]?.color) !== null && _currentTheme$connect2 !== void 0 ? _currentTheme$connect2 : '#ccc',
+        strokeWidth: Math.max(4, 5 * scale)
+      },
+      className: [css$2.path, tmp ? css$2.pathTmp : null].filter(Boolean).join(' '),
+      d: d,
+      onContextMenu: onContextMenu
+    })
+  });
+}
+function ConnectorCurve({
+  type,
+  src,
+  dst,
+  scale,
+  tmp,
+  onContextMenu,
+  position,
+  index,
+  n1Box,
+  n2Box
+}) {
+  if (!src || !dst) {
+    return;
+  }
+  if (src.x < dst.x) {
+    return /*#__PURE__*/jsx(ConnectorCurveForward, {
+      type: type,
+      src: src,
+      dst: dst,
+      scale: scale,
+      tmp: tmp,
+      onContextMenu: onContextMenu
+    });
+  } else {
+    return /*#__PURE__*/jsx(ConnectorCurveBackward, {
+      type: type,
+      src: src,
+      dst: dst,
+      scale: scale,
+      tmp: tmp,
+      onContextMenu: onContextMenu,
+      position: position,
+      index: index,
+      n1Box: n1Box,
+      n2Box: n2Box
+    });
+  }
 }
 
 var css$1 = {"container":"ContextMenu-module_container__kpcIH","contextMenu":"ContextMenu-module_contextMenu__xllaM","contextMenuItemContainer":"ContextMenu-module_contextMenuItemContainer__T7rR2","contextMenuItemLabelContainer":"ContextMenu-module_contextMenuItemLabelContainer__fkrNo","contextMenuItemLabel":"ContextMenu-module_contextMenuItemLabel__IJE3x","contextMenuItemDescription":"ContextMenu-module_contextMenuItemDescription__wVBWj","contextMenuItemSubMenu":"ContextMenu-module_contextMenuItemSubMenu__n6J-S","submenu":"ContextMenu-module_submenu__7UZMP"};
@@ -3774,7 +3883,7 @@ function Screen({
                     valid = false;
                     break;
                   }
-                  if (!node.connections?.inputs || !node.connections?.outputs) {
+                  if (node.connections?.inputs == null || node.connections?.outputs == null) {
                     console.log('invalid node connections', node.connections);
                     valid = false;
                     break;
@@ -4207,8 +4316,8 @@ function Screen({
     excluded: [nodeCss.node, 'react-draggable', nodePortCss.port, nodePortCss.portConnector]
   }), [isMoveable]);
   const wrapperStyle = useMemo(() => ({
-    height: '100vh',
-    width: '100vw',
+    height: '100%',
+    width: '100%',
     backgroundColor: currentTheme.colors.background,
     backgroundSize: `${scaledGridSize}px ${scaledGridSize}px`,
     backgroundImage: `linear-gradient(to right, ${currentTheme.colors.hover} 1px, transparent 1px), linear-gradient(to bottom, ${currentTheme.colors.hover} 1px, transparent 1px)`,
@@ -4575,13 +4684,17 @@ function Screen({
                     const dstNode = connection.node;
                     const dstPort = connection.port;
                     const connType = connection.type;
+                    const srcBox = document.getElementById(`card-${srcNode}`);
+                    const dstBox = document.getElementById(`card-${dstNode}`);
                     const srcElem = document.getElementById(`card-${srcNode}-output-${srcPort}`);
                     const dstElem = document.getElementById(`card-${dstNode}-input-${dstPort}`);
-                    if (!srcElem || !dstElem || !contRect) {
+                    if (!srcElem || !dstElem || !contRect || !srcBox || !dstBox) {
                       return null;
                     }
                     const srcRect = srcElem.getBoundingClientRect();
                     const dstRect = dstElem.getBoundingClientRect();
+                    const srcBoxRect = srcBox.getBoundingClientRect();
+                    const dstBoxRect = dstBox.getBoundingClientRect();
                     const srcPos = {
                       x: (srcRect.x - position.x - contRect.left + srcRect.width / 2) / scale,
                       y: (srcRect.y - position.y - contRect.top + srcRect.height / 2) / scale
@@ -4590,11 +4703,27 @@ function Screen({
                       x: (dstRect.x - position.x - contRect.left + dstRect.width / 2) / scale,
                       y: (dstRect.y - position.y - contRect.top + dstRect.height / 2) / scale
                     };
+                    const box1 = {
+                      x: (srcBoxRect.x - position.x - contRect.left) / scale,
+                      y: (srcBoxRect.y - position.y - contRect.top) / scale,
+                      w: srcBoxRect.width,
+                      h: srcBoxRect.height
+                    };
+                    const box2 = {
+                      x: (dstBoxRect.x - position.x - contRect.left) / scale,
+                      y: (dstBoxRect.y - position.y - contRect.top) / scale,
+                      w: dstBoxRect.width,
+                      h: dstBoxRect.height
+                    };
                     return /*#__PURE__*/jsx(ConnectorCurve, {
                       type: portTypes[connType],
                       src: srcPos,
                       dst: dstPos,
                       scale: scale,
+                      position: position,
+                      n1Box: box1,
+                      n2Box: box2,
+                      index: index,
                       onContextMenu: e => handleContextMenu(e, [canMove ? {
                         label: i(i18n, 'contextMenu.removeThisConnection', {}, 'Remove this connection'),
                         style: {
@@ -4607,7 +4736,7 @@ function Screen({
                     }, `connector-${srcNode}-${srcPort}-${dstNode}-${dstPort}`);
                   })]
                 });
-              }), dragInfo && dstDragPosition ? /*#__PURE__*/jsx(ConnectorCurve, {
+              }), dragInfo && dstDragPosition ? /*#__PURE__*/jsx(ConnectorCurveForward, {
                 tmp: true,
                 src: {
                   x: (dragInfo.startX - contRect.left - position.x + PORT_SIZE / 2 - 2) / scale,

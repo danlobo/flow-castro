@@ -6,7 +6,7 @@ import {
 } from "react-zoom-pan-pinch";
 import { useDragContext } from './DragContext.jsx';
 import { useScreenContext } from './ScreenContext.jsx';
-import { ConnectorCurve } from './ConnectorCurve.jsx';
+import { ConnectorCurve, ConnectorCurveForward } from './ConnectorCurve.jsx';
 import { ContextMenu } from './ContextMenu.jsx';
 import { nanoid } from 'nanoid';
 import css from './Screen.module.css';
@@ -191,7 +191,7 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
                     break
                   }
 
-                  if (!node.connections?.inputs || !node.connections?.outputs) {
+                  if (node.connections?.inputs == null || node.connections?.outputs == null) {
                     console.log('invalid node connections', node.connections)
                     valid = false
                     break
@@ -629,8 +629,8 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
   }), [isMoveable])
 
   const wrapperStyle = useMemo(() => ({
-    height: '100vh', 
-    width: '100vw',
+    height: '100%', 
+    width: '100%',
     backgroundColor: currentTheme.colors.background,
     backgroundSize: `${scaledGridSize}px ${scaledGridSize}px`,
     backgroundImage: `linear-gradient(to right, ${currentTheme.colors.hover} 1px, transparent 1px), linear-gradient(to bottom, ${currentTheme.colors.hover} 1px, transparent 1px)`,
@@ -965,15 +965,21 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
                             const dstPort = connection.port
                             const connType = connection.type
 
+                            const srcBox = document.getElementById(`card-${srcNode}`)
+                            const dstBox = document.getElementById(`card-${dstNode}`)
+
                             const srcElem = document.getElementById(`card-${srcNode}-output-${srcPort}`);
                             const dstElem = document.getElementById(`card-${dstNode}-input-${dstPort}`);
 
-                            if (!srcElem || !dstElem || !contRect) {
+                            if (!srcElem || !dstElem || !contRect || !srcBox || !dstBox) {
                               return null;
                             }
 
                             const srcRect = srcElem.getBoundingClientRect();
                             const dstRect = dstElem.getBoundingClientRect();
+
+                            const srcBoxRect = srcBox.getBoundingClientRect();
+                            const dstBoxRect = dstBox.getBoundingClientRect();
                       
                             const srcPos = {
                               x: (srcRect.x - position.x - contRect.left + srcRect.width / 2) / scale,
@@ -985,12 +991,30 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
                               y: (dstRect.y - position.y - contRect.top + dstRect.height / 2) / scale
                             }
 
+                            const box1 = {
+                              x: (srcBoxRect.x - position.x - contRect.left) / scale,
+                              y: (srcBoxRect.y - position.y - contRect.top) / scale,
+                              w: srcBoxRect.width,
+                              h: srcBoxRect.height
+                            }
+
+                            const box2 = {
+                              x: (dstBoxRect.x - position.x - contRect.left) / scale,
+                              y: (dstBoxRect.y - position.y - contRect.top) / scale,
+                              w: dstBoxRect.width,
+                              h: dstBoxRect.height
+                            }
+
                             return <ConnectorCurve
                               key={`connector-${srcNode}-${srcPort}-${dstNode}-${dstPort}`}
                               type={portTypes[connType]}
                               src={srcPos}
                               dst={dstPos}
                               scale={scale}
+                              position={position}
+                              n1Box={box1}
+                              n2Box={box2}
+                              index={index}
                               onContextMenu={(e) => handleContextMenu(e, [
                                 canMove ? {
                                   label: i(i18n, 'contextMenu.removeThisConnection', {}, 'Remove this connection'), 
@@ -1006,7 +1030,7 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
                       )
                     })}
 
-                    {dragInfo && dstDragPosition ? <ConnectorCurve tmp src={{
+                    {dragInfo && dstDragPosition ? <ConnectorCurveForward tmp src={{
                       x: (dragInfo.startX - contRect.left - position.x + (PORT_SIZE / 2) - 2) / scale,
                       y: (dragInfo.startY - contRect.top - position.y + (PORT_SIZE / 2) - 2) / scale
                     }}
