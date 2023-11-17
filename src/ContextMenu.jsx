@@ -43,7 +43,7 @@ const ContextMenuList = ({ isFiltered, options, onSelectOption, style }) => {
 
   return (
     <ul className={css.contextMenu} style={style}>
-      {options?.filter(isFiltered)?.map((option, index) => {
+      {options?.filter(isFiltered)?.sort((a,b) => a.label.localeCompare(b.label))?.map((option, index) => {
         if (option.separator === true)
           return <li key={`${option.id}-${index}`} ><hr /></li>
 

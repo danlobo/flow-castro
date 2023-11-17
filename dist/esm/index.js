@@ -2474,7 +2474,7 @@ const ContextMenuList = ({
   return /*#__PURE__*/jsx("ul", {
     className: css$1.contextMenu,
     style: style,
-    children: options?.filter(isFiltered)?.map((option, index) => {
+    children: options?.filter(isFiltered)?.sort((a, b) => a.label.localeCompare(b.label))?.map((option, index) => {
       if (option.separator === true) return /*#__PURE__*/jsx("li", {
         children: /*#__PURE__*/jsx("hr", {})
       }, `${option.id}-${index}`);
