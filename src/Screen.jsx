@@ -411,26 +411,35 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
         if (!nodesToRemove.includes(otherNode.id))
           nodesToRemove.push(otherNode.id)
 
-        if (!nodesToAdd[otherNode.id])
-          nodesToAdd[otherNode.id] = { ...otherNode }
-
-        nodesToAdd[otherNode.id].connections.outputs = [...otherNode.connections.outputs]
-        nodesToAdd[otherNode.id].connections.inputs = otherNode.connections.inputs.filter(c => !(c.port === conn.name && c.node === node.id))
+        if (!nodesToAdd[otherNode.id]){
+          nodesToAdd[otherNode.id] = { 
+            ...otherNode, 
+            connections: {
+              ...otherNode.connections,
+              inputs: otherNode.connections?.inputs ?? [], 
+              outputs: otherNode.connections?.outputs ?? []
+            }
+          }
+        }
+        nodesToAdd[otherNode.id].connections.outputs = [...(otherNode.connections.outputs ?? [])]
+        nodesToAdd[otherNode.id].connections.inputs = otherNode.connections?.inputs?.filter(c => !(c.port === conn.name && c.node === node.id)) ?? []
       }
 
-      for(const conn of node.connections.inputs) {
-        const otherNode = state.nodes[conn.node]
+      if (node.connections?.inputs?.length) {
+        for(const conn of node.connections.inputs) {
+          const otherNode = state.nodes[conn.node]
 
-        if (!otherNode || idsNoRoot.includes(otherNode.id)) continue
+          if (!otherNode || idsNoRoot.includes(otherNode.id)) continue
 
-        if (!nodesToRemove.includes(otherNode.id))
-          nodesToRemove.push(otherNode.id)
+          if (!nodesToRemove.includes(otherNode.id))
+            nodesToRemove.push(otherNode.id)
 
-        if (!nodesToAdd[otherNode.id])
-          nodesToAdd[otherNode.id] = { ...otherNode }
+          if (!nodesToAdd[otherNode.id])
+            nodesToAdd[otherNode.id] = { ...otherNode }
 
-        nodesToAdd[otherNode.id].connections.outputs = otherNode.connections.outputs.filter(c => !(c.port === conn.name && c.node === node.id))
-        nodesToAdd[otherNode.id].connections.inputs = [...otherNode.connections.inputs]
+          nodesToAdd[otherNode.id].connections.outputs = otherNode.connections?.outputs?.filter(c => !(c.port === conn.name && c.node === node.id)) ?? []
+          nodesToAdd[otherNode.id].connections.inputs = [...(otherNode.connections.inputs ?? [])]
+        }
       }
     }
 
@@ -591,13 +600,13 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
       if (srcPort.type !== dstPort.type) return;
 
       if (!srcNode.connections)   srcNode.connections = {};
-      if (!srcNode.connections.outputs) srcNode.connections.outputs = [];
-      if (!srcNode.connections.inputs)  srcNode.connections.inputs = [];
+      if (!srcNode.connections?.outputs) srcNode.connections.outputs = [];
+      if (!srcNode.connections?.inputs)  srcNode.connections.inputs = [];
 
 
       if (!dstNode.connections)   dstNode.connections = {};
-      if (!dstNode.connections.outputs) dstNode.connections.outputs = [];
-      if (!dstNode.connections.inputs)  dstNode.connections.inputs = [];
+      if (!dstNode.connections?.outputs) dstNode.connections.outputs = [];
+      if (!dstNode.connections?.inputs)  dstNode.connections.inputs = [];
 
       if (!srcNode.connections.outputs.find(c => c.node === dstNode.id && c.name === dstPort.name)) {
         srcNode.connections.outputs.push({ name: srcPort.name, node: dstNode.id, port: dstPort.name, type: srcPort.type });

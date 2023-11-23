@@ -4101,24 +4101,36 @@ function Screen({
       const node = state.nodes[nodeId];
       if (!node) continue;
       for (const conn of node.connections.outputs) {
+        var _otherNode$connection3, _otherNode$connection4;
         const otherNode = state.nodes[conn.node];
         if (!otherNode || idsNoRoot.includes(otherNode.id)) continue;
         if (!nodesToRemove.includes(otherNode.id)) nodesToRemove.push(otherNode.id);
-        if (!nodesToAdd[otherNode.id]) nodesToAdd[otherNode.id] = {
-          ...otherNode
-        };
-        nodesToAdd[otherNode.id].connections.outputs = [...otherNode.connections.outputs];
-        nodesToAdd[otherNode.id].connections.inputs = otherNode.connections.inputs.filter(c => !(c.port === conn.name && c.node === node.id));
+        if (!nodesToAdd[otherNode.id]) {
+          var _otherNode$connection, _otherNode$connection2;
+          nodesToAdd[otherNode.id] = {
+            ...otherNode,
+            connections: {
+              ...otherNode.connections,
+              inputs: (_otherNode$connection = otherNode.connections?.inputs) !== null && _otherNode$connection !== void 0 ? _otherNode$connection : [],
+              outputs: (_otherNode$connection2 = otherNode.connections?.outputs) !== null && _otherNode$connection2 !== void 0 ? _otherNode$connection2 : []
+            }
+          };
+        }
+        nodesToAdd[otherNode.id].connections.outputs = [...((_otherNode$connection3 = otherNode.connections.outputs) !== null && _otherNode$connection3 !== void 0 ? _otherNode$connection3 : [])];
+        nodesToAdd[otherNode.id].connections.inputs = (_otherNode$connection4 = otherNode.connections?.inputs?.filter(c => !(c.port === conn.name && c.node === node.id))) !== null && _otherNode$connection4 !== void 0 ? _otherNode$connection4 : [];
       }
-      for (const conn of node.connections.inputs) {
-        const otherNode = state.nodes[conn.node];
-        if (!otherNode || idsNoRoot.includes(otherNode.id)) continue;
-        if (!nodesToRemove.includes(otherNode.id)) nodesToRemove.push(otherNode.id);
-        if (!nodesToAdd[otherNode.id]) nodesToAdd[otherNode.id] = {
-          ...otherNode
-        };
-        nodesToAdd[otherNode.id].connections.outputs = otherNode.connections.outputs.filter(c => !(c.port === conn.name && c.node === node.id));
-        nodesToAdd[otherNode.id].connections.inputs = [...otherNode.connections.inputs];
+      if (node.connections?.inputs?.length) {
+        for (const conn of node.connections.inputs) {
+          var _otherNode$connection5, _otherNode$connection6;
+          const otherNode = state.nodes[conn.node];
+          if (!otherNode || idsNoRoot.includes(otherNode.id)) continue;
+          if (!nodesToRemove.includes(otherNode.id)) nodesToRemove.push(otherNode.id);
+          if (!nodesToAdd[otherNode.id]) nodesToAdd[otherNode.id] = {
+            ...otherNode
+          };
+          nodesToAdd[otherNode.id].connections.outputs = (_otherNode$connection5 = otherNode.connections?.outputs?.filter(c => !(c.port === conn.name && c.node === node.id))) !== null && _otherNode$connection5 !== void 0 ? _otherNode$connection5 : [];
+          nodesToAdd[otherNode.id].connections.inputs = [...((_otherNode$connection6 = otherNode.connections.inputs) !== null && _otherNode$connection6 !== void 0 ? _otherNode$connection6 : [])];
+        }
       }
     }
 
@@ -4278,11 +4290,11 @@ function Screen({
       const dstPort = nodeTypes[dstNode.type].inputs(dstNode.values).find(p => p.name === item.dstPort);
       if (srcPort.type !== dstPort.type) return;
       if (!srcNode.connections) srcNode.connections = {};
-      if (!srcNode.connections.outputs) srcNode.connections.outputs = [];
-      if (!srcNode.connections.inputs) srcNode.connections.inputs = [];
+      if (!srcNode.connections?.outputs) srcNode.connections.outputs = [];
+      if (!srcNode.connections?.inputs) srcNode.connections.inputs = [];
       if (!dstNode.connections) dstNode.connections = {};
-      if (!dstNode.connections.outputs) dstNode.connections.outputs = [];
-      if (!dstNode.connections.inputs) dstNode.connections.inputs = [];
+      if (!dstNode.connections?.outputs) dstNode.connections.outputs = [];
+      if (!dstNode.connections?.inputs) dstNode.connections.inputs = [];
       if (!srcNode.connections.outputs.find(c => c.node === dstNode.id && c.name === dstPort.name)) {
         srcNode.connections.outputs.push({
           name: srcPort.name,
