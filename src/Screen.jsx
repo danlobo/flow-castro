@@ -41,7 +41,7 @@ const defaultI18n = {
   'contextMenu.removeThisConnection': 'Remove this connection',
 }
 
-function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defaultI18n }) {
+function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defaultI18n, debugMode }) {
 
 
   const { currentTheme } = useTheme()
@@ -220,18 +220,40 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
 
                 console.log('positioning', pointerPosition, x, y, position)
 
-                const nodes = jsonNodes.map(node => ({
-                  ...node,
-                  id: nanoid(),
-                  position: {
-                    x: node.position.x - delta.x + pos.x,
-                    y: node.position.y - delta.y + pos.y
-                  },
-                  connections: {
-                    inputs: [],
-                    outputs: []
+                const idsDict = {}
+
+                const nodes = jsonNodes.map(node => {
+                  const oldId = node.id
+                  const newId = nanoid()
+
+                  idsDict[oldId] = newId
+
+                  return ({
+                    ...node,
+                    id: newId,
+                    position: {
+                      x: node.position.x - delta.x + pos.x,
+                      y: node.position.y - delta.y + pos.y
+                    },
+                    connections: {
+                      inputs: node.connections?.inputs?.filter(conn => jsonNodes.find(it => it.id === conn.node)),
+                      outputs: node.connections?.outputs?.filter(conn => jsonNodes.find(it => it.id === conn.node))
+                    }
+                  })
+                })
+
+                for(const node of nodes) {
+                  if (node.connections?.inputs) {
+                    for(const conn of node.connections.inputs) {
+                      conn.node = idsDict[conn.node]
+                    }
                   }
-                }))
+                  if (node.connections?.outputs) {
+                    for(const conn of node.connections.outputs) {
+                      conn.node = idsDict[conn.node]
+                    }
+                  }
+                }
 
                 setStateAndNotify(prev => ({
                   ...prev,
@@ -382,7 +404,12 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
       name: nodeType.label,
       type: nodeType.type,
       position: pos,
-      values: {}
+      values: nodeType.inputs().reduce((acc, input) => {
+        if (input.defaultValue == null) return acc
+
+        acc[input.name] = input.defaultValue
+        return acc
+      }, {}),
     }
 
     setStateAndNotify(prev => ({
@@ -731,7 +758,7 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
         initialPositionX={state?.position?.x ?? 0}
         initialPositionY={state?.position?.y ?? 0}
         disabled={isMoveable}
-        minScale={.25}
+        minScale={.1}
         maxScale={2}
         limitToBounds={false}
         onPanning={onTransform}
@@ -832,6 +859,7 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
                             name={node.name}
                             portTypes={portTypes}
                             nodeType={nodeTypes?.[node.type]}
+                            debugMode={debugMode}
                             value={node}
                             isSelected={selectedNodes.includes(node.id)}
                             onValueChange={(v) => {

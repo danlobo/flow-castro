@@ -364,25 +364,6 @@ var NodePort$1 = /*#__PURE__*/memo(NodePort);
 
 var nodeCss = {"node":"Node-module_node__yVhqG","selected":"Node-module_selected__bA-o1","title":"Node-module_title__IkogO","container":"Node-module_container__PfJft","portsContainer":"Node-module_portsContainer__3s5BH","inputPortsContainer":"Node-module_inputPortsContainer__FPkYh","outputPortsContainer":"Node-module_outputPortsContainer__qYiul"};
 
-const Button = ({
-  children,
-  ...props
-}) => {
-  const {
-    currentTheme
-  } = useTheme();
-  return /*#__PURE__*/jsx("button", {
-    ...props,
-    style: {
-      backgroundColor: currentTheme.buttons.default.backgroundColor,
-      border: currentTheme.buttons.default.border,
-      color: currentTheme.buttons.default.color,
-      borderRadius: currentTheme.roundness
-    },
-    children: children
-  });
-};
-
 function Node({
   name,
   portTypes,
@@ -397,7 +378,8 @@ function Node({
   containerRef,
   onContextMenu,
   onResize,
-  onValueChange
+  onValueChange,
+  debugMode
 }) {
   var _currentTheme$nodes$n, _currentTheme$nodes$n2, _currentTheme$nodes$n3, _currentTheme$nodes$n4, _currentTheme$nodes$n5;
   const {
@@ -489,6 +471,21 @@ function Node({
     if (typeof nodeType.inputs === 'function') return nodeType.inputs(nodeValues);
     return nodeType.inputs;
   }, [nodeType, nodeValues]);
+  useEffect(() => {
+    if (nodeInputs == null) return;
+    if (nodeValues == null) return;
+    const extraValues = Object.keys(nodeValues).filter(key => !nodeInputs.some(input => input.name === key));
+    if (extraValues.length > 0) {
+      const newValues = Object.keys(nodeValues).filter(key => !extraValues.includes(key)).reduce((acc, key) => {
+        acc[key] = nodeValues[key];
+        return acc;
+      }, {});
+      onValueChange?.({
+        ...value,
+        values: newValues
+      });
+    }
+  }, [nodeInputs]);
   const nodeOutputs = useMemo(() => {
     if (typeof nodeType.outputs === 'function') return nodeType.outputs(nodeValues);
     return nodeType.outputs;
@@ -516,7 +513,7 @@ function Node({
         style: {
           textAlign: 'center'
         },
-        children: name
+        children: debugMode ? nodeId : name
       })
     }), /*#__PURE__*/jsxs("div", {
       className: nodeCss.container,
@@ -2623,6 +2620,25 @@ let nanoid = (size = 21) =>
 
 var css = {"container":"Screen-module_container__zkIN3","panel":"Screen-module_panel__P8WaY","controlsPanelVertical":"Screen-module_controlsPanelVertical__-1YKq","controlsPanelHorizontal":"Screen-module_controlsPanelHorizontal__LSyOH","statusPanel":"Screen-module_statusPanel__9lLEm","controlButton":"Screen-module_controlButton__mTn3T"};
 
+const Button = ({
+  children,
+  ...props
+}) => {
+  const {
+    currentTheme
+  } = useTheme();
+  return /*#__PURE__*/jsx("button", {
+    ...props,
+    style: {
+      backgroundColor: currentTheme.buttons.default.backgroundColor,
+      border: currentTheme.buttons.default.border,
+      color: currentTheme.buttons.default.color,
+      borderRadius: currentTheme.roundness
+    },
+    children: children
+  });
+};
+
 function getDefaultExportFromCjs (x) {
 	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
 }
@@ -3742,7 +3758,8 @@ function Screen({
   nodeTypes,
   onChangeState,
   initialState,
-  i18n = defaultI18n
+  i18n = defaultI18n,
+  debugMode
 }) {
   var _position$x, _position$y, _state$scale, _state$position$x, _state$position$y;
   const {
@@ -3910,18 +3927,36 @@ function Screen({
                   y: (pointerPosition.y - y - position.y) / scale
                 };
                 console.log('positioning', pointerPosition, x, y, position);
-                const nodes = jsonNodes.map(node => ({
-                  ...node,
-                  id: nanoid(),
-                  position: {
-                    x: node.position.x - delta.x + pos.x,
-                    y: node.position.y - delta.y + pos.y
-                  },
-                  connections: {
-                    inputs: [],
-                    outputs: []
+                const idsDict = {};
+                const nodes = jsonNodes.map(node => {
+                  const oldId = node.id;
+                  const newId = nanoid();
+                  idsDict[oldId] = newId;
+                  return {
+                    ...node,
+                    id: newId,
+                    position: {
+                      x: node.position.x - delta.x + pos.x,
+                      y: node.position.y - delta.y + pos.y
+                    },
+                    connections: {
+                      inputs: node.connections?.inputs?.filter(conn => jsonNodes.find(it => it.id === conn.node)),
+                      outputs: node.connections?.outputs?.filter(conn => jsonNodes.find(it => it.id === conn.node))
+                    }
+                  };
+                });
+                for (const node of nodes) {
+                  if (node.connections?.inputs) {
+                    for (const conn of node.connections.inputs) {
+                      conn.node = idsDict[conn.node];
+                    }
                   }
-                }));
+                  if (node.connections?.outputs) {
+                    for (const conn of node.connections.outputs) {
+                      conn.node = idsDict[conn.node];
+                    }
+                  }
+                }
                 setStateAndNotify(prev => ({
                   ...prev,
                   nodes: {
@@ -4078,7 +4113,11 @@ function Screen({
       name: nodeType.label,
       type: nodeType.type,
       position: pos,
-      values: {}
+      values: nodeType.inputs().reduce((acc, input) => {
+        if (input.defaultValue == null) return acc;
+        acc[input.name] = input.defaultValue;
+        return acc;
+      }, {})
     };
     setStateAndNotify(prev => {
       var _prev$nodes;
@@ -4421,7 +4460,7 @@ function Screen({
       initialPositionX: (_state$position$x = state?.position?.x) !== null && _state$position$x !== void 0 ? _state$position$x : 0,
       initialPositionY: (_state$position$y = state?.position?.y) !== null && _state$position$y !== void 0 ? _state$position$y : 0,
       disabled: isMoveable,
-      minScale: .25,
+      minScale: .1,
       maxScale: 2,
       limitToBounds: false,
       onPanning: onTransform,
@@ -4557,6 +4596,7 @@ function Screen({
                     name: node.name,
                     portTypes: portTypes,
                     nodeType: nodeTypes?.[node.type],
+                    debugMode: debugMode,
                     value: node,
                     isSelected: selectedNodes.includes(node.id),
                     onValueChange: v => {

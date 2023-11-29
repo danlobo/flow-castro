@@ -3,7 +3,6 @@ import NodePort from './NodePort.jsx';
 import { useScreenContext } from './ScreenContext.jsx';
 import css from './Node.module.css'
 import { useTheme } from './ThemeProvider.js';
-import Button from './Button.jsx';
 
 function Node({ 
   name, 
@@ -19,7 +18,8 @@ function Node({
   containerRef, 
   onContextMenu,
   onResize,
-  onValueChange
+  onValueChange,
+  debugMode
 }) {
   const { currentTheme } = useTheme()
 
@@ -105,6 +105,25 @@ function Node({
     return nodeType.inputs
   }, [nodeType, nodeValues]);
 
+
+  useEffect(() => {
+    if (nodeInputs == null) return
+    if (nodeValues == null) return
+
+    const extraValues = Object.keys(nodeValues).filter((key) => !nodeInputs.some((input) => input.name === key))
+    if (extraValues.length > 0) {
+      const newValues = Object.keys(nodeValues).filter((key) => !extraValues.includes(key)).reduce((acc, key) => {
+        acc[key] = nodeValues[key]
+        return acc
+      }, {})
+
+      onValueChange?.({
+        ...value,
+        values: newValues
+      })
+    }
+  }, [nodeInputs])
+
   const nodeOutputs = useMemo(() => {
     if (typeof nodeType.outputs === 'function')
       return nodeType.outputs(nodeValues)
@@ -130,7 +149,7 @@ function Node({
       backgroundColor: currentTheme?.nodes?.[nodeType?.type]?.title?.background ?? currentTheme?.nodes?.common?.title?.background,
       color: currentTheme?.nodes?.[nodeType?.type]?.title?.color ?? currentTheme?.nodes?.common?.title?.color,
     }}>
-        <h3 style={{ textAlign: 'center' }}>{name}</h3>
+        <h3 style={{ textAlign: 'center' }}>{debugMode ? nodeId : name}</h3>
     </div>
 
     <div className={css.container}>
