@@ -171,7 +171,7 @@ function NodePort({
           data-port-connector-direction={direction}
           data-port-connector-connected={Boolean(isConnected)}
           style={{
-            background: currentTheme.ports?.[type?.type ?? 'default']?.color ?? currentTheme.ports?.default?.color ?? currentTheme.colors.background,
+            background: currentTheme.ports?.[type?.type ?? 'default']?.color ?? currentTheme.ports?.default?.color ?? currentTheme.colors.primary,
             left: direction === 'input' ? 'calc( var(--port-size) * -1 - 4px )' : null,
             right: direction === 'output' ? 'calc( var(--port-size) * -1 - 4px )' : null,
           }}

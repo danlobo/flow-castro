@@ -13,6 +13,7 @@ import css from './Screen.module.css';
 
 import nodeCss from './Node.module.css'
 import nodePortCss from './NodePort.module.css'
+import commentCss from './Comment.module.css'
 import { useTheme } from './ThemeProvider.js';
 import Button from './Button.jsx';
 
@@ -31,6 +32,7 @@ import {
   mdiCursorMove, 
   mdiLockOpenVariant 
 } from '@mdi/js'
+import Comment from './Comment.jsx';
 
 const defaultI18n = {
   'contextMenu.search': 'Search',
@@ -43,6 +45,16 @@ const defaultI18n = {
 
 function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defaultI18n, debugMode }) {
 
+  const internalCommentType = {
+    label: i(i18n, 'contextMenu.comment.label', {}, 'Comment'),
+    type: 'comment',
+    inputs: () => [],
+    outputs: () => [],
+  }
+
+  if (nodeTypes) {
+    nodeTypes.comment = internalCommentType
+  }
 
   const { currentTheme } = useTheme()
 
@@ -430,26 +442,28 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
       const node = state.nodes[nodeId]
       if (!node)  continue
 
-      for(const conn of node.connections.outputs) {
-        const otherNode = state.nodes[conn.node]
+      if (node.connections?.outputs?.length) {
+        for(const conn of node.connections.outputs) {
+          const otherNode = state.nodes[conn.node]
 
-        if (!otherNode || idsNoRoot.includes(otherNode.id)) continue
+          if (!otherNode || idsNoRoot.includes(otherNode.id)) continue
 
-        if (!nodesToRemove.includes(otherNode.id))
-          nodesToRemove.push(otherNode.id)
+          if (!nodesToRemove.includes(otherNode.id))
+            nodesToRemove.push(otherNode.id)
 
-        if (!nodesToAdd[otherNode.id]){
-          nodesToAdd[otherNode.id] = { 
-            ...otherNode, 
-            connections: {
-              ...otherNode.connections,
-              inputs: otherNode.connections?.inputs ?? [], 
-              outputs: otherNode.connections?.outputs ?? []
+          if (!nodesToAdd[otherNode.id]){
+            nodesToAdd[otherNode.id] = { 
+              ...otherNode, 
+              connections: {
+                ...otherNode.connections,
+                inputs: otherNode.connections?.inputs ?? [], 
+                outputs: otherNode.connections?.outputs ?? []
+              }
             }
           }
+          nodesToAdd[otherNode.id].connections.outputs = [...(otherNode.connections.outputs ?? [])]
+          nodesToAdd[otherNode.id].connections.inputs = otherNode.connections?.inputs?.filter(c => !(c.port === conn.name && c.node === node.id)) ?? []
         }
-        nodesToAdd[otherNode.id].connections.outputs = [...(otherNode.connections.outputs ?? [])]
-        nodesToAdd[otherNode.id].connections.inputs = otherNode.connections?.inputs?.filter(c => !(c.port === conn.name && c.node === node.id)) ?? []
       }
 
       if (node.connections?.inputs?.length) {
@@ -661,7 +675,7 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
   }), [])
   const panningOptions = useMemo(() => ({
     disabled: isMoveable,
-    excluded: [nodeCss.node, 'react-draggable', nodePortCss.port, nodePortCss.portConnector]
+    excluded: [nodeCss.node, 'react-draggable', nodePortCss.port, nodePortCss.portConnector, commentCss.container, commentCss.moveHandler]
   }), [isMoveable])
 
   const wrapperStyle = useMemo(() => ({
@@ -690,6 +704,23 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
     }))
   }, [nodeTypes])
 
+  const cmMenu = (e) => ({
+    label: i(i18n, 'contextMenu.addComment.label', {}, 'Add comment'),
+    description: i(i18n, 'contextMenu.addComment.description', {}, 'Add a comment to the screen'),
+    onClick: () => {
+      const rect = e.target.getBoundingClientRect();
+      console.log('rect', rect, position, scale)
+
+      const { x, y } = rect
+
+      const _position = {
+        x: (e.clientX - position.x - x) / scale,
+        y: (e.clientY - position.y - y) / scale
+      }
+      addNode(internalCommentType, _position);
+    }
+  })
+
   const wrapperProps = useCallback((handleContextMenu) => ({
     onDragOver: (e) => {
       e.dataTransfer.dropEffect = "move";
@@ -699,15 +730,17 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
       e.preventDefault();
       e.stopPropagation();
     },
-    onContextMenu: (e) => handleContextMenu(e, nodeTypesByCategory
+    onContextMenu: (e) => handleContextMenu(e, [...nodeTypesByCategory
       .map(({ category, nodeTypes }) => ({
         label: category,
-        children: nodeTypes.filter(t => !t.root).sort((a,b) => a.label.localeCompare(b.label)).map(nodeType => ({
+        children: nodeTypes.filter(t => !t.root && t.type !== internalCommentType.type).sort((a,b) => a.label.localeCompare(b.label)).map(nodeType => ({
           label: i(i18n, 'contextMenu.add', {nodeType: nodeType.label}, 'Add ' + nodeType.label),
           description: nodeType.description,
           onClick: () => {
-            const { x, y } = e.target.getBoundingClientRect();
-            console.log(position)
+            const rect = e.target.getBoundingClientRect();
+            console.log('rect', rect, position, scale)
+            const { x, y } = rect
+            
             const _position = {
               x: (e.clientX - position.x - x) / scale,
               y: (e.clientY - position.y - y) / scale
@@ -716,7 +749,7 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
           }
         }))
       }))
-    ),
+    , cmMenu(e)]),
     onMouseDown: selectMode ? handleMouseDown : null,
     onClick: (e) => {
       if (e.target === wrapperRef.current.instance.wrapperComponent) screenRef.current.focus({ preventScroll: true });
@@ -851,6 +884,165 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
                     >
                     {state?.nodes && Object.values(state.nodes).map((node, index) => {
                       const nodeDef = nodeTypes[node.type]
+
+                      if (node.type === 'comment')
+                        return <Comment
+                          nodeId={node.id}
+                          text={node.value}
+                          title={node.title}
+                          onChangeText={(value) => {
+                            setStateAndNotify(prev => ({
+                              ...prev,
+                              nodes: {
+                                ...prev.nodes,
+                                [node.id]: {
+                                  ...prev.nodes[node.id],
+                                  value
+                                }
+                              }
+                            }))
+                          }}
+                          onChangeTitle={(title) => {
+                            setStateAndNotify(prev => ({
+                              ...prev,
+                              nodes: {
+                                ...prev.nodes,
+                                [node.id]: {
+                                  ...prev.nodes[node.id],
+                                  title
+                                }
+                              }
+                            }))
+                          }}
+                          key={node.id}
+                          id={node.id}
+                          position={node.position}
+                          size={node.size}
+                          onResize={(size) => {
+                            if (snapToGrid) {
+                              size.w = Math.round(size.w / gridSize) * gridSize;
+                              size.h = Math.round(size.h / gridSize) * gridSize;
+                            }
+
+                            setStateAndNotify(prev => ({
+                              ...prev,
+                              nodes: {
+                                ...prev.nodes,
+                                [node.id]: {
+                                  ...prev.nodes[node.id],
+                                  size
+                                }
+                              }
+                            }))
+                          }}
+                          onMove={(position) => {
+                            const pos = { ...position }
+
+                            const _selectedNodes = selectedNodes
+                            if (!_selectedNodes.includes(node.id))
+                              _selectedNodes.length = 0
+                            setSelectedNodes(_selectedNodes)
+
+                            setState(prev => ({
+                              ...prev,
+                              nodes: Object.values(prev.nodes).reduce((acc, n) => {
+                                const delta = {
+                                  x: pos.x - prev.nodes[node.id].position.x,
+                                  y: pos.y - prev.nodes[node.id].position.y
+                                }
+  
+                                if (snapToGrid) {
+                                  pos.x = Math.round(pos.x / gridSize) * gridSize;
+                                  pos.y = Math.round(pos.y / gridSize) * gridSize;
+                                  delta.x = pos.x - prev.nodes[node.id].position.x
+                                  delta.y = pos.y - prev.nodes[node.id].position.y
+                                }
+
+                                if (n.id === node.id) {
+                                  acc[n.id] = {
+                                    ...n,
+                                    position: pos,
+                                  }
+                                } else if (_selectedNodes.includes(n.id)) {
+                                  acc[n.id] = {
+                                    ...n,
+                                    position: {
+                                      x: n.position.x + delta.x,
+                                      y: n.position.y + delta.y
+                                    }
+                                  }
+                                } else {
+                                  acc[n.id] = n
+                                }
+                                return acc
+                              }, {})
+                            }))
+                          }}
+                          onMoveEnd={(position) => {
+                            const pos = { ...position }
+                              
+                              const _selectedNodes = selectedNodes
+                              if (!_selectedNodes.includes(node.id))
+                                _selectedNodes.length = 0
+                              setSelectedNodes(_selectedNodes)
+
+                              setStateAndNotify(prev => ({
+                                ...prev,
+                                nodes: Object.values(prev.nodes).reduce((acc, n) => {
+                                  const delta = {
+                                    x: pos.x - prev.nodes[node.id].position.x,
+                                    y: pos.y - prev.nodes[node.id].position.y
+                                  }
+    
+                                  if (snapToGrid) {
+                                    pos.x = Math.round(pos.x / gridSize) * gridSize;
+                                    pos.y = Math.round(pos.y / gridSize) * gridSize;
+                                    delta.x = pos.x - prev.nodes[node.id].position.x
+                                    delta.y = pos.y - prev.nodes[node.id].position.y
+                                  }
+
+                                  if (n.id === node.id) {
+                                    acc[n.id] = {
+                                      ...n,
+                                      position: pos,
+                                    }
+                                  } else if (_selectedNodes.includes(n.id)) {
+                                    acc[n.id] = {
+                                      ...n,
+                                      position: {
+                                        x: n.position.x + delta.x,
+                                        y: n.position.y + delta.y
+                                      }
+                                    }
+                                  } else {
+                                    acc[n.id] = n
+                                  }
+                                  return acc
+                                }, {})
+                              }))
+                          }}
+                          onContextMenu={(e) => handleContextMenu(e, [
+                            { label: i(i18n, 'contextMenu.cloneThisComment', {}, 'Clone this comment'), onClick: () => {
+                              cloneNode(node.id)
+                            }}, 
+                            { 
+                              label: i(i18n, 'contextMenu.removeThisComment', {}, 'Remove this comment'), 
+                              style: { color: 'red'},
+                              onClick: () => {
+                                removeNodes([node.id])
+                              }
+                            },
+                            (selectedNodes?.length > 0) ? {
+                              label: i(i18n, 'contextMenu.removeSelectedNodes', {}, 'Remove selected nodes'), 
+                              style: { color: 'red'},
+                              onClick: () => {
+                                removeNodes(selectedNodes)
+                              }
+                            } : null
+                          ])}
+                        />
+                          
+
                       return (
                         <>
                           <Node 
@@ -1048,7 +1240,6 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
                               src={srcPos}
                               dst={dstPos}
                               scale={scale}
-                              position={position}
                               n1Box={box1}
                               n2Box={box2}
                               index={index}

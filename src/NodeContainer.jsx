@@ -1,3 +1,4 @@
+import React from 'react';
 import { DragContextProvider } from './DragContext.jsx';
 import { ScreenContextProvider } from './ScreenContext.jsx';
 import Screen from './Screen.jsx';

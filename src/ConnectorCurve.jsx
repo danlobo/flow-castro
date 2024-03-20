@@ -1,8 +1,11 @@
+import React from 'react'
 import css from './ConnectorCurve.module.css'
 import { useTheme } from './ThemeProvider'
 
 export function ConnectorCurveForward({ type, src, dst, scale, tmp, onContextMenu}) {
   const { currentTheme } = useTheme()
+
+  const [ hovered, setHovered ] = React.useState(false)
 
   if (!src || !dst) {
     return
@@ -41,18 +44,22 @@ export function ConnectorCurveForward({ type, src, dst, scale, tmp, onContextMen
       <path 
         style={{ 
           stroke: currentTheme.connections?.[type?.type]?.color ?? '#ccc',
-          strokeWidth: Math.max(4, 5 * scale) 
+          strokeWidth: hovered ? Math.max(10, 10 * scale) : Math.max(4, 5 * scale) 
         }}
         className={[css.path, tmp ? css.pathTmp : null].filter(Boolean).join(' ')}
         d={`M ${x1.x} ${x1.y} C ${b1.x} ${b1.y}, ${b2.x} ${b2.y}, ${x2.x} ${x2.y}`}
         onContextMenu={onContextMenu}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
       />
     </svg>
   )
 }
 
-export function ConnectorCurveBackward({ type, src, dst, scale, tmp, onContextMenu, position, index, n1Box, n2Box}) {
+export function ConnectorCurveBackward({ type, src, dst, scale, tmp, onContextMenu, index, n1Box, n2Box}) {
   const { currentTheme } = useTheme()
+
+  const [ hovered, setHovered ] = React.useState(false)
 
   if (!src || !dst) {
     return
@@ -115,17 +122,19 @@ export function ConnectorCurveBackward({ type, src, dst, scale, tmp, onContextMe
       <path 
         style={{ 
           stroke: currentTheme.connections?.[type?.type]?.color ?? '#ccc',
-          strokeWidth: Math.max(4, 5 * scale) 
+          strokeWidth: hovered ? Math.max(10, 10 * scale) : Math.max(4, 5 * scale) 
         }}
         className={[css.path, tmp ? css.pathTmp : null].filter(Boolean).join(' ')}
         d={d}
         onContextMenu={onContextMenu}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
       />
     </svg>
   )
 }
 
-export function ConnectorCurve({ type, src, dst, scale, tmp, onContextMenu, position, index, n1Box, n2Box}) {  
+export function ConnectorCurve({ type, src, dst, scale, tmp, onContextMenu, index, n1Box, n2Box}) {  
   if (!src || !dst) {
     return
   }
@@ -133,6 +142,6 @@ export function ConnectorCurve({ type, src, dst, scale, tmp, onContextMenu, posi
   if (src.x < dst.x) {
     return <ConnectorCurveForward type={type} src={src} dst={dst} scale={scale} tmp={tmp} onContextMenu={onContextMenu} />
   } else {
-    return <ConnectorCurveBackward type={type} src={src} dst={dst} scale={scale} tmp={tmp} onContextMenu={onContextMenu} position={position} index={index} n1Box={n1Box} n2Box={n2Box} />
+    return <ConnectorCurveBackward type={type} src={src} dst={dst} scale={scale} tmp={tmp} onContextMenu={onContextMenu} index={index} n1Box={n1Box} n2Box={n2Box} />
   }
 }

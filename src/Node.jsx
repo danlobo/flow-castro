@@ -1,3 +1,4 @@
+import React from 'react';
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import NodePort from './NodePort.jsx';
 import { useScreenContext } from './ScreenContext.jsx';
