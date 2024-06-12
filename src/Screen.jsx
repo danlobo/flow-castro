@@ -30,7 +30,9 @@ import {
   mdiGridOff, 
   mdiSelectDrag, 
   mdiCursorMove, 
-  mdiLockOpenVariant 
+  mdiLockOpenVariant, 
+  mdiSelectRemove,
+  mdiSelect
 } from '@mdi/js'
 import Comment from './Comment.jsx';
 
@@ -79,7 +81,7 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
   const [state, setState] = useState(initialState)
   const [shouldNotify, setShouldNotify] = useState(false)
 
-  const [selectMode, setSelectMode] = useState(false)
+  const [viewMode, setViewMode] = useState('select')   // 'select', 'move', 'select-add', 'select-remove'
   const [selectedNodes, setSelectedNodes] = useState([])
   const [selectStartPoint, setSelectStartPoint] = useState({ x: 0, y: 0 })
   const [selectEndPoint, setSelectEndPoint] = useState({ x: 0, y: 0 })
@@ -93,8 +95,10 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
   useEffect(() => {
     if (!initialState) return
 
-    setScale(initialState.scale)
-    setPosition(initialState.position)
+    if (initialState.scale)
+      setScale(initialState.scale)
+    if (initialState.position)
+      setPosition(initialState.position)
   }, [])
 
   const setStateAndNotify = useCallback((cb) => {
@@ -301,28 +305,33 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
   }, [screenRef.current, selectedNodes, state, position, scale, pointerPosition])
 
   const handleMouseDown = useCallback((event) => {
-    // event.preventDefault();
+    console.log('target', event.target)
+    if (event.button === 1) {   //middle mouse button
+      setViewMode('move')
+      return
+    } else if (event.button !== 0) {   //NOT left mouse button
+      return
+    } 
+
+    //select mode below
     event.stopPropagation();
+
+    // check if shift is pressed
+    const selectMode = event.ctrlKey ? 'select-remove' : event.shiftKey ? 'select-add' : 'select'
+    setViewMode(selectMode)
 
     const startX = event.pageX + window.scrollX;
     const startY = event.pageY + window.scrollY;
 
-    // if (selectMode) {
       const pos = { x: startX, y: startY }
       setSelectStartPoint(pos)
       setSelectEndPoint(pos)
-
-    // }
 
     const handleMouseMove = (event) => {
       const dx = event.pageX + window.scrollX;
       const dy = event.pageY + window.scrollY;
 
-      // if (selectMode) {
-        setSelectEndPoint({ x: (dx), y: (dy) })
-      // } else {
-        // onChangePosition({ x: nodePosition.x + dx / screenScale, y: nodePosition.y + dy / screenScale });
-      // }
+      setSelectEndPoint({ x: (dx), y: (dy) })
     };
 
     const handleMouseUp = (e) => {
@@ -332,38 +341,43 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
       const dx = e.pageX + window.scrollX;
       const dy = e.pageY + window.scrollY;
 
-      if (Math.abs(dx) >= 2 && Math.abs(dy) >= 2) {
-        // if (selectMode) {
-          const _posEnd = { x: dx, y: dy }
-          setSelectEndPoint(_posEnd)
+      if (Math.abs(dx - startX) >= 2 && Math.abs(dy - startY) >= 2) {
+        const _posEnd = { x: dx, y: dy }
+        setSelectEndPoint(_posEnd)
 
-          // find all nodes in the selection, save the ids in selectedNodes
-          const _selectedNodes = []
-          const nodes = Object.values(state.nodes)
-          nodes.forEach((node) => {
-            console.log("picking", node.id)
-            const { x, y, width, height } = document.getElementById(`card-${node.id}`).getBoundingClientRect()
-            //detect if node is inside selection
-            const p1 = {
-              x: Math.min(pos.x, _posEnd.x),
-              y: Math.min(pos.y, _posEnd.y)
-            }
+        const _selectedNodes = []
+        const nodes = state.nodes ? Object.values(state.nodes) : []
 
-            const p2 = {
-              x: Math.max(pos.x, _posEnd.x),
-              y: Math.max(pos.y, _posEnd.y)
-            }
+        nodes.forEach((node) => {
+          console.log("picking", node.id)
+          const { x, y, width, height } = document.getElementById(`card-${node.id}`).getBoundingClientRect()
 
-            if (x > p1.x && x + width < p2.x && y > p1.y && y + height < p2.y) {
-              _selectedNodes.push(node.id)
-            }
-          })
+          const p1 = {
+            x: Math.min(pos.x, _posEnd.x),
+            y: Math.min(pos.y, _posEnd.y)
+          }
 
-          console.log('selectedNodes', _selectedNodes)
+          const p2 = {
+            x: Math.max(pos.x, _posEnd.x),
+            y: Math.max(pos.y, _posEnd.y)
+          }
+
+          if (x > p1.x && x + width < p2.x && y > p1.y && y + height < p2.y) {
+            _selectedNodes.push(node.id)
+          }
+        })
+
+        if (selectMode === 'select') {
           setSelectedNodes(_selectedNodes)
-        // } else {
-        //   onDragEnd?.({ x: nodePosition.x + dx / screenScale, y: nodePosition.y + dy / screenScale });
-        // }
+        } else {
+          if (selectMode === 'select-add') {
+            setSelectedNodes(prev => [...prev, ..._selectedNodes])
+          } else if (selectMode === 'select-remove') {
+            setSelectedNodes(prev => prev.filter(id => !_selectedNodes.includes(id)))
+          }  
+        }
+        
+        setSelectStartPoint(_posEnd)
       }
       setSelectStartPoint({ x: 0, y: 0 })
       setSelectEndPoint({ x: 0, y: 0 })
@@ -371,7 +385,7 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
 
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
-  }, [position, scale, state]);
+  }, [position, scale, state, selectedNodes]);
 
   useEffect(() => {
     //const { startX, startY } = dragInfo
@@ -742,19 +756,19 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
             const { x, y } = rect
             
             const _position = {
-              x: (e.clientX - position.x - x) / scale,
-              y: (e.clientY - position.y - y) / scale
+              x: (e.clientX - (position?.x ?? 0) - x) / scale,
+              y: (e.clientY - (position?.y ?? 0) - y) / scale
             }
             addNode(nodeType, _position);
           }
         }))
       }))
     , cmMenu(e)]),
-    onMouseDown: selectMode ? handleMouseDown : null,
+    onMouseDown: handleMouseDown,
     onClick: (e) => {
       if (e.target === wrapperRef.current.instance.wrapperComponent) screenRef.current.focus({ preventScroll: true });
     }
-  }), [state, selectMode, nodeTypesByCategory, addNode, position, scale])
+  }), [state, viewMode, nodeTypesByCategory, addNode, position, scale])
 
   const handleValueChange = useCallback((id, values) => {
     setStateAndNotify(prev => {
@@ -774,13 +788,6 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
   const handleSnapToGrid = useCallback(() => {
     setSnapToGrid(prev => !prev)
   }, [])
-
-  const handleSelectMode = useCallback(() => {
-    setSelectMode(!selectMode)
-
-    if (selectMode)
-      setSelectedNodes([])
-  }, [selectMode])
 
   if (!state) return null
 
@@ -866,8 +873,11 @@ function Screen({ portTypes, nodeTypes, onChangeState, initialState, i18n = defa
               <Button className={css.controlButton} onClick={handleSnapToGrid}>
                 <Icon path={snapToGrid ? mdiGrid : mdiGridOff} size={0.6} />
               </Button>
-              <Button className={css.controlButton} onClick={handleSelectMode}>
-                <Icon path={selectMode ? mdiSelectDrag : mdiCursorMove} size={0.6} />
+              <Button disabled={true} className={css.controlButton}>
+                {viewMode === 'select' && <Icon path={mdiSelect} size={0.6} />}
+                {viewMode === 'select-add' && <Icon path={mdiSelectDrag} size={0.6} />}
+                {viewMode === 'select-remove' && <Icon path={mdiSelectRemove} size={0.6} />}
+                {viewMode === 'move' && <Icon path={mdiCursorMove} size={0.6} />}
               </Button>
               </div>
 

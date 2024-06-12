@@ -4,8 +4,8 @@ import { createContext, useContext, useState } from "react";
 export const ScreenContext = createContext()
 
 export const ScreenContextProvider = ({ children, initialState, store }) => {
-  const [scale, setScale] = useState(initialState?.scale ?? 1);
-  const [position, setPosition] = useState(initialState?.position ?? { x: 0, y: 0 });
+  const [scale, setScale] = useState(initialState?.scale || 1);
+  const [position, setPosition] = useState(initialState?.position || { x: 0, y: 0 });
 
   return (
     <ScreenContext.Provider value={{ scale, setScale, position, setPosition }}>

@@ -31,9 +31,8 @@ const ScreenContextProvider = ({
   initialState,
   store
 }) => {
-  var _initialState$scale, _initialState$positio;
-  const [scale, setScale] = useState((_initialState$scale = initialState?.scale) !== null && _initialState$scale !== void 0 ? _initialState$scale : 1);
-  const [position, setPosition] = useState((_initialState$positio = initialState?.position) !== null && _initialState$positio !== void 0 ? _initialState$positio : {
+  const [scale, setScale] = useState(initialState?.scale || 1);
+  const [position, setPosition] = useState(initialState?.position || {
     x: 0,
     y: 0
   });
@@ -3747,7 +3746,9 @@ var mdiLockOpenVariant = "M18 1C15.24 1 13 3.24 13 6V8H4C2.9 8 2 8.89 2 10V20C2 
 var mdiMagnifyMinus = "M9,2A7,7 0 0,1 16,9C16,10.57 15.5,12 14.61,13.19L15.41,14H16L22,20L20,22L14,16V15.41L13.19,14.61C12,15.5 10.57,16 9,16A7,7 0 0,1 2,9A7,7 0 0,1 9,2M5,8V10H13V8H5Z";
 var mdiMagnifyPlus = "M9,2A7,7 0 0,1 16,9C16,10.57 15.5,12 14.61,13.19L15.41,14H16L22,20L20,22L14,16V15.41L13.19,14.61C12,15.5 10.57,16 9,16A7,7 0 0,1 2,9A7,7 0 0,1 9,2M8,5V8H5V10H8V13H10V10H13V8H10V5H8Z";
 var mdiMagnifyScan = "M17 22V20H20V17H22V20.5C22 20.89 21.84 21.24 21.54 21.54C21.24 21.84 20.89 22 20.5 22H17M7 22H3.5C3.11 22 2.76 21.84 2.46 21.54C2.16 21.24 2 20.89 2 20.5V17H4V20H7V22M17 2H20.5C20.89 2 21.24 2.16 21.54 2.46C21.84 2.76 22 3.11 22 3.5V7H20V4H17V2M7 2V4H4V7H2V3.5C2 3.11 2.16 2.76 2.46 2.46C2.76 2.16 3.11 2 3.5 2H7M10.5 6C13 6 15 8 15 10.5C15 11.38 14.75 12.2 14.31 12.9L17.57 16.16L16.16 17.57L12.9 14.31C12.2 14.75 11.38 15 10.5 15C8 15 6 13 6 10.5C6 8 8 6 10.5 6M10.5 8C9.12 8 8 9.12 8 10.5C8 11.88 9.12 13 10.5 13C11.88 13 13 11.88 13 10.5C13 9.12 11.88 8 10.5 8Z";
+var mdiSelect = "M4,3H5V5H3V4A1,1 0 0,1 4,3M20,3A1,1 0 0,1 21,4V5H19V3H20M15,5V3H17V5H15M11,5V3H13V5H11M7,5V3H9V5H7M21,20A1,1 0 0,1 20,21H19V19H21V20M15,21V19H17V21H15M11,21V19H13V21H11M7,21V19H9V21H7M4,21A1,1 0 0,1 3,20V19H5V21H4M3,15H5V17H3V15M21,15V17H19V15H21M3,11H5V13H3V11M21,11V13H19V11H21M3,7H5V9H3V7M21,7V9H19V7H21Z";
 var mdiSelectDrag = "M13,17H17V13H19V17H23V19H19V23H17V19H13V17M11,17V19H9V17H11M7,17V19H5V17H7M19,9V11H17V9H19M19,5V7H17V5H19M15,5V7H13V5H15M11,5V7H9V5H11M7,5V7H5V5H7M7,13V15H5V13H7M7,9V11H5V9H7Z";
+var mdiSelectRemove = "M21 20C21 20.55 20.55 21 20 21H19V19H21V20M15 21V19H17V21H15M11 21V19H13V21H11M7 21V19H9V21H7M4 21C3.45 21 3 20.55 3 20V19H5V21H4M3 15H5V17H3V15M21 15V17H19V15H21M14.59 8L12 10.59L9.41 8L8 9.41L10.59 12L8 14.59L9.41 16L12 13.41L14.59 16L16 14.59L13.41 12L16 9.41L14.59 8M3 11H5V13H3V11M21 11V13H19V11H21M3 7H5V9H3V7M21 7V9H19V7H21M4 3H5V5H3V4C3 3.45 3.45 3 4 3M20 3C20.55 3 21 3.45 21 4V5H19V3H20M15 5V3H17V5H15M11 5V3H13V5H11M7 5V3H9V5H7Z";
 var mdiSetCenter = "M9,5A7,7 0 0,0 2,12A7,7 0 0,0 9,19C10.04,19 11.06,18.76 12,18.32C12.94,18.76 13.96,19 15,19A7,7 0 0,0 22,12A7,7 0 0,0 15,5C13.96,5 12.94,5.24 12,5.68C11.06,5.24 10.04,5 9,5M9,7C9.34,7 9.67,7.03 10,7.1C8.72,8.41 8,10.17 8,12C8,13.83 8.72,15.59 10,16.89C9.67,16.96 9.34,17 9,17A5,5 0 0,1 4,12A5,5 0 0,1 9,7M15,7A5,5 0 0,1 20,12A5,5 0 0,1 15,17C14.66,17 14.33,16.97 14,16.9C15.28,15.59 16,13.83 16,12C16,10.17 15.28,8.41 14,7.11C14.33,7.04 14.66,7 15,7Z";
 
 const Comment = ({
@@ -3905,7 +3906,7 @@ function Screen({
   });
   const [state, setState] = useState(initialState);
   const [shouldNotify, setShouldNotify] = useState(false);
-  const [selectMode, setSelectMode] = useState(false);
+  const [viewMode, setViewMode] = useState('select'); // 'select', 'move', 'select-add', 'select-remove'
   const [selectedNodes, setSelectedNodes] = useState([]);
   const [selectStartPoint, setSelectStartPoint] = useState({
     x: 0,
@@ -3922,8 +3923,8 @@ function Screen({
   const debounceEvent = useCallback((fn, wait = 200, time) => (...args) => clearTimeout(time, time = setTimeout(() => fn(...args), wait)), []);
   useEffect(() => {
     if (!initialState) return;
-    setScale(initialState.scale);
-    setPosition(initialState.position);
+    if (initialState.scale) setScale(initialState.scale);
+    if (initialState.position) setPosition(initialState.position);
   }, []);
   const setStateAndNotify = useCallback(cb => {
     setState(prev => {
@@ -4097,50 +4098,51 @@ function Screen({
     };
   }, [screenRef.current, selectedNodes, state, position, scale, pointerPosition]);
   const handleMouseDown = useCallback(event => {
-    // event.preventDefault();
+    console.log('target', event.target);
+    if (event.button === 1) {
+      //middle mouse button
+      setViewMode('move');
+      return;
+    } else if (event.button !== 0) {
+      //NOT left mouse button
+      return;
+    }
+
+    //select mode below
     event.stopPropagation();
+
+    // check if shift is pressed
+    const selectMode = event.ctrlKey ? 'select-remove' : event.shiftKey ? 'select-add' : 'select';
+    setViewMode(selectMode);
     const startX = event.pageX + window.scrollX;
     const startY = event.pageY + window.scrollY;
-
-    // if (selectMode) {
     const pos = {
       x: startX,
       y: startY
     };
     setSelectStartPoint(pos);
     setSelectEndPoint(pos);
-
-    // }
-
     const handleMouseMove = event => {
       const dx = event.pageX + window.scrollX;
       const dy = event.pageY + window.scrollY;
-
-      // if (selectMode) {
       setSelectEndPoint({
         x: dx,
         y: dy
       });
-      // } else {
-      // onChangePosition({ x: nodePosition.x + dx / screenScale, y: nodePosition.y + dy / screenScale });
-      // }
     };
     const handleMouseUp = e => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
       const dx = e.pageX + window.scrollX;
       const dy = e.pageY + window.scrollY;
-      if (Math.abs(dx) >= 2 && Math.abs(dy) >= 2) {
-        // if (selectMode) {
+      if (Math.abs(dx - startX) >= 2 && Math.abs(dy - startY) >= 2) {
         const _posEnd = {
           x: dx,
           y: dy
         };
         setSelectEndPoint(_posEnd);
-
-        // find all nodes in the selection, save the ids in selectedNodes
         const _selectedNodes = [];
-        const nodes = Object.values(state.nodes);
+        const nodes = state.nodes ? Object.values(state.nodes) : [];
         nodes.forEach(node => {
           console.log("picking", node.id);
           const {
@@ -4149,7 +4151,6 @@ function Screen({
             width,
             height
           } = document.getElementById(`card-${node.id}`).getBoundingClientRect();
-          //detect if node is inside selection
           const p1 = {
             x: Math.min(pos.x, _posEnd.x),
             y: Math.min(pos.y, _posEnd.y)
@@ -4162,11 +4163,16 @@ function Screen({
             _selectedNodes.push(node.id);
           }
         });
-        console.log('selectedNodes', _selectedNodes);
-        setSelectedNodes(_selectedNodes);
-        // } else {
-        //   onDragEnd?.({ x: nodePosition.x + dx / screenScale, y: nodePosition.y + dy / screenScale });
-        // }
+        if (selectMode === 'select') {
+          setSelectedNodes(_selectedNodes);
+        } else {
+          if (selectMode === 'select-add') {
+            setSelectedNodes(prev => [...prev, ..._selectedNodes]);
+          } else if (selectMode === 'select-remove') {
+            setSelectedNodes(prev => prev.filter(id => !_selectedNodes.includes(id)));
+          }
+        }
+        setSelectStartPoint(_posEnd);
       }
       setSelectStartPoint({
         x: 0,
@@ -4179,7 +4185,7 @@ function Screen({
     };
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
-  }, [position, scale, state]);
+  }, [position, scale, state, selectedNodes]);
   useEffect(() => {
     //const { startX, startY } = dragInfo
 
@@ -4536,6 +4542,7 @@ function Screen({
         }, 'Add ' + nodeType.label),
         description: nodeType.description,
         onClick: () => {
+          var _position$x2, _position$y2;
           const rect = e.target.getBoundingClientRect();
           console.log('rect', rect, position, scale);
           const {
@@ -4543,20 +4550,20 @@ function Screen({
             y
           } = rect;
           const _position = {
-            x: (e.clientX - position.x - x) / scale,
-            y: (e.clientY - position.y - y) / scale
+            x: (e.clientX - ((_position$x2 = position?.x) !== null && _position$x2 !== void 0 ? _position$x2 : 0) - x) / scale,
+            y: (e.clientY - ((_position$y2 = position?.y) !== null && _position$y2 !== void 0 ? _position$y2 : 0) - y) / scale
           };
           addNode(nodeType, _position);
         }
       }))
     })), cmMenu(e)]),
-    onMouseDown: selectMode ? handleMouseDown : null,
+    onMouseDown: handleMouseDown,
     onClick: e => {
       if (e.target === wrapperRef.current.instance.wrapperComponent) screenRef.current.focus({
         preventScroll: true
       });
     }
-  }), [state, selectMode, nodeTypesByCategory, addNode, position, scale]);
+  }), [state, viewMode, nodeTypesByCategory, addNode, position, scale]);
   const handleValueChange = useCallback((id, values) => {
     setStateAndNotify(prev => {
       return {
@@ -4574,10 +4581,6 @@ function Screen({
   const handleSnapToGrid = useCallback(() => {
     setSnapToGrid(prev => !prev);
   }, []);
-  const handleSelectMode = useCallback(() => {
-    setSelectMode(!selectMode);
-    if (selectMode) setSelectedNodes([]);
-  }, [selectMode]);
   if (!state) return null;
   return /*#__PURE__*/jsx("div", {
     className: css.container,
@@ -4693,13 +4696,22 @@ function Screen({
                 path: snapToGrid ? mdiGrid : mdiGridOff,
                 size: 0.6
               })
-            }), /*#__PURE__*/jsx(Button, {
+            }), /*#__PURE__*/jsxs(Button, {
+              disabled: true,
               className: css.controlButton,
-              onClick: handleSelectMode,
-              children: /*#__PURE__*/jsx(Icon$1, {
-                path: selectMode ? mdiSelectDrag : mdiCursorMove,
+              children: [viewMode === 'select' && /*#__PURE__*/jsx(Icon$1, {
+                path: mdiSelect,
                 size: 0.6
-              })
+              }), viewMode === 'select-add' && /*#__PURE__*/jsx(Icon$1, {
+                path: mdiSelectDrag,
+                size: 0.6
+              }), viewMode === 'select-remove' && /*#__PURE__*/jsx(Icon$1, {
+                path: mdiSelectRemove,
+                size: 0.6
+              }), viewMode === 'move' && /*#__PURE__*/jsx(Icon$1, {
+                path: mdiCursorMove,
+                size: 0.6
+              })]
             })]
           }), /*#__PURE__*/jsxs("div", {
             className: [css.panel, css.statusPanel].join(' '),

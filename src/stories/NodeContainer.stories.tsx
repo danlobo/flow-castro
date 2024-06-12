@@ -10,6 +10,12 @@ const meta:Meta<typeof NodeContainer> = {
     // Optional parameter to center the component in the Canvas. More info: https://storybook.js.org/docs/configure/story-layout
     layout: 'centered',
   },
+  argTypes: {
+    viewMode: {
+      options: ['select', 'move'],
+      control: { type: 'radio' }
+    }
+  }
 
   // Use `fn` to spy on the onClick arg, which will appear in the actions panel once invoked: https://storybook.js.org/docs/essentials/actions#action-args
 } satisfies Meta<typeof NodeContainer>;
@@ -88,4 +94,5 @@ Default.args = {
   initialState: {},
   state: {},
   debugMode: false,
+  viewMode: 'select'
 }
