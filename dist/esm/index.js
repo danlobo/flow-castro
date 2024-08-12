@@ -224,7 +224,7 @@ function NodePort({
     diamond: nodePortCss.diamond
   }), []);
   useEffect(() => {
-    if (!name) throw new Error('Port name is required');
+    if (!name) throw new Error("Port name is required. NodeId: " + nodeId);
   }, [name]);
   useEffect(() => {}, [internalValue]);
   useEffect(() => {
@@ -262,7 +262,7 @@ function NodePort({
     globalToLocal(event.pageX - nodePos.left, event.pageY - nodePos.top, screenPosition, screenScale);
     const connectorRect = connectorRef.current.getBoundingClientRect();
     const _dragInfo = {
-      type: 'connector',
+      type: "connector",
       nodeId,
       portName: name,
       portType: type,
@@ -272,7 +272,7 @@ function NodePort({
     setDragInfo(_dragInfo);
     const handleMouseMove = event => {
       if (!_dragInfo) return;
-      if (_dragInfo.type !== 'connector') return;
+      if (_dragInfo.type !== "connector") return;
       const localPos = globalToLocal(event.pageX - nodePos.left, event.pageY - nodePos.top, screenPosition, screenScale);
       setPointerPos({
         x: localPos.x,
@@ -280,8 +280,8 @@ function NodePort({
       });
     };
     const handleMouseUp = e => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
       setDragInfo(null);
       if (!_dragInfo) return;
       const targets = document.elementsFromPoint(e.pageX - window.scrollX, e.pageY - window.scrollY);
@@ -299,24 +299,24 @@ function NodePort({
         });
       }
     };
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
   };
   return /*#__PURE__*/jsxs("div", {
     ref: containerRef,
     style: {
-      cursor: !hidePort && canMove ? 'crosshair' : null
+      cursor: !hidePort && canMove ? "crosshair" : null
     },
     className: nodePortCss.port,
     onMouseDown: handleMouseDown,
     children: [!hidePort && /*#__PURE__*/jsx("div", {
       style: {
-        left: direction === 'input' ? 'calc( var(--port-size) * -1.5 )' : 'calc( var(--port-size) * 1.5 )',
+        left: direction === "input" ? "calc( var(--port-size) * -1.5 )" : "calc( var(--port-size) * 1.5 )",
         right: 0,
-        borderTopLeftRadius: direction === 'input' ? '15px' : null,
-        borderBottomLeftRadius: direction === 'input' ? '15px' : null,
-        borderTopRightRadius: direction === 'output' ? '15px' : null,
-        borderBottomRightRadius: direction === 'output' ? '15px' : null
+        borderTopLeftRadius: direction === "input" ? "15px" : null,
+        borderBottomLeftRadius: direction === "input" ? "15px" : null,
+        borderTopRightRadius: direction === "output" ? "15px" : null,
+        borderBottomRightRadius: direction === "output" ? "15px" : null
       },
       className: nodePortCss.portOverlay,
       id: `card-${nodeId}-${direction}-${name}-overlay`,
@@ -327,7 +327,7 @@ function NodePort({
     }), /*#__PURE__*/jsx("div", {
       className: nodePortCss.label,
       style: {
-        justifyContent: direction === 'input' ? 'flex-start' : 'flex-end'
+        justifyContent: direction === "input" ? "flex-start" : "flex-end"
       },
       children: /*#__PURE__*/jsx("span", {
         children: label
@@ -339,7 +339,7 @@ function NodePort({
       onMouseDown: e => {
         e.stopPropagation();
       },
-      children: (_ref = direction === 'input' && !isConnected && type.render?.({
+      children: (_ref = direction === "input" && !isConnected && type.render?.({
         value,
         onChange: onValueChange
       })) !== null && _ref !== void 0 ? _ref : null
@@ -351,11 +351,11 @@ function NodePort({
       "data-port-connector-direction": direction,
       "data-port-connector-connected": Boolean(isConnected),
       style: {
-        background: (_ref2 = (_currentTheme$ports$c = currentTheme.ports?.[(_type$type = type?.type) !== null && _type$type !== void 0 ? _type$type : 'default']?.color) !== null && _currentTheme$ports$c !== void 0 ? _currentTheme$ports$c : currentTheme.ports?.default?.color) !== null && _ref2 !== void 0 ? _ref2 : currentTheme.colors.primary,
-        left: direction === 'input' ? 'calc( var(--port-size) * -1 - 4px )' : null,
-        right: direction === 'output' ? 'calc( var(--port-size) * -1 - 4px )' : null
+        background: (_ref2 = (_currentTheme$ports$c = currentTheme.ports?.[(_type$type = type?.type) !== null && _type$type !== void 0 ? _type$type : "default"]?.color) !== null && _currentTheme$ports$c !== void 0 ? _currentTheme$ports$c : currentTheme.ports?.default?.color) !== null && _ref2 !== void 0 ? _ref2 : currentTheme.colors.primary,
+        left: direction === "input" ? "calc( var(--port-size) * -1 - 4px )" : null,
+        right: direction === "output" ? "calc( var(--port-size) * -1 - 4px )" : null
       },
-      className: [nodePortCss.portConnector, (_shapeStyles = shapeStyles[(_type$shape = type?.shape) !== null && _type$shape !== void 0 ? _type$shape : 'circle']) !== null && _shapeStyles !== void 0 ? _shapeStyles : null].filter(Boolean).join(' ')
+      className: [nodePortCss.portConnector, (_shapeStyles = shapeStyles[(_type$shape = type?.shape) !== null && _type$shape !== void 0 ? _type$shape : "circle"]) !== null && _shapeStyles !== void 0 ? _shapeStyles : null].filter(Boolean).join(" ")
     })]
   });
 }
@@ -405,10 +405,10 @@ function Node({
     values: nodeValues
   } = value;
   useEffect(() => {
-    if (nodeId == null) throw new Error('Node id is required');
-    if (name == null) throw new Error('Node name is required');
+    if (nodeId == null) throw new Error("Node id is required");
+    if (name == null) throw new Error("Node name is required");
     if (name !== nodeName) {
-      console.warn('Node name mismatch', name, nodeName);
+      console.warn("Node name mismatch", name, nodeName);
     }
   }, [name, nodeName, nodeId]);
   const {
@@ -434,8 +434,8 @@ function Node({
       });
     };
     const handleMouseUp = e => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
       const dx = e.pageX - startX;
       const dy = e.pageY - startY;
       if (Math.abs(dx) >= 2 && Math.abs(dy) >= 2) {
@@ -445,8 +445,8 @@ function Node({
         });
       }
     };
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
   }, [nodePosition, screenScale, onChangePosition, onDragStart, onDragEnd]);
   const onOutputPortConnected = useCallback(({
     source,
@@ -467,7 +467,7 @@ function Node({
     });
   }, [onConnect]);
   const nodeInputs = useMemo(() => {
-    if (typeof nodeType.inputs === 'function') return nodeType.inputs(nodeValues);
+    if (typeof nodeType.inputs === "function") return nodeType.inputs(nodeValues);
     return nodeType.inputs;
   }, [nodeType, nodeValues]);
   useEffect(() => {
@@ -486,19 +486,21 @@ function Node({
     }
   }, [nodeInputs]);
   const nodeOutputs = useMemo(() => {
-    if (typeof nodeType.outputs === 'function') return nodeType.outputs(nodeValues);
+    if (typeof nodeType.outputs === "function") {
+      return nodeType.outputs(nodeValues, value.connections?.inputs);
+    }
     return nodeType.outputs;
-  }, [nodeType, nodeValues]);
+  }, [nodeType, nodeValues, value.connections?.inputs]);
   return /*#__PURE__*/jsxs("div", {
     ref: nodeRef,
     id: `card-${nodeId}`,
-    className: [nodeCss.node, isSelected ? nodeCss.selected : ''].join(' '),
+    className: [nodeCss.node, isSelected ? nodeCss.selected : ""].join(" "),
     style: {
       backgroundColor: (_currentTheme$nodes$n = currentTheme?.nodes?.[nodeType?.type]?.body?.background) !== null && _currentTheme$nodes$n !== void 0 ? _currentTheme$nodes$n : currentTheme?.nodes?.common?.body?.background,
       border: (_currentTheme$nodes$n2 = currentTheme?.nodes?.[nodeType?.type]?.body?.border) !== null && _currentTheme$nodes$n2 !== void 0 ? _currentTheme$nodes$n2 : currentTheme?.nodes?.common?.body?.border,
       color: (_currentTheme$nodes$n3 = currentTheme?.nodes?.[nodeType?.type]?.body?.color) !== null && _currentTheme$nodes$n3 !== void 0 ? _currentTheme$nodes$n3 : currentTheme?.nodes?.common?.body?.color,
       transform: `translate(${nodePosition.x}px, ${nodePosition.y}px)`,
-      cursor: canMove ? 'grab' : null
+      cursor: canMove ? "grab" : null
     },
     onMouseDown: handleMouseDown,
     onContextMenu: onContextMenu,
@@ -510,14 +512,14 @@ function Node({
       },
       children: /*#__PURE__*/jsx("h3", {
         style: {
-          textAlign: 'center'
+          textAlign: "center"
         },
         children: debugMode ? nodeId : name
       })
     }), /*#__PURE__*/jsxs("div", {
       className: nodeCss.container,
       children: [/*#__PURE__*/jsx("div", {
-        className: [nodeCss.portsContainer, nodeCss.inputPortsContainer].join(' '),
+        className: [nodeCss.portsContainer, nodeCss.inputPortsContainer].join(" "),
         children: nodeInputs?.map(input => {
           const portType = portTypes[input.type];
           const hidePort = input.hidePort != null ? input.hidePort : portType.hidePort;
@@ -545,7 +547,7 @@ function Node({
           }, input.name);
         })
       }), /*#__PURE__*/jsx("div", {
-        className: [nodeCss.portsContainer, nodeCss.outputPortsContainer].join(' '),
+        className: [nodeCss.portsContainer, nodeCss.outputPortsContainer].join(" "),
         children: nodeOutputs?.map(output => {
           return /*#__PURE__*/jsx(NodePort$1, {
             name: output.name,
@@ -3849,12 +3851,12 @@ const Comment = ({
 };
 
 const defaultI18n = {
-  'contextMenu.search': 'Search',
-  'contextMenu.add': 'Add {nodeType}',
-  'contextMenu.removeThisNode': 'Remove this node',
-  'contextMenu.removeSelectedNodes': 'Remove selected nodes',
-  'contextMenu.cloneThisNode': 'Clone this node',
-  'contextMenu.removeThisConnection': 'Remove this connection'
+  "contextMenu.search": "Search",
+  "contextMenu.add": "Add {nodeType}",
+  "contextMenu.removeThisNode": "Remove this node",
+  "contextMenu.removeSelectedNodes": "Remove selected nodes",
+  "contextMenu.cloneThisNode": "Clone this node",
+  "contextMenu.removeThisConnection": "Remove this connection"
 };
 function Screen({
   portTypes,
@@ -3866,8 +3868,8 @@ function Screen({
 }) {
   var _position$x, _position$y, _state$scale, _state$position$x, _state$position$y;
   const internalCommentType = {
-    label: i(i18n, 'contextMenu.comment.label', {}, 'Comment'),
-    type: 'comment',
+    label: i(i18n, "contextMenu.comment.label", {}, "Comment"),
+    type: "comment",
     inputs: () => [],
     outputs: () => []
   };
@@ -3879,13 +3881,13 @@ function Screen({
   } = useTheme();
   const PORT_SIZE = 20;
   const style = {
-    '--port-size': `${PORT_SIZE}px`,
-    '--color-primary': currentTheme.colors.primary,
-    '--color-secondary': currentTheme.colors.secondary,
-    '--color-bg': currentTheme.colors.background,
-    '--color-text': currentTheme.colors.text,
-    '--color-hover': currentTheme.colors.hover,
-    '--roundness': currentTheme.roundness
+    "--port-size": `${PORT_SIZE}px`,
+    "--color-primary": currentTheme.colors.primary,
+    "--color-secondary": currentTheme.colors.secondary,
+    "--color-bg": currentTheme.colors.background,
+    "--color-text": currentTheme.colors.text,
+    "--color-hover": currentTheme.colors.hover,
+    "--roundness": currentTheme.roundness
   };
   const {
     dragInfo
@@ -3906,7 +3908,7 @@ function Screen({
   });
   const [state, setState] = useState(initialState);
   const [shouldNotify, setShouldNotify] = useState(false);
-  const [viewMode, setViewMode] = useState('select'); // 'select', 'move', 'select-add', 'select-remove'
+  const [viewMode, setViewMode] = useState("select"); // 'select', 'move', 'select-add', 'select-remove'
   const [selectedNodes, setSelectedNodes] = useState([]);
   const [selectStartPoint, setSelectStartPoint] = useState({
     x: 0,
@@ -3950,30 +3952,30 @@ function Screen({
       const inside = screenRef.current === document.activeElement;
       if (!inside) return;
       switch (e.key.toLowerCase()) {
-        case 'delete':
-        case 'backspace':
-          console.log('delete');
+        case "delete":
+        case "backspace":
+          console.log("delete");
 
           //delete selected nodes
           removeNodes(selectedNodes);
           break;
-        case 'escape':
-          console.log('escape');
+        case "escape":
+          console.log("escape");
           setSelectedNodes([]);
           break;
       }
       if (e.ctrlKey || e.metaKey) {
         switch (e.key.toLowerCase()) {
-          case 'a':
-            console.log('select all');
+          case "a":
+            console.log("select all");
             e.preventDefault();
             e.stopPropagation();
 
             //select all nodes
             setSelectedNodes(Object.keys(state.nodes));
             break;
-          case 'c':
-            console.log('copy');
+          case "c":
+            console.log("copy");
             e.preventDefault();
             e.stopPropagation();
 
@@ -3982,38 +3984,38 @@ function Screen({
             for (const nodeId of selectedNodes) {
               _selectedNodes[nodeId] = state.nodes[nodeId];
             }
-            console.log('selected', _selectedNodes);
+            console.log("selected", _selectedNodes);
             const data = JSON.stringify(_selectedNodes);
             navigator.clipboard.writeText(data);
             break;
-          case 'v':
-            console.log('paste');
+          case "v":
+            console.log("paste");
             //paste from clipboard
 
             e.preventDefault();
             e.stopPropagation();
             navigator.clipboard.readText().then(data => {
-              console.log('clipboard', data);
+              console.log("clipboard", data);
               try {
                 const _nodes = JSON.parse(data);
-                console.log('clipboard', _nodes);
+                console.log("clipboard", _nodes);
 
                 // validate nodes
                 const jsonNodes = Object.values(_nodes).filter(node => !node.root);
                 let valid = true;
                 for (const node of jsonNodes) {
                   if (!nodeTypes[node.type]) {
-                    console.log('invalid node type', node.type);
+                    console.log("invalid node type", node.type);
                     valid = false;
                     break;
                   }
                   if (!node.position) {
-                    console.log('invalid node position', node.position);
+                    console.log("invalid node position", node.position);
                     valid = false;
                     break;
                   }
                   if (node.connections?.inputs == null || node.connections?.outputs == null) {
-                    console.log('invalid node connections', node.connections);
+                    console.log("invalid node connections", node.connections);
                     valid = false;
                     break;
                   }
@@ -4038,7 +4040,7 @@ function Screen({
                   x: (pointerPosition.x - x - position.x) / scale,
                   y: (pointerPosition.y - y - position.y) / scale
                 };
-                console.log('positioning', pointerPosition, x, y, position);
+                console.log("positioning", pointerPosition, x, y, position);
                 const idsDict = {};
                 const nodes = jsonNodes.map(node => {
                   const oldId = node.id;
@@ -4081,27 +4083,27 @@ function Screen({
                 }));
                 setSelectedNodes(nodes.map(n => n.id));
               } catch (err) {
-                console.log('invalid clipboard data', err);
+                console.log("invalid clipboard data", err);
               }
             });
             break;
         }
       }
     };
-    srr.addEventListener('focus', focusHandler);
-    srr.addEventListener('blur', focusHandler);
-    srr.addEventListener('keydown', keyHandler);
+    srr.addEventListener("focus", focusHandler);
+    srr.addEventListener("blur", focusHandler);
+    srr.addEventListener("keydown", keyHandler);
     return () => {
-      srr.removeEventListener('focus', focusHandler);
-      srr.removeEventListener('blur', focusHandler);
-      srr.removeEventListener('keydown', keyHandler);
+      srr.removeEventListener("focus", focusHandler);
+      srr.removeEventListener("blur", focusHandler);
+      srr.removeEventListener("keydown", keyHandler);
     };
   }, [screenRef.current, selectedNodes, state, position, scale, pointerPosition]);
   const handleMouseDown = useCallback(event => {
-    console.log('target', event.target);
+    console.log("target", event.target);
     if (event.button === 1) {
       //middle mouse button
-      setViewMode('move');
+      setViewMode("move");
       return;
     } else if (event.button !== 0) {
       //NOT left mouse button
@@ -4112,7 +4114,7 @@ function Screen({
     event.stopPropagation();
 
     // check if shift is pressed
-    const selectMode = event.ctrlKey ? 'select-remove' : event.shiftKey ? 'select-add' : 'select';
+    const selectMode = event.ctrlKey ? "select-remove" : event.shiftKey ? "select-add" : "select";
     setViewMode(selectMode);
     const startX = event.pageX + window.scrollX;
     const startY = event.pageY + window.scrollY;
@@ -4131,8 +4133,8 @@ function Screen({
       });
     };
     const handleMouseUp = e => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
       const dx = e.pageX + window.scrollX;
       const dy = e.pageY + window.scrollY;
       if (Math.abs(dx - startX) >= 2 && Math.abs(dy - startY) >= 2) {
@@ -4163,12 +4165,12 @@ function Screen({
             _selectedNodes.push(node.id);
           }
         });
-        if (selectMode === 'select') {
+        if (selectMode === "select") {
           setSelectedNodes(_selectedNodes);
         } else {
-          if (selectMode === 'select-add') {
+          if (selectMode === "select-add") {
             setSelectedNodes(prev => [...prev, ..._selectedNodes]);
-          } else if (selectMode === 'select-remove') {
+          } else if (selectMode === "select-remove") {
             setSelectedNodes(prev => prev.filter(id => !_selectedNodes.includes(id)));
           }
         }
@@ -4183,8 +4185,8 @@ function Screen({
         y: 0
       });
     };
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
   }, [position, scale, state, selectedNodes]);
   useEffect(() => {
     //const { startX, startY } = dragInfo
@@ -4195,9 +4197,9 @@ function Screen({
         y: event.pageY - window.scrollY
       });
     };
-    window.addEventListener('mousemove', mouseMoveListener);
+    window.addEventListener("mousemove", mouseMoveListener);
     return () => {
-      window.removeEventListener('mousemove', mouseMoveListener);
+      window.removeEventListener("mousemove", mouseMoveListener);
     };
   }, []);
   useEffect(() => {
@@ -4217,9 +4219,9 @@ function Screen({
         y: dy
       });
     };
-    window.addEventListener('mousemove', mouseMoveListener);
+    window.addEventListener("mousemove", mouseMoveListener);
     return () => {
-      window.removeEventListener('mousemove', mouseMoveListener);
+      window.removeEventListener("mousemove", mouseMoveListener);
     };
   }, [dragInfo]);
   const addNode = useCallback((nodeType, pos) => {
@@ -4440,7 +4442,7 @@ function Screen({
       // deep merge
       const srcNode = JSON.parse(JSON.stringify(prev.nodes[item.srcNode]));
       const dstNode = JSON.parse(JSON.stringify(prev.nodes[item.dstNode]));
-      const srcPort = nodeTypes[srcNode.type].outputs(srcNode.values).find(p => p.name === item.srcPort);
+      const srcPort = nodeTypes[srcNode.type].outputs(srcNode.values, srcNode.connections?.inputs).find(p => p.name === item.srcPort);
       const dstPort = nodeTypes[dstNode.type].inputs(dstNode.values).find(p => p.name === item.dstPort);
       if (srcPort.type !== dstPort.type) return;
       if (!srcNode.connections) srcNode.connections = {};
@@ -4481,11 +4483,11 @@ function Screen({
   }), []);
   const panningOptions = useMemo(() => ({
     disabled: isMoveable,
-    excluded: [nodeCss.node, 'react-draggable', nodePortCss.port, nodePortCss.portConnector, commentCss.container, commentCss.moveHandler]
+    excluded: [nodeCss.node, "react-draggable", nodePortCss.port, nodePortCss.portConnector, commentCss.container, commentCss.moveHandler]
   }), [isMoveable]);
   const wrapperStyle = useMemo(() => ({
-    height: '100%',
-    width: '100%',
+    height: "100%",
+    width: "100%",
     backgroundColor: currentTheme.colors.background,
     backgroundSize: `${scaledGridSize}px ${scaledGridSize}px`,
     backgroundImage: `linear-gradient(to right, ${currentTheme.colors.hover} 1px, transparent 1px), linear-gradient(to bottom, ${currentTheme.colors.hover} 1px, transparent 1px)`,
@@ -4495,7 +4497,7 @@ function Screen({
     const categories = Object.values(nodeTypes).reduce((acc, nodeType) => {
       var _nodeType$category;
       if (nodeType.root) return acc;
-      const _category = (_nodeType$category = nodeType.category) !== null && _nodeType$category !== void 0 ? _nodeType$category : '...';
+      const _category = (_nodeType$category = nodeType.category) !== null && _nodeType$category !== void 0 ? _nodeType$category : "...";
       if (!acc[_category]) acc[_category] = [];
       acc[_category].push(nodeType);
       return acc;
@@ -4506,11 +4508,11 @@ function Screen({
     }));
   }, [nodeTypes]);
   const cmMenu = e => ({
-    label: i(i18n, 'contextMenu.addComment.label', {}, 'Add comment'),
-    description: i(i18n, 'contextMenu.addComment.description', {}, 'Add a comment to the screen'),
+    label: i(i18n, "contextMenu.addComment.label", {}, "Add comment"),
+    description: i(i18n, "contextMenu.addComment.description", {}, "Add a comment to the screen"),
     onClick: () => {
       const rect = e.target.getBoundingClientRect();
-      console.log('rect', rect, position, scale);
+      console.log("rect", rect, position, scale);
       const {
         x,
         y
@@ -4537,14 +4539,14 @@ function Screen({
     }) => ({
       label: category,
       children: nodeTypes.filter(t => !t.root && t.type !== internalCommentType.type).sort((a, b) => a.label.localeCompare(b.label)).map(nodeType => ({
-        label: i(i18n, 'contextMenu.add', {
+        label: i(i18n, "contextMenu.add", {
           nodeType: nodeType.label
-        }, 'Add ' + nodeType.label),
+        }, "Add " + nodeType.label),
         description: nodeType.description,
         onClick: () => {
           var _position$x2, _position$y2;
           const rect = e.target.getBoundingClientRect();
-          console.log('rect', rect, position, scale);
+          console.log("rect", rect, position, scale);
           const {
             x,
             y
@@ -4592,7 +4594,7 @@ function Screen({
       initialPositionX: (_state$position$x = state?.position?.x) !== null && _state$position$x !== void 0 ? _state$position$x : 0,
       initialPositionY: (_state$position$y = state?.position?.y) !== null && _state$position$y !== void 0 ? _state$position$y : 0,
       disabled: isMoveable,
-      minScale: .1,
+      minScale: 0.1,
       maxScale: 2,
       limitToBounds: false,
       onPanning: onTransform,
@@ -4626,16 +4628,16 @@ function Screen({
         return /*#__PURE__*/jsxs(Fragment, {
           children: [localStartPoint.x !== localEndPoint.x && localStartPoint.y !== localEndPoint.y && /*#__PURE__*/jsx("div", {
             style: {
-              position: 'absolute',
+              position: "absolute",
               transform: `translate(${Math.min(localStartPoint.x, localEndPoint.x)}px, ${Math.min(localStartPoint.y, localEndPoint.y)}px)`,
               width: Math.abs(localEndPoint.x - localStartPoint.x),
               height: Math.abs(localEndPoint.y - localStartPoint.y),
-              border: '3px dashed black',
-              backgroundColor: 'rgba(0,0,0,0.1)',
-              pointerEvents: 'none'
+              border: "3px dashed black",
+              backgroundColor: "rgba(0,0,0,0.1)",
+              pointerEvents: "none"
             }
           }), /*#__PURE__*/jsxs("div", {
-            className: [css.panel, css.controlsPanelVertical].join(' '),
+            className: [css.panel, css.controlsPanelVertical].join(" "),
             children: [/*#__PURE__*/jsx(Button, {
               className: css.controlButton,
               onClick: () => zoomIn(),
@@ -4688,7 +4690,7 @@ function Screen({
               })
             })]
           }), /*#__PURE__*/jsxs("div", {
-            className: [css.panel, css.controlsPanelHorizontal].join(' '),
+            className: [css.panel, css.controlsPanelHorizontal].join(" "),
             children: [/*#__PURE__*/jsx(Button, {
               className: css.controlButton,
               onClick: handleSnapToGrid,
@@ -4699,22 +4701,22 @@ function Screen({
             }), /*#__PURE__*/jsxs(Button, {
               disabled: true,
               className: css.controlButton,
-              children: [viewMode === 'select' && /*#__PURE__*/jsx(Icon$1, {
+              children: [viewMode === "select" && /*#__PURE__*/jsx(Icon$1, {
                 path: mdiSelect,
                 size: 0.6
-              }), viewMode === 'select-add' && /*#__PURE__*/jsx(Icon$1, {
+              }), viewMode === "select-add" && /*#__PURE__*/jsx(Icon$1, {
                 path: mdiSelectDrag,
                 size: 0.6
-              }), viewMode === 'select-remove' && /*#__PURE__*/jsx(Icon$1, {
+              }), viewMode === "select-remove" && /*#__PURE__*/jsx(Icon$1, {
                 path: mdiSelectRemove,
                 size: 0.6
-              }), viewMode === 'move' && /*#__PURE__*/jsx(Icon$1, {
+              }), viewMode === "move" && /*#__PURE__*/jsx(Icon$1, {
                 path: mdiCursorMove,
                 size: 0.6
               })]
             })]
           }), /*#__PURE__*/jsxs("div", {
-            className: [css.panel, css.statusPanel].join(' '),
+            className: [css.panel, css.statusPanel].join(" "),
             children: [/*#__PURE__*/jsxs("div", {
               children: ["Scale: ", scale]
             }), /*#__PURE__*/jsxs("div", {
@@ -4731,7 +4733,7 @@ function Screen({
               wrapperProps: wrapperProps(handleContextMenu),
               children: [state?.nodes && Object.values(state.nodes).map((node, index) => {
                 const nodeDef = nodeTypes[node.type];
-                if (node.type === 'comment') return /*#__PURE__*/jsx(Comment, {
+                if (node.type === "comment") return /*#__PURE__*/jsx(Comment, {
                   nodeId: node.id,
                   text: node.value,
                   title: node.title,
@@ -4859,22 +4861,22 @@ function Screen({
                     }));
                   },
                   onContextMenu: e => handleContextMenu(e, [{
-                    label: i(i18n, 'contextMenu.cloneThisComment', {}, 'Clone this comment'),
+                    label: i(i18n, "contextMenu.cloneThisComment", {}, "Clone this comment"),
                     onClick: () => {
                       cloneNode(node.id);
                     }
                   }, {
-                    label: i(i18n, 'contextMenu.removeThisComment', {}, 'Remove this comment'),
+                    label: i(i18n, "contextMenu.removeThisComment", {}, "Remove this comment"),
                     style: {
-                      color: 'red'
+                      color: "red"
                     },
                     onClick: () => {
                       removeNodes([node.id]);
                     }
                   }, selectedNodes?.length > 0 ? {
-                    label: i(i18n, 'contextMenu.removeSelectedNodes', {}, 'Remove selected nodes'),
+                    label: i(i18n, "contextMenu.removeSelectedNodes", {}, "Remove selected nodes"),
                     style: {
-                      color: 'red'
+                      color: "red"
                     },
                     onClick: () => {
                       removeNodes(selectedNodes);
@@ -4979,22 +4981,22 @@ function Screen({
                     canMove: canMove,
                     onConnect: onConnect,
                     onContextMenu: e => handleContextMenu(e, [!nodeDef.root ? {
-                      label: i(i18n, 'contextMenu.cloneThisNode', {}, 'Clone this node'),
+                      label: i(i18n, "contextMenu.cloneThisNode", {}, "Clone this node"),
                       onClick: () => {
                         cloneNode(node.id);
                       }
                     } : null, !nodeDef.root ? {
-                      label: i(i18n, 'contextMenu.removeThisNode', {}, 'Remove this node'),
+                      label: i(i18n, "contextMenu.removeThisNode", {}, "Remove this node"),
                       style: {
-                        color: 'red'
+                        color: "red"
                       },
                       onClick: () => {
                         removeNodes([node.id]);
                       }
                     } : null, selectedNodes?.length > 0 ? {
-                      label: i(i18n, 'contextMenu.removeSelectedNodes', {}, 'Remove selected nodes'),
+                      label: i(i18n, "contextMenu.removeSelectedNodes", {}, "Remove selected nodes"),
                       style: {
-                        color: 'red'
+                        color: "red"
                       },
                       onClick: () => {
                         removeNodes(selectedNodes);
@@ -5067,9 +5069,9 @@ function Screen({
                       n2Box: box2,
                       index: index,
                       onContextMenu: e => handleContextMenu(e, [canMove ? {
-                        label: i(i18n, 'contextMenu.removeThisConnection', {}, 'Remove this connection'),
+                        label: i(i18n, "contextMenu.removeThisConnection", {}, "Remove this connection"),
                         style: {
-                          color: 'red'
+                          color: "red"
                         },
                         onClick: () => {
                           removeConnectionFromOutput(srcNode, srcPort, dstNode, dstPort);
