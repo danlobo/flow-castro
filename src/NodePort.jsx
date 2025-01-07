@@ -29,6 +29,7 @@ function NodePort({
   value,
   onValueChange,
   canMove,
+  options
 }) {
   const { currentTheme } = useTheme();
   const { position: screenPosition, scale: screenScale } = useScreenContext();
@@ -204,10 +205,9 @@ function NodePort({
           e.stopPropagation();
         }}
       >
-        {/* {direction === 'input' && !isConnected ? type.render({ value: internalValue, onChange: setInternalValue }) : null} */}
         {(direction === "input" &&
           !isConnected &&
-          type.render?.({ value, onChange: onValueChange })) ??
+          type.render?.({ value, onChange: onValueChange, options })) ??
           null}
       </div>
       {!hidePort && (

@@ -222,6 +222,7 @@ function Node({
                 )}
                 onConnected={onInputPortConnected}
                 canMove={canMove}
+                options={input.options}
               />
             );
           })}
@@ -244,6 +245,7 @@ function Node({
                 )}
                 onConnected={onOutputPortConnected}
                 canMove={canMove}
+                options={output.options}
               />
             );
           })}

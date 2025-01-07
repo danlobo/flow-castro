@@ -205,7 +205,8 @@ function NodePort({
   direction,
   value,
   onValueChange,
-  canMove
+  canMove,
+  options
 }) {
   var _ref, _ref2, _currentTheme$ports$c, _type$type, _shapeStyles, _type$shape;
   const {
@@ -343,7 +344,8 @@ function NodePort({
       },
       children: (_ref = direction === "input" && !isConnected && type.render?.({
         value,
-        onChange: onValueChange
+        onChange: onValueChange,
+        options
       })) !== null && _ref !== void 0 ? _ref : null
     }), !hidePort && /*#__PURE__*/jsxRuntime.jsx("div", {
       id: `card-${nodeId}-${direction}-${name}`,
@@ -545,7 +547,8 @@ function Node({
             containerRef: containerRef,
             isConnected: value.connections?.inputs?.some(c => c.name === input.name),
             onConnected: onInputPortConnected,
-            canMove: canMove
+            canMove: canMove,
+            options: input.options
           }, input.name);
         })
       }), /*#__PURE__*/jsxRuntime.jsx("div", {
@@ -560,7 +563,8 @@ function Node({
             containerRef: containerRef,
             isConnected: value.connections?.outputs?.some(c => c.name === output.name),
             onConnected: onOutputPortConnected,
-            canMove: canMove
+            canMove: canMove,
+            options: output.options
           }, output.name);
         })
       })]
