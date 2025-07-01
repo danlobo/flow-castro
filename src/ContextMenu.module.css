@@ -1,64 +1,138 @@
-.container, .contextMenu .contextMenu {
+/* ========================================
+   VARIABLES
+   ======================================== */
+:root {
+  /* Colors */
+  --context-menu-bg: #fff;
+  --context-menu-text: #333;
+  --context-menu-border: #ccc;
+  --context-menu-hover: #f0f0f0;
+  --context-menu-focus: #007bff;
+  --context-menu-secondary-text: #999;
+
+  /* Spacing */
+  --context-menu-padding-container: 4px;
+  --context-menu-padding-item: 4px 12px;
+  --context-menu-gap: 8px;
+
+  /* Typography */
+  --context-menu-font-size: 1rem;
+  --context-menu-font-size-small: 0.8rem;
+
+  /* Layout */
+  --context-menu-min-width: 280px;
+  --context-menu-border-radius: var(--roundness, 4px);
+  --context-menu-box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.15);
+  --context-menu-z-index: 999;
+}
+
+/* ========================================
+   MAIN CONTAINER
+   ======================================== */
+.container,
+.contextMenu .contextMenu {
   position: absolute;
-  z-index: 999;
-  background-color: var(--color-bg);
-  border: 1px solid var(--color-border);
-  color: var(--color-text);
-  border-radius: var(--roundness);
-  padding: 4px;
-  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.15);
+  z-index: var(--context-menu-z-index);
+  background-color: var(--context-menu-bg);
+  border: 1px solid var(--context-menu-border);
+  color: var(--context-menu-text);
+  border-radius: var(--context-menu-border-radius);
+  padding: var(--context-menu-padding-container);
+  box-shadow: var(--context-menu-box-shadow);
   transform: scale(1);
-  min-width: 280px;
+  min-width: var(--context-menu-min-width);
 }
 
+/* Inputs inside the container */
 .container input {
-  background-color: var(--color-bg);
-  border: 1px solid var(--color-border);
-  color: var(--color-text);
+  background-color: var(--context-menu-bg);
+  border: 1px solid var(--context-menu-border);
+  color: var(--context-menu-text);
 }
 
+/* ========================================
+   MENU AND ITEMS
+   ======================================== */
 .contextMenu {
   list-style-type: none;
   margin: 0;
   padding: 0;
+  background-color: var(--context-menu-bg);
 }
 
 .contextMenu li {
-  padding: 8px 12px;
+  padding: var(--context-menu-padding-item);
   cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
 .contextMenu li:hover {
-  background-color: var(--color-hover);
+  background-color: var(--context-menu-hover);
 }
 
+/* ========================================
+   ITEM STRUCTURE
+   ======================================== */
 .contextMenuItemContainer {
   display: flex;
   align-items: center;
+  gap: var(--context-menu-gap);
 }
 
 .contextMenuItemLabelContainer {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 
 .contextMenuItemLabel {
-
+  font-size: var(--context-menu-font-size);
 }
 
 .contextMenuItemDescription {
-  color: gray;
-  font-size: .8rem;
+  color: var(--context-menu-secondary-text);
+  font-size: var(--context-menu-font-size-small);
   font-style: italic;
 }
 
 .contextMenuItemSubMenu {
   flex: 0 0 auto;
-  font-size: .8rem;
-  color: gray;
+  font-size: var(--context-menu-font-size-small);
+  color: var(--context-menu-secondary-text);
 }
 
+/* ========================================
+   SUB-MENUS
+   ======================================== */
 .submenu {
   position: absolute;
+}
+
+/* ========================================
+   INPUT COMPONENTS
+   ======================================== */
+.searchInput {
+  width: 100%;
+  padding: var(--context-menu-padding-container);
+  border: 1px solid var(--context-menu-border);
+  border-radius: var(--context-menu-border-radius);
+  box-sizing: border-box;
+  margin-bottom: var(--context-menu-gap);
+  outline: 1px solid var(--context-menu-focus);
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+.divider {
+  height: 1px;
+  background-color: var(--context-menu-border);
+  margin: 4px 0;
+}
+
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
 }

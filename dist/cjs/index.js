@@ -2435,7 +2435,7 @@ function ConnectorCurve({
   }
 }
 
-var css$1 = {"container":"ContextMenu-module_container__kpcIH","contextMenu":"ContextMenu-module_contextMenu__xllaM","contextMenuItemContainer":"ContextMenu-module_contextMenuItemContainer__T7rR2","contextMenuItemLabelContainer":"ContextMenu-module_contextMenuItemLabelContainer__fkrNo","contextMenuItemLabel":"ContextMenu-module_contextMenuItemLabel__IJE3x","contextMenuItemDescription":"ContextMenu-module_contextMenuItemDescription__wVBWj","contextMenuItemSubMenu":"ContextMenu-module_contextMenuItemSubMenu__n6J-S","submenu":"ContextMenu-module_submenu__7UZMP"};
+var css$1 = {"container":"ContextMenu-module_container__kpcIH","contextMenu":"ContextMenu-module_contextMenu__xllaM","contextMenuItemContainer":"ContextMenu-module_contextMenuItemContainer__T7rR2","contextMenuItemLabelContainer":"ContextMenu-module_contextMenuItemLabelContainer__fkrNo","contextMenuItemLabel":"ContextMenu-module_contextMenuItemLabel__IJE3x","contextMenuItemDescription":"ContextMenu-module_contextMenuItemDescription__wVBWj","contextMenuItemSubMenu":"ContextMenu-module_contextMenuItemSubMenu__n6J-S","submenu":"ContextMenu-module_submenu__7UZMP","searchInput":"ContextMenu-module_searchInput__eQZ-H","divider":"ContextMenu-module_divider__us501","disabled":"ContextMenu-module_disabled__HaoBO"};
 
 function i(ctx, key, params = {}, defaultValue = '') {
   if (!ctx || !key) return defaultValue;
@@ -2451,8 +2451,9 @@ const ContextMenuList = ({
 }) => {
   const [activeSubmenu, setActiveSubmenu] = React.useState(null);
   const [activeSubmenuPosition, setActiveSubmenuPosition] = React.useState(null);
-  const [submenuDirection, setSubmenuDirection] = React.useState('left');
-  const [submenuDirectionVertical, setSubmenuDirectionVertical] = React.useState('top');
+  const [submenuDirection, setSubmenuDirection] = React.useState("left");
+  const [submenuDirectionVertical, setSubmenuDirectionVertical] = React.useState("top");
+  const activeOption = options?.find(it => it.label === activeSubmenu);
   const handleMenuItemMouseEnter = (e, parentId) => {
     setActiveSubmenu(parentId);
     const pos = e.currentTarget.getBoundingClientRect().top - e.currentTarget.parentNode.getBoundingClientRect().top;
@@ -2478,10 +2479,10 @@ const ContextMenuList = ({
     setActiveSubmenu(null);
   };
   if (!options?.length) return null;
-  return /*#__PURE__*/jsxRuntime.jsx("ul", {
+  return /*#__PURE__*/jsxRuntime.jsxs("ul", {
     className: css$1.contextMenu,
     style: style,
-    children: options?.filter(isFiltered)?.sort((a, b) => a.label.localeCompare(b.label))?.map((option, index) => {
+    children: [options?.filter(isFiltered)?.sort((a, b) => a.label.localeCompare(b.label))?.map((option, index) => {
       if (option.separator === true) return /*#__PURE__*/jsxRuntime.jsx("li", {
         children: /*#__PURE__*/jsxRuntime.jsx("hr", {})
       }, `${option.id}-${index}`);
@@ -2491,16 +2492,13 @@ const ContextMenuList = ({
         onMouseLeave: () => handleMenuItemMouseLeave(),
         children: [/*#__PURE__*/jsxRuntime.jsxs("div", {
           className: css$1.contextMenuItemContainer,
-          children: [/*#__PURE__*/jsxRuntime.jsxs("div", {
+          children: [/*#__PURE__*/jsxRuntime.jsx("div", {
             className: css$1.contextMenuItemLabelContainer,
-            children: [/*#__PURE__*/jsxRuntime.jsx("div", {
+            children: /*#__PURE__*/jsxRuntime.jsx("div", {
               className: css$1.contextMenuItemLabel,
               style: option.style,
               children: option.label
-            }), option.description && /*#__PURE__*/jsxRuntime.jsx("div", {
-              className: css$1.contextMenuItemDescription,
-              children: option.description
-            })]
+            })
           }), option.children && /*#__PURE__*/jsxRuntime.jsx("div", {
             className: css$1.contextMenuItemSubMenu,
             children: "\u25B6"
@@ -2514,13 +2512,20 @@ const ContextMenuList = ({
           onSelectOption: onSelectOption,
           className: css$1.submenu,
           style: {
-            [submenuDirection]: '100%',
-            top: submenuDirectionVertical === 'top' ? activeSubmenuPosition : null,
-            bottom: submenuDirectionVertical === 'bottom' ? 0 : null
+            [submenuDirection]: "100%",
+            top: submenuDirectionVertical === "top" ? activeSubmenuPosition : null,
+            bottom: submenuDirectionVertical === "bottom" ? 0 : null
           }
         })]
       }, `${option.label}-${index}`);
-    })
+    }), activeOption?.description && /*#__PURE__*/jsxRuntime.jsx("li", {
+      children: /*#__PURE__*/jsxRuntime.jsx("div", {
+        className: css$1.contextMenuItemDescription,
+        children: /*#__PURE__*/jsxRuntime.jsx("pre", {
+          children: activeOption.description
+        })
+      })
+    })]
   });
 };
 const ContextMenu = ({
@@ -2534,7 +2539,7 @@ const ContextMenu = ({
     y: 0
   });
   const [options, setOptions] = React.useState(null);
-  const [search, setSearch] = React.useState('');
+  const [search, setSearch] = React.useState("");
   const menuRef = React.useRef(null);
   const searchRef = React.useRef(null);
   const handleContextMenu = (e, options) => {
@@ -2556,19 +2561,19 @@ const ContextMenu = ({
   };
   const handleMenuItemClick = option => {
     option.onClick?.(option);
-    setSearch('');
+    setSearch("");
     setOptions(null);
   };
   const handleOutsideClick = e => {
     if (menuRef.current && !menuRef.current.contains(e.target)) {
-      setSearch('');
+      setSearch("");
       setOptions(null);
     }
   };
   React.useEffect(() => {
-    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener("mousedown", handleOutsideClick);
     return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener("mousedown", handleOutsideClick);
     };
   }, []);
   const isFiltered = option => {
@@ -2583,6 +2588,7 @@ const ContextMenu = ({
     return false;
   };
   const nonNullOptions = options?.filter(it => Boolean(it));
+  console.log("ContextMenu options", nonNullOptions);
   return /*#__PURE__*/jsxRuntime.jsxs(jsxRuntime.Fragment, {
     children: [children({
       handleContextMenu
@@ -2592,21 +2598,22 @@ const ContextMenu = ({
       style: {
         left: position.x,
         top: position.y,
-        visibility: nonNullOptions ? 'visible' : 'hidden'
+        visibility: nonNullOptions ? "visible" : "hidden"
       },
       children: [/*#__PURE__*/jsxRuntime.jsx("input", {
         ref: searchRef,
         type: "text",
-        placeholder: i(i18n, 'contextMenu.search', {}, 'Search'),
+        className: css$1.searchInput,
+        placeholder: i(i18n, "contextMenu.search", {}, "Search"),
         autoFocus: true,
-        value: search !== null && search !== void 0 ? search : '',
+        value: search !== null && search !== void 0 ? search : "",
         onChange: e => setSearch(e.target.value)
       }), /*#__PURE__*/jsxRuntime.jsx(ContextMenuList, {
         isFiltered: isFiltered,
         options: nonNullOptions,
         onSelectOption: handleMenuItemClick,
         style: {
-          position: 'relative'
+          position: "relative"
         }
       })]
     }) : null]
@@ -4502,8 +4509,9 @@ function Screen({
   const nodeTypesByCategory = React.useMemo(() => {
     const categories = Object.values(nodeTypes).reduce((acc, nodeType) => {
       var _nodeType$category;
-      if (nodeType.root) return acc;
+      if (nodeType.root || nodeType.type === "comment") return acc;
       const _category = (_nodeType$category = nodeType.category) !== null && _nodeType$category !== void 0 ? _nodeType$category : "...";
+      console.log("nodeType", nodeType, _category);
       if (!acc[_category]) acc[_category] = [];
       acc[_category].push(nodeType);
       return acc;

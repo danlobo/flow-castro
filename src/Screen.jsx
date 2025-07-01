@@ -844,9 +844,12 @@ function Screen({
 
   const nodeTypesByCategory = useMemo(() => {
     const categories = Object.values(nodeTypes).reduce((acc, nodeType) => {
-      if (nodeType.root) return acc;
+      if (nodeType.root || nodeType.type === "comment") return acc;
 
       const _category = nodeType.category ?? "...";
+
+      console.log("nodeType", nodeType, _category);
+
       if (!acc[_category]) acc[_category] = [];
       acc[_category].push(nodeType);
       return acc;
