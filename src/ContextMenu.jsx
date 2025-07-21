@@ -63,7 +63,7 @@ const ContextMenuList = ({ isFiltered, options, onSelectOption, style }) => {
           return (
             <li
               key={`${option.label}-${index}`}
-              onClick={() => onSelectOption(option)}
+              onClick={(e) => onSelectOption(option, e)}
               onMouseEnter={(e) => handleMenuItemMouseEnter(e, option.label)}
               onMouseLeave={() => handleMenuItemMouseLeave()}
             >
@@ -141,7 +141,12 @@ export const ContextMenu = ({ containerRef, i18n, children }) => {
     setPosition({ x, y });
   };
 
-  const handleMenuItemClick = (option) => {
+  const handleMenuItemClick = (option, e) => {
+    // Impede que o evento se propague para o documento
+    if (e) {
+      e.stopPropagation();
+    }
+
     option.onClick?.(option);
     setSearch("");
     setOptions(null);
@@ -155,8 +160,13 @@ export const ContextMenu = ({ containerRef, i18n, children }) => {
   };
 
   useEffect(() => {
+    // Usamos o click em vez de mousedown para capturar todos os cliques
+    // incluindo aqueles que começam dentro do menu mas terminam fora
+    document.addEventListener("click", handleOutsideClick);
     document.addEventListener("mousedown", handleOutsideClick);
+
     return () => {
+      document.removeEventListener("click", handleOutsideClick);
       document.removeEventListener("mousedown", handleOutsideClick);
     };
   }, []);
