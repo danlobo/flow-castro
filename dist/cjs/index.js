@@ -127,24 +127,24 @@ function build(theme) {
 
 const theme$1 = {
   colors: {
-    primary: '#0000ff',
-    secondary: '#00ff00',
-    background: '#ffffffcc',
-    text: '#000000',
-    hover: '#f2f2f2',
-    border: '#888'
+    primary: "#0000ff",
+    secondary: "#00ff00",
+    background: "#ffffff44",
+    text: "#000000",
+    hover: "#f2f2f2",
+    border: "#888"
   }
 };
 var light = build(theme$1);
 
 const theme = {
   colors: {
-    primary: '#000088',
-    secondary: '#008800',
-    background: '#222D',
-    text: '#DDD',
-    hover: '#333',
-    border: '#888'
+    primary: "#000088",
+    secondary: "#008800",
+    background: "#2224",
+    text: "#DDD",
+    hover: "#333",
+    border: "#888"
   }
 };
 var dark = build(theme);
@@ -2296,101 +2296,30 @@ function ConnectorCurveForward({
     x: src.x < dst.x ? dst.x - src.x + 5 : 5,
     y: src.y < dst.y ? dst.y - src.y + 5 : 5
   };
+  const PADDING = 50;
   const b1 = {
-    x: Math.abs(x2.x - x1.x) / 2,
+    x: x2.x > x1.x ? Math.abs(x2.x - x1.x) / 2 : x1.x - x2.x < PADDING * 3 ? x1.x + (x1.x - x2.x) : x1.x + PADDING * 3 + (x1.x - x2.x) / 7,
     y: x1.y
   };
   const b2 = {
-    x: Math.abs(x2.x - x1.x) / 2,
+    x: x2.x > x1.x ? Math.abs(x2.x - x1.x) / 2 : x1.x - x2.x < PADDING * 3 ? x2.x + (x2.x - x1.x) : x2.x - PADDING * 3 - (x1.x - x2.x) / 7,
     y: x2.y
   };
   return /*#__PURE__*/jsxRuntime.jsx("svg", {
     style: {
-      transform: `translate(${Math.min(src.x, dst.x)}px, ${Math.min(src.y, dst.y)}px)`,
-      width: Math.abs(dst.x - src.x) + 10,
-      height: Math.abs(dst.y - src.y) + 10,
+      transform: `translate(${Math.min(src.x, dst.x) - PADDING}px, ${Math.min(src.y, dst.y) - PADDING}px)`,
+      width: Math.abs(dst.x - src.x) + PADDING * 2,
+      height: Math.abs(dst.y - src.y) + PADDING * 2,
       zIndex: tmp ? 1000 : -1
     },
     className: css$2.container,
     children: /*#__PURE__*/jsxRuntime.jsx("path", {
       style: {
-        stroke: (_currentTheme$connect = currentTheme.connections?.[type?.type]?.color) !== null && _currentTheme$connect !== void 0 ? _currentTheme$connect : '#ccc',
+        stroke: (_currentTheme$connect = currentTheme.connections?.[type?.type]?.color) !== null && _currentTheme$connect !== void 0 ? _currentTheme$connect : "#ccc",
         strokeWidth: hovered ? Math.max(10, 10 * scale) : Math.max(4, 5 * scale)
       },
-      className: [css$2.path, tmp ? css$2.pathTmp : null].filter(Boolean).join(' '),
-      d: `M ${x1.x} ${x1.y} C ${b1.x} ${b1.y}, ${b2.x} ${b2.y}, ${x2.x} ${x2.y}`,
-      onContextMenu: onContextMenu,
-      onMouseEnter: () => setHovered(true),
-      onMouseLeave: () => setHovered(false)
-    })
-  });
-}
-function ConnectorCurveBackward({
-  type,
-  src,
-  dst,
-  scale,
-  tmp,
-  onContextMenu,
-  index,
-  n1Box,
-  n2Box
-}) {
-  var _currentTheme$connect2;
-  const {
-    currentTheme
-  } = useTheme();
-  const [hovered, setHovered] = React.useState(false);
-  if (!src || !dst) {
-    return;
-  }
-  ({
-    x: -(dst.x - src.x) + 5,
-    y: -(dst.y - src.y) + 5
-  });
-  const rect = {
-    x: Math.min(n1Box.x, n2Box.x),
-    y: Math.min(n1Box.y, n2Box.y),
-    width: Math.abs(n2Box.x - n1Box.x) + Math.max(n1Box.w, n2Box.w) / scale,
-    height: Math.abs(n2Box.y - n1Box.y) + Math.max(n1Box.h, n2Box.h) / scale
-  };
-  const offset = 100;
-  const curve = 20;
-  const border = 10;
-  const points = [{
-    x: (n1Box.x > n2Box.x || n2Box.y < n1Box.y ? rect.width : src.x - rect.x - border) + offset + (15 - index) * (offset / 15) + 5,
-    y: src.y - rect.y + offset + 5
-  }, {
-    x: (n1Box.x > n2Box.x || n2Box.y < n1Box.y ? dst.x - rect.x + border : 0) + 5,
-    y: dst.y - rect.y + offset + 5
-  }];
-  const d = `M ${src.x + 10 - rect.x + offset} ${points[0].y}` +
-  // .
-  ` L${points[0].x - curve - border},${points[0].y} Q${points[0].x - border},${points[0].y} ${points[0].x - border},${points[0].y - curve}` +
-  // __
-  ` L${points[0].x - border},${border + curve} Q${points[0].x - border},${border} ${points[0].x - curve - border}, ${border}` +
-  // |
-  ` L${points[1].x + border + curve},${border} Q${points[1].x + border},${border} ${points[1].x + border},${border + curve}` +
-  // --
-  ` L${points[1].x + border},${points[1].y - curve} Q${points[1].x + border},${points[1].y} ${points[1].x + curve + border},${points[1].y}` +
-  // |
-  ` L${dst.x - rect.x + border + offset},${points[1].y}`; // --.
-
-  return /*#__PURE__*/jsxRuntime.jsx("svg", {
-    style: {
-      transform: `translate(${rect.x - offset}px, ${rect.y - offset}px)`,
-      width: rect.width + offset * 2,
-      height: rect.height + offset * 2,
-      zIndex: tmp ? 1000 : -1
-    },
-    className: css$2.container,
-    children: /*#__PURE__*/jsxRuntime.jsx("path", {
-      style: {
-        stroke: (_currentTheme$connect2 = currentTheme.connections?.[type?.type]?.color) !== null && _currentTheme$connect2 !== void 0 ? _currentTheme$connect2 : '#ccc',
-        strokeWidth: hovered ? Math.max(10, 10 * scale) : Math.max(4, 5 * scale)
-      },
-      className: [css$2.path, tmp ? css$2.pathTmp : null].filter(Boolean).join(' '),
-      d: d,
+      className: [css$2.path, tmp ? css$2.pathTmp : null].filter(Boolean).join(" "),
+      d: `M ${x1.x + PADDING} ${x1.y + PADDING} C ${b1.x + PADDING} ${b1.y + PADDING}, ${b2.x + PADDING} ${b2.y + PADDING}, ${x2.x + PADDING} ${x2.y + PADDING}`,
       onContextMenu: onContextMenu,
       onMouseEnter: () => setHovered(true),
       onMouseLeave: () => setHovered(false)
@@ -2411,28 +2340,14 @@ function ConnectorCurve({
   if (!src || !dst) {
     return;
   }
-  if (src.x < dst.x) {
-    return /*#__PURE__*/jsxRuntime.jsx(ConnectorCurveForward, {
-      type: type,
-      src: src,
-      dst: dst,
-      scale: scale,
-      tmp: tmp,
-      onContextMenu: onContextMenu
-    });
-  } else {
-    return /*#__PURE__*/jsxRuntime.jsx(ConnectorCurveBackward, {
-      type: type,
-      src: src,
-      dst: dst,
-      scale: scale,
-      tmp: tmp,
-      onContextMenu: onContextMenu,
-      index: index,
-      n1Box: n1Box,
-      n2Box: n2Box
-    });
-  }
+  return /*#__PURE__*/jsxRuntime.jsx(ConnectorCurveForward, {
+    type: type,
+    src: src,
+    dst: dst,
+    scale: scale,
+    tmp: tmp,
+    onContextMenu: onContextMenu
+  });
 }
 
 var css$1 = {"container":"ContextMenu-module_container__kpcIH","contextMenu":"ContextMenu-module_contextMenu__xllaM","contextMenuItemContainer":"ContextMenu-module_contextMenuItemContainer__T7rR2","contextMenuItemLabelContainer":"ContextMenu-module_contextMenuItemLabelContainer__fkrNo","contextMenuItemLabel":"ContextMenu-module_contextMenuItemLabel__IJE3x","contextMenuItemDescription":"ContextMenu-module_contextMenuItemDescription__wVBWj","contextMenuItemSubMenu":"ContextMenu-module_contextMenuItemSubMenu__n6J-S","submenu":"ContextMenu-module_submenu__7UZMP","searchInput":"ContextMenu-module_searchInput__eQZ-H","divider":"ContextMenu-module_divider__us501","disabled":"ContextMenu-module_disabled__HaoBO"};
@@ -2487,7 +2402,7 @@ const ContextMenuList = ({
         children: /*#__PURE__*/jsxRuntime.jsx("hr", {})
       }, `${option.id}-${index}`);
       return /*#__PURE__*/jsxRuntime.jsxs("li", {
-        onClick: () => onSelectOption(option),
+        onClick: e => onSelectOption(option, e),
         onMouseEnter: e => handleMenuItemMouseEnter(e, option.label),
         onMouseLeave: () => handleMenuItemMouseLeave(),
         children: [/*#__PURE__*/jsxRuntime.jsxs("div", {
@@ -2559,7 +2474,11 @@ const ContextMenu = ({
       y
     });
   };
-  const handleMenuItemClick = option => {
+  const handleMenuItemClick = (option, e) => {
+    // Impede que o evento se propague para o documento
+    if (e) {
+      e.stopPropagation();
+    }
     option.onClick?.(option);
     setSearch("");
     setOptions(null);
@@ -2571,8 +2490,12 @@ const ContextMenu = ({
     }
   };
   React.useEffect(() => {
+    // Usamos o click em vez de mousedown para capturar todos os cliques
+    // incluindo aqueles que começam dentro do menu mas terminam fora
+    document.addEventListener("click", handleOutsideClick);
     document.addEventListener("mousedown", handleOutsideClick);
     return () => {
+      document.removeEventListener("click", handleOutsideClick);
       document.removeEventListener("mousedown", handleOutsideClick);
     };
   }, []);

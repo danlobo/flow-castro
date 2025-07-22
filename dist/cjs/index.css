@@ -57,9 +57,13 @@
   min-width: 450px;
   min-height: 10px;
   position: absolute;
+  -webkit-backdrop-filter: blur(4px);
+          backdrop-filter: blur(4px);
 }
 
-.Node-module_node__yVhqG input, .Node-module_node__yVhqG textarea, .Node-module_node__yVhqG select {
+.Node-module_node__yVhqG input,
+.Node-module_node__yVhqG textarea,
+.Node-module_node__yVhqG select {
   background-color: var(--color-hover);
   border: none;
   border-bottom: 1px solid var(--color-text);
@@ -82,7 +86,7 @@
 }
 
 .Node-module_portsContainer__3s5BH {
-  width: 100%; 
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -95,6 +99,7 @@
 .Node-module_outputPortsContainer__qYiul {
   align-items: flex-start;
 }
+
 .ConnectorCurve-module_container__pqaPv {
   pointer-events: none;
   z-index: 5;
