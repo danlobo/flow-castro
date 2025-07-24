@@ -63,7 +63,7 @@ const useScreenContext = () => {
   };
 };
 
-var nodePortCss = {"port":"NodePort-module_port__aKb8R","portOverlay":"NodePort-module_portOverlay__mjlyG","label":"NodePort-module_label__4Kc0j","formContainer":"NodePort-module_formContainer__lna8k","portConnector":"NodePort-module_portConnector__4GyCZ","circle":"NodePort-module_circle__3fRNv","square":"NodePort-module_square__QSRn2","diamond":"NodePort-module_diamond__NHCFW"};
+var nodePortCss = {"port":"NodePort-module_port__aKb8R","input":"NodePort-module_input__nP24E","output":"NodePort-module_output__Q8Uf2","portOverlay":"NodePort-module_portOverlay__mjlyG","label":"NodePort-module_label__4Kc0j","formContainer":"NodePort-module_formContainer__lna8k","portConnector":"NodePort-module_portConnector__4GyCZ","circle":"NodePort-module_circle__3fRNv","square":"NodePort-module_square__QSRn2","diamond":"NodePort-module_diamond__NHCFW"};
 
 const deepMerge = (target, ...sources) => {
   if (!sources.length) return target;
@@ -95,7 +95,7 @@ function build(theme) {
       common: {
         padding: 2,
         borderRadius: 4,
-        boxShadow: '0 0 8px rgba(0, 0, 0, 0.125)',
+        boxShadow: "0 0 8px rgba(0, 0, 0, 0.125)",
         title: {
           background: theme.colors.hover,
           color: theme.colors.text
@@ -130,9 +130,10 @@ const theme$1 = {
     primary: "#0000ff",
     secondary: "#00ff00",
     background: "#ffffff44",
-    text: "#000000",
+    text: "#222222",
     hover: "#f2f2f2",
-    border: "#888"
+    border: "#888",
+    selectionBorder: "#888"
   }
 };
 var light = build(theme$1);
@@ -141,10 +142,11 @@ const theme = {
   colors: {
     primary: "#000088",
     secondary: "#008800",
-    background: "#2224",
+    background: "#222",
     text: "#DDD",
     hover: "#333",
-    border: "#888"
+    border: "#888",
+    selectionBorder: "#aaa" // Cor mais clara para ser visível no tema escuro
   }
 };
 var dark = build(theme);
@@ -154,25 +156,26 @@ const _themes = {
   dark
 };
 const _defaultTheme = {
-  themeName: 'light',
+  themeName: "light",
   currentTheme: _themes.light,
   setThemeName: v => {
-    console.log('setThemeName not initialized');
+    console.log("setThemeName not initialized");
   }
 };
 const ThemeContext = /*#__PURE__*/React.createContext(_defaultTheme);
 const ThemeProvider = ({
   children,
   themes,
-  theme = 'light'
+  theme = "light"
 }) => {
-  const [currentTheme, setCurrentTheme] = React.useState(null);
+  const [currentTheme, setCurrentTheme] = React.useState(_themes[theme] || _themes.light);
   const [themeName, setThemeName] = React.useState(theme);
   React.useEffect(() => {
-    setCurrentTheme(deepMerge({}, _themes[themeName], themes[themeName], themes.common));
+    const mergedTheme = deepMerge({}, _themes[themeName], themes?.[themeName], themes?.common);
+    setCurrentTheme(mergedTheme);
   }, [themeName, themes]);
   React.useEffect(() => {
-    setThemeName(theme);
+    setThemeName(theme || "light");
   }, [theme]);
   if (!currentTheme) return null;
   return /*#__PURE__*/jsxRuntime.jsx(ThemeContext.Provider, {
@@ -208,7 +211,7 @@ function NodePort({
   canMove,
   options
 }) {
-  var _ref, _ref2, _currentTheme$ports$c, _type$type, _shapeStyles, _type$shape;
+  var _ref, _ref2, _ref3, _currentTheme$ports$c, _type$type, _shapeStyles, _type$shape;
   const {
     currentTheme
   } = useTheme();
@@ -310,18 +313,10 @@ function NodePort({
     style: {
       cursor: !hidePort && canMove ? "crosshair" : null
     },
-    className: nodePortCss.port,
+    className: [nodePortCss.port, nodePortCss[direction]].join(" "),
     onMouseDown: handleMouseDown,
     children: [!hidePort && /*#__PURE__*/jsxRuntime.jsx("div", {
-      style: {
-        left: direction === "input" ? "calc( var(--port-size) * -1.5 )" : "calc( var(--port-size) * 1.5 )",
-        right: 0,
-        borderTopLeftRadius: direction === "input" ? "15px" : null,
-        borderBottomLeftRadius: direction === "input" ? "15px" : null,
-        borderTopRightRadius: direction === "output" ? "15px" : null,
-        borderBottomRightRadius: direction === "output" ? "15px" : null
-      },
-      className: nodePortCss.portOverlay,
+      className: [nodePortCss.portOverlay, nodePortCss[direction]].join(" "),
       id: `card-${nodeId}-${direction}-${name}-overlay`,
       "data-port-name": name,
       "data-port-type": type.type,
@@ -355,11 +350,9 @@ function NodePort({
       "data-port-connector-direction": direction,
       "data-port-connector-connected": Boolean(isConnected),
       style: {
-        background: (_ref2 = (_currentTheme$ports$c = currentTheme.ports?.[(_type$type = type?.type) !== null && _type$type !== void 0 ? _type$type : "default"]?.color) !== null && _currentTheme$ports$c !== void 0 ? _currentTheme$ports$c : currentTheme.ports?.default?.color) !== null && _ref2 !== void 0 ? _ref2 : currentTheme.colors.primary,
-        left: direction === "input" ? "calc( var(--port-size) * -1 - 4px )" : null,
-        right: direction === "output" ? "calc( var(--port-size) * -1 - 4px )" : null
+        background: (_ref2 = (_ref3 = (_currentTheme$ports$c = currentTheme.ports?.[(_type$type = type?.type) !== null && _type$type !== void 0 ? _type$type : "default"]?.color) !== null && _currentTheme$ports$c !== void 0 ? _currentTheme$ports$c : type?.color) !== null && _ref3 !== void 0 ? _ref3 : currentTheme.ports?.default?.color) !== null && _ref2 !== void 0 ? _ref2 : currentTheme.colors?.primary
       },
-      className: [nodePortCss.portConnector, (_shapeStyles = shapeStyles[(_type$shape = type?.shape) !== null && _type$shape !== void 0 ? _type$shape : "circle"]) !== null && _shapeStyles !== void 0 ? _shapeStyles : null].filter(Boolean).join(" ")
+      className: [nodePortCss.portConnector, nodePortCss[direction], (_shapeStyles = shapeStyles[(_type$shape = type?.shape) !== null && _type$shape !== void 0 ? _type$shape : "circle"]) !== null && _shapeStyles !== void 0 ? _shapeStyles : null].filter(Boolean).join(" ")
     })]
   });
 }
@@ -2270,7 +2263,7 @@ React.forwardRef(function (props, ref) {
     return React.createElement("div", __assign({}, props, { ref: mergeRefs([localRef, ref]) }));
 });
 
-var css$2 = {"container":"ConnectorCurve-module_container__pqaPv","path":"ConnectorCurve-module_path__CjFPJ","pathTmp":"ConnectorCurve-module_pathTmp__g4cyl"};
+var css$3 = {"container":"ConnectorCurve-module_container__pqaPv","path":"ConnectorCurve-module_path__CjFPJ","pathTmp":"ConnectorCurve-module_pathTmp__g4cyl","waypoint":"ConnectorCurve-module_waypoint__YhVmn","selected":"ConnectorCurve-module_selected__9zOuy","invalid":"ConnectorCurve-module_invalid__ar5Fy","destroy":"ConnectorCurve-module_destroy__qyMSc"};
 
 function ConnectorCurveForward({
   type,
@@ -2278,13 +2271,24 @@ function ConnectorCurveForward({
   dst,
   scale,
   tmp,
-  onContextMenu
+  invalid,
+  onContextMenu,
+  waypoints = [],
+  onWaypointContextMenu,
+  onUpdateWaypoint,
+  onWaypointMouseDown,
+  isWaypointSelected
 }) {
-  var _currentTheme$connect;
+  var _ref, _ref2, _currentTheme$connect;
   const {
     currentTheme
   } = useTheme();
+  const {
+    scale: screenScale
+  } = useScreenContext();
   const [hovered, setHovered] = React.useState(false);
+  const [hoveredWaypointIndex, setHoveredWaypointIndex] = React.useState(-1);
+  const [isDragging, setIsDragging] = React.useState(false);
   if (!src || !dst) {
     return;
   }
@@ -2297,6 +2301,32 @@ function ConnectorCurveForward({
     y: src.y < dst.y ? dst.y - src.y + 5 : 5
   };
   const PADDING = 50;
+
+  // Calcular os limites do SVG considerando os waypoints
+  let minX = Math.min(src.x, dst.x);
+  let minY = Math.min(src.y, dst.y);
+  let maxX = Math.max(src.x, dst.x);
+  let maxY = Math.max(src.y, dst.y);
+
+  // Verificar e ajustar os limites com base nos waypoints
+  // waypoints.forEach((waypoint) => {
+  //   minX = Math.min(minX, waypoint.x);
+  //   minY = Math.min(minY, waypoint.y);
+  //   maxX = Math.max(maxX, waypoint.x);
+  //   maxY = Math.max(maxY, waypoint.y);
+  // });
+
+  // Transformar os waypoints para coordenadas relativas
+  const transformedWaypoints = waypoints.map(waypoint => {
+    return {
+      ...waypoint,
+      originalX: waypoint.x,
+      // Preservar as coordenadas originais para arrasto
+      originalY: waypoint.y,
+      x: waypoint.x - minX,
+      y: waypoint.y - minY
+    };
+  });
   const b1 = {
     x: x2.x > x1.x ? Math.abs(x2.x - x1.x) / 2 : x1.x - x2.x < PADDING * 3 ? x1.x + (x1.x - x2.x) : x1.x + PADDING * 3 + (x1.x - x2.x) / 7,
     y: x1.y
@@ -2305,25 +2335,116 @@ function ConnectorCurveForward({
     x: x2.x > x1.x ? Math.abs(x2.x - x1.x) / 2 : x1.x - x2.x < PADDING * 3 ? x2.x + (x2.x - x1.x) : x2.x - PADDING * 3 - (x1.x - x2.x) / 7,
     y: x2.y
   };
-  return /*#__PURE__*/jsxRuntime.jsx("svg", {
+
+  // Caminho SVG para desenhar a curva com waypoints
+  let pathData = `M ${x1.x + PADDING} ${x1.y + PADDING}`;
+  if (waypoints.length === 0) {
+    // Sem waypoints, usar a curva bezier original
+    pathData += ` C ${b1.x + PADDING} ${b1.y + PADDING}, ${b2.x + PADDING} ${b2.y + PADDING}, ${x2.x + PADDING} ${x2.y + PADDING}`;
+  } else {
+    // Com waypoints, desenhar curvas entre cada ponto
+    const allPoints = [{
+      x: x1.x,
+      y: x1.y
+    }, ...transformedWaypoints, {
+      x: x2.x,
+      y: x2.y
+    }];
+    for (let i = 0; i < allPoints.length - 1; i++) {
+      const current = allPoints[i];
+      const next = allPoints[i + 1];
+
+      // Calcular pontos de controle para cada segmento
+      const ctrlPoint1 = {
+        x: current.x + (next.x - current.x) / 2,
+        y: current.y
+      };
+      const ctrlPoint2 = {
+        x: current.x + (next.x - current.x) / 2,
+        y: next.y
+      };
+      pathData += ` C ${ctrlPoint1.x + PADDING} ${ctrlPoint1.y + PADDING}, ${ctrlPoint2.x + PADDING} ${ctrlPoint2.y + PADDING}, ${next.x + PADDING} ${next.y + PADDING}`;
+    }
+  }
+  return /*#__PURE__*/jsxRuntime.jsxs("svg", {
     style: {
-      transform: `translate(${Math.min(src.x, dst.x) - PADDING}px, ${Math.min(src.y, dst.y) - PADDING}px)`,
-      width: Math.abs(dst.x - src.x) + PADDING * 2,
-      height: Math.abs(dst.y - src.y) + PADDING * 2,
-      zIndex: tmp ? 1000 : -1
+      transform: `translate(${minX - PADDING}px, ${minY - PADDING}px)`,
+      width: maxX - minX + PADDING * 2,
+      height: maxY - minY + PADDING * 2,
+      zIndex: tmp ? 1000 : -1,
+      overflow: "visible" // Garantir que elementos não sejam cortados
     },
-    className: css$2.container,
-    children: /*#__PURE__*/jsxRuntime.jsx("path", {
+    className: [css$3.container, invalid ? css$3.invalid : null].join(" "),
+    children: [/*#__PURE__*/jsxRuntime.jsx("path", {
       style: {
-        stroke: (_currentTheme$connect = currentTheme.connections?.[type?.type]?.color) !== null && _currentTheme$connect !== void 0 ? _currentTheme$connect : "#ccc",
+        stroke: (_ref = (_ref2 = (_currentTheme$connect = currentTheme.connections?.[type?.type]?.color) !== null && _currentTheme$connect !== void 0 ? _currentTheme$connect : type?.color) !== null && _ref2 !== void 0 ? _ref2 : currentTheme.connections?.default?.color) !== null && _ref !== void 0 ? _ref : "#ccc",
         strokeWidth: hovered ? Math.max(10, 10 * scale) : Math.max(4, 5 * scale)
       },
-      className: [css$2.path, tmp ? css$2.pathTmp : null].filter(Boolean).join(" "),
-      d: `M ${x1.x + PADDING} ${x1.y + PADDING} C ${b1.x + PADDING} ${b1.y + PADDING}, ${b2.x + PADDING} ${b2.y + PADDING}, ${x2.x + PADDING} ${x2.y + PADDING}`,
+      className: [css$3.path, tmp ? css$3.pathTmp : null].filter(Boolean).join(" "),
+      d: pathData,
       onContextMenu: onContextMenu,
       onMouseEnter: () => setHovered(true),
       onMouseLeave: () => setHovered(false)
-    })
+    }), transformedWaypoints.map((waypoint, index) => {
+      var _ref3, _ref4, _currentTheme$connect2, _ref5, _ref6, _currentTheme$connect3;
+      // Verificar se o waypoint está selecionado (passamos um callback externo)
+      const isSelected = isWaypointSelected && isWaypointSelected(index);
+
+      // Aumentar o raio quando o waypoint está com hover, selecionado ou sendo arrastado
+      const waypointRadius = hoveredWaypointIndex === index || isDragging && hoveredWaypointIndex === index || isSelected ? Math.max(10, 10 * scale) // Tamanho maior ao passar o mouse ou quando selecionado
+      : Math.max(6, 6 * scale); // Tamanho normal
+
+      return /*#__PURE__*/jsxRuntime.jsx("circle", {
+        cx: waypoint.x + PADDING,
+        cy: waypoint.y + PADDING,
+        r: waypointRadius,
+        stroke: (_ref3 = (_ref4 = (_currentTheme$connect2 = currentTheme.connections?.[type?.type]?.color) !== null && _currentTheme$connect2 !== void 0 ? _currentTheme$connect2 : type?.color) !== null && _ref4 !== void 0 ? _ref4 : currentTheme.connections?.default?.color) !== null && _ref3 !== void 0 ? _ref3 : "#ccc",
+        fill: (_ref5 = (_ref6 = (_currentTheme$connect3 = currentTheme.connections?.[type?.type]?.color) !== null && _currentTheme$connect3 !== void 0 ? _currentTheme$connect3 : type?.color) !== null && _ref6 !== void 0 ? _ref6 : currentTheme.connections?.default?.color) !== null && _ref5 !== void 0 ? _ref5 : "#ccc",
+        strokeWidth: isSelected ? Math.max(3, 3 * scale) : Math.max(2, 2 * scale),
+        style: {
+          cursor: isDragging && hoveredWaypointIndex === index ? "grabbing" : "grab"
+        },
+        onMouseEnter: () => setHoveredWaypointIndex(index),
+        onMouseLeave: () => setHoveredWaypointIndex(-1),
+        onMouseDown: e => {
+          // Se temos um handler externo, chamamos primeiro para lidar com a seleção
+          if (onWaypointMouseDown) {
+            onWaypointMouseDown(e, index);
+          }
+
+          // Continuamos com o processo de drag & drop
+          if (isDragging) return;
+
+          // Inicia o processo de arrasto
+          e.preventDefault();
+          e.stopPropagation();
+          setIsDragging(true);
+          const startX = e.clientX;
+          const startY = e.clientY;
+          const origWaypoint = waypoints[index];
+          const moveHandler = moveEvent => {
+            moveEvent.preventDefault();
+            const dx = (moveEvent.clientX - startX) / screenScale;
+            const dy = (moveEvent.clientY - startY) / screenScale;
+            const newPosition = {
+              x: origWaypoint.x + dx,
+              y: origWaypoint.y + dy
+            };
+            onUpdateWaypoint && onUpdateWaypoint(index, newPosition);
+          };
+          const upHandler = () => {
+            window.removeEventListener("mousemove", moveHandler);
+            window.removeEventListener("mouseup", upHandler);
+            setIsDragging(false);
+            setHoveredWaypointIndex(-1);
+          };
+          window.addEventListener("mousemove", moveHandler);
+          window.addEventListener("mouseup", upHandler);
+        },
+        onContextMenu: e => onWaypointContextMenu && onWaypointContextMenu(e, index),
+        className: [css$3.waypoint, isSelected ? css$3.selected : null].join(" ")
+      }, `waypoint-${index}`);
+    })]
   });
 }
 function ConnectorCurve({
@@ -2335,10 +2456,15 @@ function ConnectorCurve({
   onContextMenu,
   index,
   n1Box,
-  n2Box
+  n2Box,
+  waypoints = [],
+  onWaypointContextMenu,
+  onUpdateWaypoint,
+  onWaypointMouseDown,
+  isWaypointSelected
 }) {
   if (!src || !dst) {
-    return;
+    return null;
   }
   return /*#__PURE__*/jsxRuntime.jsx(ConnectorCurveForward, {
     type: type,
@@ -2346,11 +2472,16 @@ function ConnectorCurve({
     dst: dst,
     scale: scale,
     tmp: tmp,
-    onContextMenu: onContextMenu
+    onContextMenu: onContextMenu,
+    waypoints: waypoints,
+    onWaypointContextMenu: onWaypointContextMenu,
+    onUpdateWaypoint: onUpdateWaypoint,
+    onWaypointMouseDown: onWaypointMouseDown,
+    isWaypointSelected: isWaypointSelected
   });
 }
 
-var css$1 = {"container":"ContextMenu-module_container__kpcIH","contextMenu":"ContextMenu-module_contextMenu__xllaM","contextMenuItemContainer":"ContextMenu-module_contextMenuItemContainer__T7rR2","contextMenuItemLabelContainer":"ContextMenu-module_contextMenuItemLabelContainer__fkrNo","contextMenuItemLabel":"ContextMenu-module_contextMenuItemLabel__IJE3x","contextMenuItemDescription":"ContextMenu-module_contextMenuItemDescription__wVBWj","contextMenuItemSubMenu":"ContextMenu-module_contextMenuItemSubMenu__n6J-S","submenu":"ContextMenu-module_submenu__7UZMP","searchInput":"ContextMenu-module_searchInput__eQZ-H","divider":"ContextMenu-module_divider__us501","disabled":"ContextMenu-module_disabled__HaoBO"};
+var css$2 = {"container":"ContextMenu-module_container__kpcIH","contextMenu":"ContextMenu-module_contextMenu__xllaM","contextMenuItemContainer":"ContextMenu-module_contextMenuItemContainer__T7rR2","contextMenuItemLabelContainer":"ContextMenu-module_contextMenuItemLabelContainer__fkrNo","contextMenuItemLabel":"ContextMenu-module_contextMenuItemLabel__IJE3x","contextMenuItemDescription":"ContextMenu-module_contextMenuItemDescription__wVBWj","contextMenuItemSubMenu":"ContextMenu-module_contextMenuItemSubMenu__n6J-S","submenu":"ContextMenu-module_submenu__7UZMP","searchInput":"ContextMenu-module_searchInput__eQZ-H","divider":"ContextMenu-module_divider__us501","disabled":"ContextMenu-module_disabled__HaoBO"};
 
 function i(ctx, key, params = {}, defaultValue = '') {
   if (!ctx || !key) return defaultValue;
@@ -2395,7 +2526,7 @@ const ContextMenuList = ({
   };
   if (!options?.length) return null;
   return /*#__PURE__*/jsxRuntime.jsxs("ul", {
-    className: css$1.contextMenu,
+    className: css$2.contextMenu,
     style: style,
     children: [options?.filter(isFiltered)?.sort((a, b) => a.label.localeCompare(b.label))?.map((option, index) => {
       if (option.separator === true) return /*#__PURE__*/jsxRuntime.jsx("li", {
@@ -2406,16 +2537,16 @@ const ContextMenuList = ({
         onMouseEnter: e => handleMenuItemMouseEnter(e, option.label),
         onMouseLeave: () => handleMenuItemMouseLeave(),
         children: [/*#__PURE__*/jsxRuntime.jsxs("div", {
-          className: css$1.contextMenuItemContainer,
+          className: css$2.contextMenuItemContainer,
           children: [/*#__PURE__*/jsxRuntime.jsx("div", {
-            className: css$1.contextMenuItemLabelContainer,
+            className: css$2.contextMenuItemLabelContainer,
             children: /*#__PURE__*/jsxRuntime.jsx("div", {
-              className: css$1.contextMenuItemLabel,
+              className: css$2.contextMenuItemLabel,
               style: option.style,
               children: option.label
             })
           }), option.children && /*#__PURE__*/jsxRuntime.jsx("div", {
-            className: css$1.contextMenuItemSubMenu,
+            className: css$2.contextMenuItemSubMenu,
             children: "\u25B6"
           })]
         }), option.children && option.label === activeSubmenu && /*#__PURE__*/jsxRuntime.jsx(ContextMenuList, {
@@ -2425,7 +2556,7 @@ const ContextMenuList = ({
             _parent: option
           })),
           onSelectOption: onSelectOption,
-          className: css$1.submenu,
+          className: css$2.submenu,
           style: {
             [submenuDirection]: "100%",
             top: submenuDirectionVertical === "top" ? activeSubmenuPosition : null,
@@ -2435,7 +2566,7 @@ const ContextMenuList = ({
       }, `${option.label}-${index}`);
     }), activeOption?.description && /*#__PURE__*/jsxRuntime.jsx("li", {
       children: /*#__PURE__*/jsxRuntime.jsx("div", {
-        className: css$1.contextMenuItemDescription,
+        className: css$2.contextMenuItemDescription,
         children: /*#__PURE__*/jsxRuntime.jsx("pre", {
           children: activeOption.description
         })
@@ -2511,13 +2642,12 @@ const ContextMenu = ({
     return false;
   };
   const nonNullOptions = options?.filter(it => Boolean(it));
-  console.log("ContextMenu options", nonNullOptions);
   return /*#__PURE__*/jsxRuntime.jsxs(jsxRuntime.Fragment, {
     children: [children({
       handleContextMenu
     }), nonNullOptions?.length ? /*#__PURE__*/jsxRuntime.jsxs("div", {
       ref: menuRef,
-      className: css$1.container,
+      className: css$2.container,
       style: {
         left: position.x,
         top: position.y,
@@ -2526,7 +2656,7 @@ const ContextMenu = ({
       children: [/*#__PURE__*/jsxRuntime.jsx("input", {
         ref: searchRef,
         type: "text",
-        className: css$1.searchInput,
+        className: css$2.searchInput,
         placeholder: i(i18n, "contextMenu.search", {}, "Search"),
         autoFocus: true,
         value: search !== null && search !== void 0 ? search : "",
@@ -2543,6 +2673,280 @@ const ContextMenu = ({
   });
 };
 
+var css$1 = {"container":"Screen-module_container__zkIN3","panel":"Screen-module_panel__P8WaY","controlsPanelVertical":"Screen-module_controlsPanelVertical__-1YKq","controlsPanelHorizontal":"Screen-module_controlsPanelHorizontal__LSyOH","statusPanel":"Screen-module_statusPanel__9lLEm","controlButton":"Screen-module_controlButton__mTn3T"};
+
+var commentCss = {"container":"Comment-module_container__ljhnb","selected":"Comment-module_selected__a-fQY","handler":"Comment-module_handler__nJR-3","moveHandler":"Comment-module_moveHandler__-IkO1","title":"Comment-module_title__5dw34","value":"Comment-module_value__A69Js"};
+
+const Comment = ({
+  title,
+  onChangeTitle,
+  text,
+  onChangeText,
+  backgroundColor,
+  position,
+  size,
+  onResize,
+  onMove,
+  onMoveEnd,
+  isSelected,
+  nodeId,
+  onContextMenu
+}) => {
+  var _position$x, _position$y, _size$w, _size$h;
+  const {
+    scale: screenScale
+  } = useScreenContext();
+  const containerRef = React.useRef(null);
+  const mouseDownHandler = React.useCallback(e => {
+    // Impedir a propagação do evento para o componente pai (Screen)
+    // para evitar que a seleção de área seja iniciada
+    e.stopPropagation();
+
+    // const rect = currentRef.getBoundingClientRect()
+    // const offsetX = e.clientX - rect.x
+    // const offsetY = e.clientY - rect.y
+    const startX = e.pageX;
+    const startY = e.pageY;
+    const mouseMoveHandler = e => {
+      const dx = e.pageX - startX;
+      const dy = e.pageY - startY;
+      onMove?.({
+        x: position.x + dx / screenScale,
+        y: position.y + dy / screenScale
+      });
+    };
+    const mouseUpHandler = e => {
+      const dx = e.pageX - startX;
+      const dy = e.pageY - startY;
+      onMoveEnd?.({
+        x: position.x + dx / screenScale,
+        y: position.y + dy / screenScale
+      });
+      window.removeEventListener("mousemove", mouseMoveHandler);
+      window.removeEventListener("mouseup", mouseUpHandler);
+    };
+    window.addEventListener("mousemove", mouseMoveHandler);
+    window.addEventListener("mouseup", mouseUpHandler);
+  }, [position, onMove, onMoveEnd, screenScale]);
+  React.useEffect(() => {
+    const currentRef = containerRef.current;
+    const mouseUpHandler = e => {
+      if (size?.w !== currentRef.offsetWidth || size?.h !== currentRef.offsetHeight) {
+        onResize?.({
+          w: currentRef.offsetWidth,
+          h: currentRef.offsetHeight
+        });
+      }
+    };
+    currentRef.addEventListener("mouseup", mouseUpHandler);
+    return () => {
+      currentRef.removeEventListener("mouseup", mouseUpHandler);
+    };
+  }, []);
+  return /*#__PURE__*/jsxRuntime.jsxs("div", {
+    ref: containerRef,
+    id: `card-${nodeId}`,
+    className: [commentCss.container, isSelected ? commentCss.selected : ""].join(" "),
+    style: {
+      backgroundColor,
+      transform: `translate(${(_position$x = position?.x) !== null && _position$x !== void 0 ? _position$x : 0}px, ${(_position$y = position?.y) !== null && _position$y !== void 0 ? _position$y : 0}px)`,
+      width: (_size$w = size?.w) !== null && _size$w !== void 0 ? _size$w : 300,
+      height: (_size$h = size?.h) !== null && _size$h !== void 0 ? _size$h : 200
+    },
+    onClick: e => {
+      // Evita a propagação para o wrapper e permite a seleção do comentário
+      e.stopPropagation();
+    },
+    onMouseDown: e => {
+      // Impede que cliques em qualquer parte do comentário iniciem a seleção de área
+      // A menos que seja dentro dos elementos de input/textarea
+      if (!e.target.closest("input") && !e.target.closest("textarea")) {
+        e.stopPropagation();
+      }
+    },
+    onContextMenu: onContextMenu,
+    children: [/*#__PURE__*/jsxRuntime.jsx("div", {
+      className: commentCss.moveHandler,
+      onMouseDown: mouseDownHandler
+    }), /*#__PURE__*/jsxRuntime.jsx("div", {
+      className: commentCss.handler
+    }), /*#__PURE__*/jsxRuntime.jsx("input", {
+      className: commentCss.title,
+      placeholder: "Comment",
+      value: title !== null && title !== void 0 ? title : "",
+      onChange: e => onChangeTitle(e.target.value),
+      onMouseDown: e => e.stopPropagation()
+    }), /*#__PURE__*/jsxRuntime.jsx("textarea", {
+      className: commentCss.value,
+      value: text !== null && text !== void 0 ? text : "",
+      onChange: e => onChangeText(e.target.value),
+      onMouseDown: e => e.stopPropagation()
+    })]
+  }, `card-${nodeId}`);
+};
+
+/**
+ * Custom hook for managing element selection in the flow editor
+ * @param {Object} options - Configuration options
+ * @param {Object} options.state - Current flow state
+ * @returns {Object} Functions and state to manage selections
+ */
+function useElementSelection({
+  state
+}) {
+  const [selectedNodes, setSelectedNodes] = React.useState([]);
+  // Stores selected waypoints in the format {srcNode, srcPort, dstNode, dstPort, waypointIndex}
+  const [selectedWaypoints, setSelectedWaypoints] = React.useState([]);
+  const [selectStartPoint, setSelectStartPoint] = React.useState({
+    x: 0,
+    y: 0
+  });
+  const [selectEndPoint, setSelectEndPoint] = React.useState({
+    x: 0,
+    y: 0
+  });
+
+  /**
+   * Clears the current selection
+   */
+  const clearSelection = React.useCallback(() => {
+    setSelectedNodes([]);
+    setSelectedWaypoints([]);
+  }, []);
+
+  /**
+   * Selects all nodes
+   */
+  const selectAllNodes = React.useCallback(() => {
+    if (!state?.nodes) return;
+    setSelectedNodes(Object.keys(state.nodes));
+  }, [state?.nodes]);
+
+  /**
+   * Adds nodes to the current selection
+   * @param {Array} nodeIds - IDs of nodes to add
+   */
+  const addNodesToSelection = React.useCallback(nodeIds => {
+    setSelectedNodes(prev => {
+      // Filtra para evitar duplicatas
+      const uniqueNewIds = nodeIds.filter(id => !prev.includes(id));
+      return [...prev, ...uniqueNewIds];
+    });
+  }, []);
+
+  /**
+   * Removes nodes from the current selection
+   * @param {Array} nodeIds - IDs of nodes to remove
+   */
+  const removeNodesFromSelection = React.useCallback(nodeIds => {
+    setSelectedNodes(prev => prev.filter(id => !nodeIds.includes(id)));
+  }, []);
+
+  /**
+   * Adds a waypoint to the current selection
+   * @param {Object} waypointInfo - Waypoint information
+   */
+  const addWaypointToSelection = React.useCallback(waypointInfo => {
+    setSelectedWaypoints(prev => {
+      // Check if the waypoint is already selected
+      const isAlreadySelected = prev.some(wp => wp.srcNode === waypointInfo.srcNode && wp.srcPort === waypointInfo.srcPort && wp.dstNode === waypointInfo.dstNode && wp.dstPort === waypointInfo.dstPort && wp.waypointIndex === waypointInfo.waypointIndex);
+      if (isAlreadySelected) return prev;
+      return [...prev, waypointInfo];
+    });
+  }, []);
+
+  /**
+   * Removes a waypoint from the current selection
+   * @param {Object} waypointInfo - Waypoint information
+   */
+  const removeWaypointFromSelection = React.useCallback(waypointInfo => {
+    setSelectedWaypoints(prev => prev.filter(wp => !(wp.srcNode === waypointInfo.srcNode && wp.srcPort === waypointInfo.srcPort && wp.dstNode === waypointInfo.dstNode && wp.dstPort === waypointInfo.dstPort && wp.waypointIndex === waypointInfo.waypointIndex)));
+  }, []);
+
+  /**
+   * Checks if a waypoint is selected
+   * @param {Object} waypointInfo - Waypoint information
+   * @returns {boolean} - True if the waypoint is selected
+   */
+  const isWaypointSelected = React.useCallback(waypointInfo => {
+    // Se waypointInfo for apenas um objeto com x e y (coordenadas do waypoint)
+    // ou se não tiver todas as propriedades necessárias, não podemos verificar
+    // a seleção adequadamente e retornamos false
+
+    if (!waypointInfo || typeof waypointInfo !== "object" || !waypointInfo.srcNode || !waypointInfo.dstNode || !waypointInfo.srcPort || !waypointInfo.dstPort || waypointInfo.waypointIndex === undefined) {
+      return false;
+    }
+    const result = selectedWaypoints.some(wp => wp.srcNode === waypointInfo.srcNode && wp.srcPort === waypointInfo.srcPort && wp.dstNode === waypointInfo.dstNode && wp.dstPort === waypointInfo.dstPort && wp.waypointIndex === waypointInfo.waypointIndex);
+    return result;
+  }, [selectedWaypoints]);
+
+  /**
+   * Adds comments to the current selection
+   * @param {Array} commentIds - IDs of comments to add
+   */
+  const addCommentsToSelection = React.useCallback(commentIds => {
+    setSelectedNodes(prev => {
+      // Filtra para evitar duplicatas
+      const uniqueNewIds = commentIds.filter(id => !prev.includes(id));
+      return [...prev, ...uniqueNewIds];
+    });
+  }, []);
+
+  /**
+   * Removes comments from the current selection
+   * @param {Array} commentIds - IDs of comments to remove
+   */
+  const removeCommentsFromSelection = React.useCallback(commentIds => {
+    setSelectedNodes(prev => prev.filter(id => !commentIds.includes(id)));
+  }, []);
+  const processAreaSelection = React.useCallback((selectionArea, selectionMode, nodesInArea, waypointsInArea = []) => {
+    // Garantindo que temos uma área de seleção válida
+    if (!selectionArea) return;
+
+    // Processar a seleção de nós, waypoints e comentários
+    const hasElements = nodesInArea?.length > 0 || waypointsInArea?.length > 0;
+    if (hasElements) {
+      if (selectionMode === "select") {
+        // Em modo de seleção simples, substituir seleções anteriores
+        setSelectedNodes(nodesInArea || []);
+        setSelectedWaypoints(waypointsInArea || []);
+      } else if (selectionMode === "select-add") {
+        // Adicionar elementos à seleção existente
+        if (nodesInArea?.length > 0) addNodesToSelection(nodesInArea);
+        if (waypointsInArea?.length > 0) waypointsInArea.forEach(wp => addWaypointToSelection(wp));
+      } else if (selectionMode === "select-remove") {
+        // Remover elementos da seleção existente
+        if (nodesInArea?.length > 0) removeNodesFromSelection(nodesInArea);
+        if (waypointsInArea?.length > 0) waypointsInArea.forEach(wp => removeWaypointFromSelection(wp));
+      }
+    } else if (selectionMode === "select") {
+      // Caso em que a área foi selecionada mas não contém nenhum elemento
+      // Limpar todas as seleções existentes
+      clearSelection();
+    }
+  }, [addNodesToSelection, removeNodesFromSelection, addWaypointToSelection, removeWaypointFromSelection, addCommentsToSelection, removeCommentsFromSelection, clearSelection]);
+  return {
+    selectedNodes,
+    setSelectedNodes,
+    selectedWaypoints,
+    setSelectedWaypoints,
+    selectStartPoint,
+    setSelectStartPoint,
+    selectEndPoint,
+    setSelectEndPoint,
+    clearSelection,
+    selectAllNodes,
+    addNodesToSelection,
+    removeNodesFromSelection,
+    addWaypointToSelection,
+    removeWaypointFromSelection,
+    addCommentsToSelection,
+    removeCommentsFromSelection,
+    isWaypointSelected,
+    processAreaSelection
+  };
+}
+
 let nanoid = (size = 21) =>
   crypto.getRandomValues(new Uint8Array(size)).reduce((id, byte) => {
     byte &= 63;
@@ -2558,28 +2962,728 @@ let nanoid = (size = 21) =>
     return id
   }, '');
 
-var css = {"container":"Screen-module_container__zkIN3","panel":"Screen-module_panel__P8WaY","controlsPanelVertical":"Screen-module_controlsPanelVertical__-1YKq","controlsPanelHorizontal":"Screen-module_controlsPanelHorizontal__LSyOH","statusPanel":"Screen-module_statusPanel__9lLEm","controlButton":"Screen-module_controlButton__mTn3T"};
+/**
+ * Custom hook to manage clipboard operations
+ * @param {Object} options - Configuration options
+ * @param {Object} options.state - Current flow state
+ * @param {Function} options.setStateAndNotify - Function to update state
+ * @param {Function} options.setSelectedNodes - Function to update selected nodes
+ * @param {Function} options.setSelectedWaypoints - Function to update selected waypoints
+ * @param {Object} options.nodeTypes - Available node types
+ * @param {Object} options.position - Current screen position
+ * @param {number} options.scale - Current screen scale
+ * @param {Object} options.pointerPosition - Current pointer position
+ * @param {Object} options.screenRef - Reference to screen element
+ * @returns {Object} Functions for clipboard operations
+ */
+function useClipboard({
+  state,
+  setStateAndNotify,
+  setSelectedNodes,
+  setSelectedWaypoints,
+  nodeTypes,
+  position,
+  scale,
+  pointerPosition,
+  screenRef
+}) {
+  /**
+   * Copy selected nodes to clipboard
+   * @param {Array} selectedNodes - IDs of selected nodes
+   */
+  const copyNodesToClipboard = React.useCallback(selectedNodes => {
+    if (!selectedNodes?.length) {
+      console.warn("[useClipboard] No nodes selected to copy");
+      return;
+    }
+    const _selectedNodes = {};
+    for (const nodeId of selectedNodes) {
+      if (!state.nodes[nodeId]) {
+        console.warn(`[useClipboard] Node with id ${nodeId} not found in state`);
+        continue;
+      }
+      _selectedNodes[nodeId] = state.nodes[nodeId];
+    }
+    if (Object.keys(_selectedNodes).length === 0) {
+      console.warn("[useClipboard] Could not find any nodes to copy");
+      return;
+    }
+    const data = JSON.stringify(_selectedNodes);
+    navigator.clipboard.writeText(data).catch(err => console.error("[useClipboard] Error copying data:", err));
+  }, [state?.nodes]);
 
-var commentCss = {"container":"Comment-module_container__ljhnb","selected":"Comment-module_selected__a-fQY","handler":"Comment-module_handler__nJR-3","moveHandler":"Comment-module_moveHandler__-IkO1","title":"Comment-module_title__5dw34","value":"Comment-module_value__A69Js"};
+  /**
+   * Paste nodes from clipboard to the editor
+   * @param {Object} currentPointer - Current pointer position (optional)
+   */
+  const pasteNodesFromClipboard = React.useCallback((currentPointer = null) => {
+    if (!screenRef?.current) {
+      console.error("[useClipboard] screenRef not available");
+      return;
+    }
 
-const Button = ({
-  children,
-  ...props
-}) => {
-  const {
-    currentTheme
-  } = useTheme();
-  return /*#__PURE__*/jsxRuntime.jsx("button", {
-    ...props,
-    style: {
-      backgroundColor: currentTheme.buttons.default.backgroundColor,
-      border: currentTheme.buttons.default.border,
-      color: currentTheme.buttons.default.color,
-      borderRadius: currentTheme.roundness
-    },
-    children: children
-  });
-};
+    // Use the provided position or the stored position
+    // If a pointer was provided, use it; otherwise, get the current mouse position
+    const currentPointerPosition = currentPointer || (() => {
+      // Get the most current mouse position
+      return window.mousePosition || pointerPosition;
+    })();
+    navigator.clipboard.readText().then(data => {
+      try {
+        if (!data) {
+          console.warn("[useClipboard] Empty clipboard");
+          return;
+        }
+        const _nodes = JSON.parse(data);
+
+        // Validate nodes
+        const jsonNodes = Object.values(_nodes).filter(node => !node.root);
+        if (jsonNodes.length === 0) {
+          console.warn("[useClipboard] No valid nodes to paste");
+          return;
+        }
+        let valid = true;
+        let invalidReason = "";
+        for (const node of jsonNodes) {
+          if (!nodeTypes[node.type]) {
+            valid = false;
+            invalidReason = `Invalid node type: ${node.type}`;
+            break;
+          }
+          if (!node.position) {
+            valid = false;
+            invalidReason = `Node without position: ${node.id}`;
+            break;
+          }
+
+          // Check if the connections property exists and has inputs and outputs subproperties
+          // Some nodes may not have the connections property defined
+          if (!node.connections) {
+            // If connections doesn't exist, create an empty default structure
+            node.connections = {
+              inputs: [],
+              outputs: []
+            };
+          } else if (node.connections.inputs === undefined || node.connections.outputs === undefined) {
+            // If connections exists but inputs or outputs are missing, complete the structure
+            if (node.connections.inputs === undefined) {
+              node.connections.inputs = [];
+            }
+            if (node.connections.outputs === undefined) {
+              node.connections.outputs = [];
+            }
+          }
+        }
+        if (!valid) {
+          console.error(`[useClipboard] Invalid data: ${invalidReason}`);
+          return;
+        }
+
+        // Find node with minimum X position
+        const nodeWithMinX = jsonNodes.reduce((acc, node) => {
+          var _acc$position$x;
+          if (node.position.x < ((_acc$position$x = acc?.position?.x) !== null && _acc$position$x !== void 0 ? _acc$position$x : Number.POSITIVE_INFINITY)) return node;
+          return acc;
+        }, null);
+        if (!nodeWithMinX) {
+          console.error("[useClipboard] Could not find reference node for positioning");
+          return;
+        }
+        const delta = {
+          x: nodeWithMinX.position.x,
+          y: nodeWithMinX.position.y
+        };
+        if (!screenRef.current) {
+          console.error("[useClipboard] screenRef.current not available");
+          return;
+        }
+        const rect = screenRef.current.getBoundingClientRect();
+        if (!rect) {
+          console.error("[useClipboard] Could not get element rectangle");
+          return;
+        }
+        const {
+          x,
+          y
+        } = rect;
+        const pos = {
+          x: (currentPointerPosition.x - x - position.x) / scale,
+          y: (currentPointerPosition.y - y - position.y) / scale
+        };
+        const idsDict = {};
+        const nodes = jsonNodes.map(node => {
+          const oldId = node.id;
+          const newId = nanoid();
+          idsDict[oldId] = newId;
+          const newPosition = {
+            x: node.position.x - delta.x + pos.x,
+            y: node.position.y - delta.y + pos.y
+          };
+          return {
+            ...node,
+            id: newId,
+            position: newPosition,
+            connections: {
+              inputs: node.connections?.inputs?.filter(conn => jsonNodes.find(it => it.id === conn.node)),
+              outputs: node.connections?.outputs?.filter(conn => jsonNodes.find(it => it.id === conn.node))
+            }
+          };
+        });
+        for (const node of nodes) {
+          if (node.connections?.inputs) {
+            for (const conn of node.connections.inputs) {
+              conn.node = idsDict[conn.node];
+            }
+          }
+          if (node.connections?.outputs) {
+            for (const conn of node.connections.outputs) {
+              conn.node = idsDict[conn.node];
+
+              // Adjust waypoint coordinates
+              if (conn.waypoints && conn.waypoints.length > 0) {
+                conn.waypoints = conn.waypoints.map(waypoint => ({
+                  x: waypoint.x - delta.x + pos.x,
+                  y: waypoint.y - delta.y + pos.y
+                }));
+              }
+            }
+          }
+        }
+
+        // Collect information about new waypoints for selection
+        const newWaypoints = [];
+        for (const node of nodes) {
+          if (node.connections?.outputs) {
+            for (const conn of node.connections.outputs) {
+              if (conn.waypoints && conn.waypoints.length > 0) {
+                conn.waypoints.forEach((waypoint, waypointIndex) => {
+                  newWaypoints.push({
+                    srcNode: node.id,
+                    srcPort: conn.name,
+                    dstNode: conn.node,
+                    dstPort: conn.port,
+                    waypointIndex: waypointIndex
+                  });
+                });
+              }
+            }
+          }
+        }
+        setStateAndNotify(prev => {
+          const newNodes = {
+            ...prev.nodes,
+            ...nodes.reduce((acc, node) => {
+              acc[node.id] = node;
+              return acc;
+            }, {})
+          };
+          return {
+            ...prev,
+            nodes: newNodes
+          };
+        });
+        const newNodeIds = nodes.map(n => n.id);
+        if (setSelectedNodes) {
+          setSelectedNodes(newNodeIds);
+        }
+        if (setSelectedWaypoints) {
+          setSelectedWaypoints(newWaypoints);
+        }
+      } catch (err) {
+        console.error("[useClipboard] Error processing clipboard data:", err);
+      }
+    }).catch(err => {
+      console.error("[useClipboard] Error reading from clipboard:", err);
+    });
+  }, [state, setStateAndNotify, setSelectedNodes, setSelectedWaypoints, nodeTypes, position, scale,
+  // We removed pointerPosition from dependencies since we now use window.mousePosition
+  // to access the most current value
+  screenRef]);
+  return {
+    copyNodesToClipboard,
+    pasteNodesFromClipboard
+  };
+}
+
+/**
+ * Custom hook for managing keyboard shortcuts
+ * @param {Object} options - Configuration options
+ * @param {Object} options.screenRef - Reference to screen element
+ * @param {Function} options.removeNodes - Function to remove nodes
+ * @param {Array} options.selectedNodes - Currently selected nodes
+ * @param {Function} options.setSelectedNodes - Function to update selected nodes
+ * @param {Function} options.selectAllNodes - Function to select all nodes
+ * @param {Function} options.copyNodesToClipboard - Function to copy nodes to clipboard
+ * @param {Function} options.pasteNodesFromClipboard - Function to paste nodes from clipboard
+ * @returns {void}
+ */
+function useKeyboardShortcuts({
+  screenRef,
+  removeNodes,
+  selectedNodes,
+  setSelectedNodes,
+  selectAllNodes,
+  copyNodesToClipboard,
+  pasteNodesFromClipboard
+}) {
+  React.useEffect(() => {
+    const srr = screenRef.current;
+    if (!srr) return;
+    const focusHandler = () => {};
+    const keyHandler = e => {
+      const inside = screenRef.current === document.activeElement;
+      if (!inside) return;
+      switch (e.key.toLowerCase()) {
+        case "delete":
+        case "backspace":
+          removeNodes(selectedNodes);
+          break;
+        case "escape":
+          setSelectedNodes([]);
+          break;
+      }
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key.toLowerCase()) {
+          case "a":
+            e.preventDefault();
+            e.stopPropagation();
+            selectAllNodes();
+            break;
+          case "c":
+            e.preventDefault();
+            e.stopPropagation();
+            copyNodesToClipboard(selectedNodes);
+            break;
+          case "v":
+            e.preventDefault();
+            e.stopPropagation();
+            // Use global mouse position instead of event position
+            const mousePosition = window.mousePosition || {
+              x: e.clientX,
+              y: e.clientY
+            };
+            pasteNodesFromClipboard(mousePosition);
+            break;
+        }
+      }
+    };
+    srr.addEventListener("focus", focusHandler);
+    srr.addEventListener("blur", focusHandler);
+    srr.addEventListener("keydown", keyHandler);
+    return () => {
+      srr.removeEventListener("focus", focusHandler);
+      srr.removeEventListener("blur", focusHandler);
+      srr.removeEventListener("keydown", keyHandler);
+    };
+  }, [screenRef.current, selectedNodes, removeNodes, setSelectedNodes, selectAllNodes, copyNodesToClipboard, pasteNodesFromClipboard]);
+}
+
+/**
+ * Custom hook for managing node operations
+ * @param {Object} options - Configuration options
+ * @param {Object} options.state - Current flow state
+ * @param {Function} options.setStateAndNotify - Function to update state and notify changes
+ * @param {Function} options.setSelectedNodes - Function to update node selection
+ * @param {Object} options.nodeTypes - Definition of available node types
+ * @returns {Object} Methods for manipulating nodes
+ */
+function useNodeOperations({
+  state,
+  setStateAndNotify,
+  setSelectedNodes,
+  nodeTypes
+}) {
+  /**
+   * Adds a new node to the flow
+   * @param {Object} nodeType - Type of node to add
+   * @param {Object} pos - Position where the node will be added
+   */
+  const addNode = React.useCallback((nodeType, pos) => {
+    const newNode = {
+      id: nanoid(),
+      name: nodeType.label,
+      type: nodeType.type,
+      position: pos,
+      values: nodeType.inputs().reduce((acc, input) => {
+        if (input.defaultValue == null) return acc;
+        acc[input.name] = input.defaultValue;
+        return acc;
+      }, {})
+    };
+    setStateAndNotify(prev => {
+      var _prev$nodes;
+      return {
+        ...prev,
+        nodes: {
+          ...((_prev$nodes = prev.nodes) !== null && _prev$nodes !== void 0 ? _prev$nodes : {}),
+          [newNode.id]: newNode
+        }
+      };
+    });
+  }, [setStateAndNotify]);
+
+  /**
+   * Remove nodes from the flow
+   * @param {Array} ids - IDs of nodes to remove
+   */
+  const removeNodes = React.useCallback(ids => {
+    if (!ids?.length) return;
+    const idsNoRoot = ids.filter(id => !nodeTypes[state.nodes[id]?.type]?.root);
+    const nodesToRemove = [...ids];
+    const nodesToAdd = {};
+    for (const nodeId of ids) {
+      const node = state.nodes[nodeId];
+      if (!node) continue;
+      if (node.connections?.outputs?.length) {
+        for (const conn of node.connections.outputs) {
+          var _otherNode$connection3, _otherNode$connection4;
+          const otherNode = state.nodes[conn.node];
+          if (!otherNode || idsNoRoot.includes(otherNode.id)) continue;
+          if (!nodesToRemove.includes(otherNode.id)) nodesToRemove.push(otherNode.id);
+          if (!nodesToAdd[otherNode.id]) {
+            var _otherNode$connection, _otherNode$connection2;
+            nodesToAdd[otherNode.id] = {
+              ...otherNode,
+              connections: {
+                ...otherNode.connections,
+                inputs: (_otherNode$connection = otherNode.connections?.inputs) !== null && _otherNode$connection !== void 0 ? _otherNode$connection : [],
+                outputs: (_otherNode$connection2 = otherNode.connections?.outputs) !== null && _otherNode$connection2 !== void 0 ? _otherNode$connection2 : []
+              }
+            };
+          }
+          nodesToAdd[otherNode.id].connections.outputs = [...((_otherNode$connection3 = otherNode.connections.outputs) !== null && _otherNode$connection3 !== void 0 ? _otherNode$connection3 : [])];
+          nodesToAdd[otherNode.id].connections.inputs = (_otherNode$connection4 = otherNode.connections?.inputs?.filter(c => !(c.port === conn.name && c.node === node.id))) !== null && _otherNode$connection4 !== void 0 ? _otherNode$connection4 : [];
+        }
+      }
+      if (node.connections?.inputs?.length) {
+        for (const conn of node.connections.inputs) {
+          var _otherNode$connection5, _otherNode$connection6;
+          const otherNode = state.nodes[conn.node];
+          if (!otherNode || idsNoRoot.includes(otherNode.id)) continue;
+          if (!nodesToRemove.includes(otherNode.id)) nodesToRemove.push(otherNode.id);
+          if (!nodesToAdd[otherNode.id]) nodesToAdd[otherNode.id] = {
+            ...otherNode
+          };
+          nodesToAdd[otherNode.id].connections.outputs = (_otherNode$connection5 = otherNode.connections?.outputs?.filter(c => !(c.port === conn.name && c.node === node.id))) !== null && _otherNode$connection5 !== void 0 ? _otherNode$connection5 : [];
+          nodesToAdd[otherNode.id].connections.inputs = [...((_otherNode$connection6 = otherNode.connections.inputs) !== null && _otherNode$connection6 !== void 0 ? _otherNode$connection6 : [])];
+        }
+      }
+    }
+    setSelectedNodes([]);
+    setStateAndNotify(prev => {
+      var _prev$nodes2;
+      const newNodes = {
+        ...((_prev$nodes2 = prev.nodes) !== null && _prev$nodes2 !== void 0 ? _prev$nodes2 : {})
+      };
+      nodesToRemove.filter(id => !nodeTypes[state.nodes[id]?.type]?.root).forEach(id => {
+        delete newNodes[id];
+      });
+      Object.values(nodesToAdd).forEach(node => {
+        newNodes[node.id] = node;
+      });
+      return {
+        ...prev,
+        nodes: newNodes
+      };
+    });
+  }, [state, setStateAndNotify, setSelectedNodes, nodeTypes]);
+
+  /**
+   * Clona um nó existente
+   * @param {string} id - ID do nó a ser clonado
+   */
+  const cloneNode = React.useCallback(id => {
+    const node = state.nodes[id];
+    if (!node) return;
+    const newNode = {
+      ...node,
+      id: nanoid(),
+      position: {
+        x: node.position.x + 20,
+        y: node.position.y + 20
+      },
+      connections: {
+        inputs: [],
+        outputs: []
+      }
+    };
+    setStateAndNotify(prev => {
+      var _prev$nodes3;
+      return {
+        ...prev,
+        nodes: {
+          ...((_prev$nodes3 = prev.nodes) !== null && _prev$nodes3 !== void 0 ? _prev$nodes3 : {}),
+          [newNode.id]: newNode
+        }
+      };
+    });
+  }, [setStateAndNotify, state]);
+
+  /**
+   * Remove uma conexão entre nós
+   * @param {string} srcNode - ID do nó de origem
+   * @param {string} srcPort - Porta do nó de origem
+   * @param {string} dstNode - ID do nó de destino
+   * @param {string} dstPort - Porta do nó de destino
+   */
+  const removeConnectionFromOutput = React.useCallback((srcNode, srcPort, dstNode, dstPort) => {
+    setStateAndNotify(prev => {
+      var _prev$nodes4;
+      const newNodes = {
+        ...((_prev$nodes4 = prev.nodes) !== null && _prev$nodes4 !== void 0 ? _prev$nodes4 : {})
+      };
+      if (!newNodes[srcNode] || !newNodes[dstNode]) return prev;
+      newNodes[srcNode] = {
+        ...newNodes[srcNode],
+        connections: {
+          ...newNodes[srcNode].connections,
+          outputs: newNodes[srcNode].connections.outputs.filter(conn => !(conn.name === srcPort && conn.node === dstNode && conn.port === dstPort))
+        }
+      };
+      newNodes[dstNode] = {
+        ...newNodes[dstNode],
+        connections: {
+          ...newNodes[dstNode].connections,
+          inputs: newNodes[dstNode].connections.inputs.filter(conn => !(conn.name === dstPort && conn.node === srcNode && conn.port === srcPort))
+        }
+      };
+      return {
+        ...prev,
+        nodes: newNodes
+      };
+    });
+  }, [setStateAndNotify]);
+
+  /**
+   * Adiciona um ponto de waypoint a uma conexão
+   * @param {string} srcNode - ID do nó de origem
+   * @param {string} srcPort - Porta do nó de origem
+   * @param {string} dstNode - ID do nó de destino
+   * @param {string} dstPort - Porta do nó de destino
+   * @param {Object} position - Posição do waypoint
+   */
+  const addWaypoint = React.useCallback((srcNode, srcPort, dstNode, dstPort, position) => {
+    setStateAndNotify(prev => {
+      var _prev$nodes5;
+      const newNodes = {
+        ...((_prev$nodes5 = prev.nodes) !== null && _prev$nodes5 !== void 0 ? _prev$nodes5 : {})
+      };
+      if (!newNodes[srcNode]) return prev;
+
+      // Encontrar a conexão correspondente nos outputs do nó de origem
+      const connectionIndex = newNodes[srcNode].connections?.outputs?.findIndex(conn => conn.name === srcPort && conn.node === dstNode && conn.port === dstPort);
+      if (connectionIndex === -1) return prev;
+
+      // Clonar a conexão e garantir que o array de waypoints existe
+      const connection = {
+        ...newNodes[srcNode].connections.outputs[connectionIndex],
+        waypoints: [...(newNodes[srcNode].connections.outputs[connectionIndex].waypoints || [])]
+      };
+
+      // Adicionar o novo waypoint
+      connection.waypoints.push(position);
+
+      // Atualizar a conexão no objeto newNodes
+      newNodes[srcNode] = {
+        ...newNodes[srcNode],
+        connections: {
+          ...newNodes[srcNode].connections,
+          outputs: [...newNodes[srcNode].connections.outputs.slice(0, connectionIndex), connection, ...newNodes[srcNode].connections.outputs.slice(connectionIndex + 1)]
+        }
+      };
+      return {
+        ...prev,
+        nodes: newNodes
+      };
+    });
+  }, [setStateAndNotify]);
+
+  /**
+   * Atualiza a posição de um waypoint
+   * @param {string} srcNode - ID do nó de origem
+   * @param {string} srcPort - Porta do nó de origem
+   * @param {string} dstNode - ID do nó de destino
+   * @param {string} dstPort - Porta do nó de destino
+   * @param {number} waypointIndex - Índice do waypoint a ser atualizado
+   * @param {Object} newPosition - Nova posição do waypoint
+   */
+  const updateWaypointPosition = React.useCallback((srcNode, srcPort, dstNode, dstPort, waypointIndex, newPosition) => {
+    setStateAndNotify(prev => {
+      var _prev$nodes6;
+      const newNodes = {
+        ...((_prev$nodes6 = prev.nodes) !== null && _prev$nodes6 !== void 0 ? _prev$nodes6 : {})
+      };
+      if (!newNodes[srcNode]) return prev;
+
+      // Encontrar a conexão correspondente nos outputs do nó de origem
+      const connectionIndex = newNodes[srcNode].connections?.outputs?.findIndex(conn => conn.name === srcPort && conn.node === dstNode && conn.port === dstPort);
+      if (connectionIndex === -1) return prev;
+
+      // Clonar a conexão e garantir que o array de waypoints existe
+      const connection = {
+        ...newNodes[srcNode].connections.outputs[connectionIndex],
+        waypoints: [...(newNodes[srcNode].connections.outputs[connectionIndex].waypoints || [])]
+      };
+
+      // Atualizar a posição do waypoint
+      if (waypointIndex >= 0 && waypointIndex < connection.waypoints.length) {
+        connection.waypoints[waypointIndex] = newPosition;
+      }
+
+      // Atualizar a conexão no objeto newNodes
+      newNodes[srcNode] = {
+        ...newNodes[srcNode],
+        connections: {
+          ...newNodes[srcNode].connections,
+          outputs: [...newNodes[srcNode].connections.outputs.slice(0, connectionIndex), connection, ...newNodes[srcNode].connections.outputs.slice(connectionIndex + 1)]
+        }
+      };
+      return {
+        ...prev,
+        nodes: newNodes
+      };
+    });
+  }, [setStateAndNotify]);
+
+  /**
+   * Remove um waypoint de uma conexão
+   * @param {string} srcNode - ID do nó de origem
+   * @param {string} srcPort - Porta do nó de origem
+   * @param {string} dstNode - ID do nó de destino
+   * @param {string} dstPort - Porta do nó de destino
+   * @param {number} waypointIndex - Índice do waypoint a ser removido
+   */
+  const removeWaypoint = React.useCallback((srcNode, srcPort, dstNode, dstPort, waypointIndex) => {
+    setStateAndNotify(prev => {
+      var _prev$nodes7;
+      const newNodes = {
+        ...((_prev$nodes7 = prev.nodes) !== null && _prev$nodes7 !== void 0 ? _prev$nodes7 : {})
+      };
+      if (!newNodes[srcNode]) return prev;
+
+      // Encontrar a conexão correspondente nos outputs do nó de origem
+      const connectionIndex = newNodes[srcNode].connections?.outputs?.findIndex(conn => conn.name === srcPort && conn.node === dstNode && conn.port === dstPort);
+      if (connectionIndex === -1) return prev;
+
+      // Clonar a conexão e garantir que o array de waypoints existe
+      const connection = {
+        ...newNodes[srcNode].connections.outputs[connectionIndex],
+        waypoints: [...(newNodes[srcNode].connections.outputs[connectionIndex].waypoints || [])]
+      };
+
+      // Remover o waypoint pelo índice
+      connection.waypoints.splice(waypointIndex, 1);
+
+      // Atualizar a conexão no objeto newNodes
+      newNodes[srcNode] = {
+        ...newNodes[srcNode],
+        connections: {
+          ...newNodes[srcNode].connections,
+          outputs: [...newNodes[srcNode].connections.outputs.slice(0, connectionIndex), connection, ...newNodes[srcNode].connections.outputs.slice(connectionIndex + 1)]
+        }
+      };
+      return {
+        ...prev,
+        nodes: newNodes
+      };
+    });
+  }, [setStateAndNotify]);
+
+  /**
+   * Conecta dois nós
+   * @param {Object} connection - Informações da conexão
+   * @param {Object} connection.source - Nó e porta de origem
+   * @param {Object} connection.target - Nó e porta de destino
+   */
+  const connectNodes = React.useCallback(({
+    source,
+    target
+  }) => {
+    let connectionSuccess = false;
+    setStateAndNotify(prev => {
+      if (!prev?.nodes || !Object.keys(prev.nodes).length) return null;
+      const item = {
+        srcNode: source.nodeId,
+        dstNode: target.nodeId,
+        srcPort: source.portName,
+        dstPort: target.portName
+      };
+      if (item.srcNode === item.dstNode) return prev;
+
+      // deep merge
+      const srcNode = JSON.parse(JSON.stringify(prev.nodes[item.srcNode]));
+      const dstNode = JSON.parse(JSON.stringify(prev.nodes[item.dstNode]));
+      const srcPort = nodeTypes[srcNode.type].outputs(srcNode.values, srcNode.connections?.inputs).find(p => p.name === item.srcPort);
+      const dstPort = nodeTypes[dstNode.type].inputs(dstNode.values).find(p => p.name === item.dstPort);
+      if (!srcPort || !dstPort || srcPort.type !== dstPort.type) return prev;
+      if (!srcNode.connections) srcNode.connections = {};
+      if (!srcNode.connections?.outputs) srcNode.connections.outputs = [];
+      if (!srcNode.connections?.inputs) srcNode.connections.inputs = [];
+      if (!dstNode.connections) dstNode.connections = {};
+      if (!dstNode.connections?.outputs) dstNode.connections.outputs = [];
+      if (!dstNode.connections?.inputs) dstNode.connections.inputs = [];
+      if (!srcNode.connections.outputs.find(c => c.node === dstNode.id && c.name === dstPort.name)) {
+        srcNode.connections.outputs.push({
+          name: srcPort.name,
+          node: dstNode.id,
+          port: dstPort.name,
+          type: srcPort.type,
+          waypoints: [] // Array vazio que armazenará os waypoints
+        });
+      }
+      if (!dstNode.connections.inputs.find(c => c.node === srcNode.id && c.name === srcPort.name)) {
+        dstNode.connections.inputs.push({
+          name: dstPort.name,
+          node: srcNode.id,
+          port: srcPort.name,
+          type: srcPort.type
+        });
+      }
+      const nodes = {
+        ...prev.nodes,
+        [srcNode.id]: srcNode,
+        [dstNode.id]: dstNode
+      };
+      connectionSuccess = true;
+      return {
+        ...prev,
+        nodes
+      };
+    });
+    return connectionSuccess;
+  }, [setStateAndNotify, nodeTypes]);
+
+  /**
+   * Updates node values
+   * @param {string} id - Node ID
+   * @param {Object} values - New values
+   */
+  const updateNodeValues = React.useCallback((id, values) => {
+    setStateAndNotify(prev => {
+      return {
+        ...prev,
+        nodes: {
+          ...prev.nodes,
+          [id]: {
+            ...prev.nodes[id],
+            values
+          }
+        }
+      };
+    });
+  }, [setStateAndNotify]);
+  return {
+    addNode,
+    removeNodes,
+    cloneNode,
+    removeConnectionFromOutput,
+    addWaypoint,
+    updateWaypointPosition,
+    removeWaypoint,
+    connectNodes,
+    updateNodeValues
+  };
+}
 
 function getDefaultExportFromCjs (x) {
 	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
@@ -3689,102 +4793,258 @@ var mdiSelectDrag = "M13,17H17V13H19V17H23V19H19V23H17V19H13V17M11,17V19H9V17H11
 var mdiSelectRemove = "M21 20C21 20.55 20.55 21 20 21H19V19H21V20M15 21V19H17V21H15M11 21V19H13V21H11M7 21V19H9V21H7M4 21C3.45 21 3 20.55 3 20V19H5V21H4M3 15H5V17H3V15M21 15V17H19V15H21M14.59 8L12 10.59L9.41 8L8 9.41L10.59 12L8 14.59L9.41 16L12 13.41L14.59 16L16 14.59L13.41 12L16 9.41L14.59 8M3 11H5V13H3V11M21 11V13H19V11H21M3 7H5V9H3V7M21 7V9H19V7H21M4 3H5V5H3V4C3 3.45 3.45 3 4 3M20 3C20.55 3 21 3.45 21 4V5H19V3H20M15 5V3H17V5H15M11 5V3H13V5H11M7 5V3H9V5H7Z";
 var mdiSetCenter = "M9,5A7,7 0 0,0 2,12A7,7 0 0,0 9,19C10.04,19 11.06,18.76 12,18.32C12.94,18.76 13.96,19 15,19A7,7 0 0,0 22,12A7,7 0 0,0 15,5C13.96,5 12.94,5.24 12,5.68C11.06,5.24 10.04,5 9,5M9,7C9.34,7 9.67,7.03 10,7.1C8.72,8.41 8,10.17 8,12C8,13.83 8.72,15.59 10,16.89C9.67,16.96 9.34,17 9,17A5,5 0 0,1 4,12A5,5 0 0,1 9,7M15,7A5,5 0 0,1 20,12A5,5 0 0,1 15,17C14.66,17 14.33,16.97 14,16.9C15.28,15.59 16,13.83 16,12C16,10.17 15.28,8.41 14,7.11C14.33,7.04 14.66,7 15,7Z";
 
-const Comment = ({
-  title,
-  onChangeTitle,
-  text,
-  onChangeText,
-  backgroundColor,
-  position,
-  size,
-  onResize,
-  onMove,
-  onMoveEnd,
-  isSelected,
-  nodeId,
-  onContextMenu
+const Button = ({
+  children,
+  ...props
 }) => {
-  var _position$x, _position$y, _size$w, _size$h;
   const {
-    scale: screenScale
-  } = useScreenContext();
-  const containerRef = React.useRef(null);
-  React.useEffect(() => {
-    console.log('size', size);
-  }, [size]);
-  const mouseDownHandler = React.useCallback(e => {
-    // const rect = currentRef.getBoundingClientRect()
-    // const offsetX = e.clientX - rect.x
-    // const offsetY = e.clientY - rect.y
-    const startX = e.pageX;
-    const startY = e.pageY;
-    console.log('mouse start position', startX, startY, position.x, position.y);
-    const mouseMoveHandler = e => {
-      const dx = e.pageX - startX;
-      const dy = e.pageY - startY;
-      onMove?.({
-        x: position.x + dx / screenScale,
-        y: position.y + dy / screenScale
-      });
-    };
-    const mouseUpHandler = e => {
-      const dx = e.pageX - startX;
-      const dy = e.pageY - startY;
-      onMoveEnd?.({
-        x: position.x + dx / screenScale,
-        y: position.y + dy / screenScale
-      });
-      window.removeEventListener('mousemove', mouseMoveHandler);
-      window.removeEventListener('mouseup', mouseUpHandler);
-    };
-    window.addEventListener('mousemove', mouseMoveHandler);
-    window.addEventListener('mouseup', mouseUpHandler);
-  }, [position, onMove, onMoveEnd, screenScale]);
-  React.useEffect(() => {
-    const currentRef = containerRef.current;
-    const mouseUpHandler = e => {
-      if (size?.w !== currentRef.offsetWidth || size?.h !== currentRef.offsetHeight) {
-        onResize?.({
-          w: currentRef.offsetWidth,
-          h: currentRef.offsetHeight
-        });
-      }
-    };
-    currentRef.addEventListener('mouseup', mouseUpHandler);
-    return () => {
-      currentRef.removeEventListener('mouseup', mouseUpHandler);
-    };
-  }, []);
-  return /*#__PURE__*/jsxRuntime.jsxs("div", {
-    ref: containerRef,
-    id: `card-${nodeId}`,
-    className: [commentCss.container, isSelected ? commentCss.selected : ''].join(' '),
+    currentTheme
+  } = useTheme();
+  return /*#__PURE__*/jsxRuntime.jsx("button", {
+    ...props,
     style: {
-      backgroundColor,
-      transform: `translate(${(_position$x = position?.x) !== null && _position$x !== void 0 ? _position$x : 0}px, ${(_position$y = position?.y) !== null && _position$y !== void 0 ? _position$y : 0}px)`,
-      width: (_size$w = size?.w) !== null && _size$w !== void 0 ? _size$w : 300,
-      height: (_size$h = size?.h) !== null && _size$h !== void 0 ? _size$h : 200
+      backgroundColor: currentTheme.buttons?.default?.backgroundColor,
+      border: currentTheme.buttons?.default?.border,
+      color: currentTheme.buttons?.default?.color,
+      borderRadius: currentTheme.roundness
     },
-    onContextMenu: onContextMenu,
-    children: [/*#__PURE__*/jsxRuntime.jsx("div", {
-      className: commentCss.moveHandler,
-      onMouseDown: mouseDownHandler
-    }), /*#__PURE__*/jsxRuntime.jsx("div", {
-      className: commentCss.handler
-    }), /*#__PURE__*/jsxRuntime.jsx("input", {
-      className: commentCss.title,
-      placeholder: "Comment",
-      value: title !== null && title !== void 0 ? title : '',
-      onChange: e => onChangeTitle(e.target.value),
-      onMouseDown: e => e.stopPropagation()
-    }), /*#__PURE__*/jsxRuntime.jsx("textarea", {
-      className: commentCss.value,
-      value: text !== null && text !== void 0 ? text : '',
-      onChange: e => onChangeText(e.target.value),
-      onMouseDown: e => e.stopPropagation()
-    })]
-  }, `card-${nodeId}`);
+    children: children
+  });
 };
+
+const ToolbarVertical = ({
+  zoomIn,
+  zoomOut,
+  centerView,
+  resetView,
+  canMove,
+  setCanMove,
+  position,
+  scale,
+  setStateAndNotify
+}) => {
+  return /*#__PURE__*/jsxRuntime.jsxs("div", {
+    className: [css$1.panel, css$1.controlsPanelVertical].join(" "),
+    children: [/*#__PURE__*/jsxRuntime.jsx(Button, {
+      className: css$1.controlButton,
+      onClick: () => zoomIn(),
+      children: /*#__PURE__*/jsxRuntime.jsx(Icon$1, {
+        path: mdiMagnifyPlus,
+        size: 0.6
+      })
+    }), /*#__PURE__*/jsxRuntime.jsx(Button, {
+      className: css$1.controlButton,
+      onClick: () => zoomOut(),
+      children: /*#__PURE__*/jsxRuntime.jsx(Icon$1, {
+        path: mdiMagnifyMinus,
+        size: 0.6
+      })
+    }), /*#__PURE__*/jsxRuntime.jsx(Button, {
+      className: css$1.controlButton,
+      onClick: () => {
+        centerView();
+        setStateAndNotify(prev => ({
+          ...prev,
+          position,
+          scale
+        }));
+      },
+      children: /*#__PURE__*/jsxRuntime.jsx(Icon$1, {
+        path: mdiSetCenter,
+        size: 0.6
+      })
+    }), /*#__PURE__*/jsxRuntime.jsx(Button, {
+      className: css$1.controlButton,
+      onClick: () => {
+        resetView();
+        setStateAndNotify(prev => ({
+          ...prev,
+          position,
+          scale: 1
+        }));
+      },
+      children: /*#__PURE__*/jsxRuntime.jsx(Icon$1, {
+        path: mdiMagnifyScan,
+        size: 0.6
+      })
+    }), /*#__PURE__*/jsxRuntime.jsx(Button, {
+      className: css$1.controlButton,
+      onClick: () => setCanMove(!canMove),
+      children: /*#__PURE__*/jsxRuntime.jsx(Icon$1, {
+        path: canMove ? mdiLockOpenVariant : mdiLock,
+        size: 0.6
+      })
+    })]
+  });
+};
+
+const ToolbarHorizontal = ({
+  snapToGrid,
+  handleSnapToGrid,
+  viewMode
+}) => {
+  return /*#__PURE__*/jsxRuntime.jsxs("div", {
+    className: [css$1.panel, css$1.controlsPanelHorizontal].join(" "),
+    children: [/*#__PURE__*/jsxRuntime.jsx(Button, {
+      className: css$1.controlButton,
+      onClick: handleSnapToGrid,
+      children: /*#__PURE__*/jsxRuntime.jsx(Icon$1, {
+        path: snapToGrid ? mdiGrid : mdiGridOff,
+        size: 0.6
+      })
+    }), /*#__PURE__*/jsxRuntime.jsxs(Button, {
+      disabled: true,
+      className: css$1.controlButton,
+      children: [viewMode === "select" && /*#__PURE__*/jsxRuntime.jsx(Icon$1, {
+        path: mdiSelect,
+        size: 0.6
+      }), viewMode === "select-add" && /*#__PURE__*/jsxRuntime.jsx(Icon$1, {
+        path: mdiSelectDrag,
+        size: 0.6
+      }), viewMode === "select-remove" && /*#__PURE__*/jsxRuntime.jsx(Icon$1, {
+        path: mdiSelectRemove,
+        size: 0.6
+      }), viewMode === "move" && /*#__PURE__*/jsxRuntime.jsx(Icon$1, {
+        path: mdiCursorMove,
+        size: 0.6
+      })]
+    })]
+  });
+};
+
+const StatusPanel = ({
+  scale,
+  position
+}) => {
+  return /*#__PURE__*/jsxRuntime.jsxs("div", {
+    className: [css$1.panel, css$1.statusPanel].join(" "),
+    children: [/*#__PURE__*/jsxRuntime.jsxs("div", {
+      children: ["Scale: ", scale]
+    }), /*#__PURE__*/jsxRuntime.jsxs("div", {
+      children: ["Position: ", JSON.stringify(position)]
+    })]
+  });
+};
+
+var css = {"container":"SelectionArea-module_container__td0Oq"};
+
+const SelectionArea = ({
+  localStartPoint,
+  localEndPoint
+}) => {
+  useTheme();
+  if (localStartPoint.x === localEndPoint.x || localStartPoint.y === localEndPoint.y) {
+    return null;
+  }
+  return /*#__PURE__*/jsxRuntime.jsx("div", {
+    className: css.container,
+    style: {
+      transform: `translate(${Math.min(localStartPoint.x, localEndPoint.x)}px, ${Math.min(localStartPoint.y, localEndPoint.y)}px)`,
+      width: Math.abs(localEndPoint.x - localStartPoint.x),
+      height: Math.abs(localEndPoint.y - localStartPoint.y)
+    }
+  });
+};
+
+function useElementMovement({
+  state,
+  setState,
+  setStateAndNotify,
+  gridSize,
+  snapToGrid,
+  selectedNodes,
+  setSelectedNodes,
+  selectedWaypoints,
+  setSelectedWaypoints,
+  isWaypointSelected
+}) {
+  React.useEffect(() => {
+    console.log("[useElementMovement] Initialized with state:", state);
+  }, [state]);
+  const moveHandler = React.useCallback((node, position, notify) => {
+    // Logic to handle moving the element
+    const pos = {
+      ...position
+    };
+
+    // Se o nó que está sendo arrastado não estiver na lista de selecionados,
+    // consideramos apenas ele como selecionado
+    const _selectedNodes = [...selectedNodes];
+    if (!_selectedNodes.includes(node.id)) {
+      _selectedNodes.length = 0;
+      _selectedNodes.push(node.id);
+    }
+    setSelectedNodes(_selectedNodes);
+    const fn = notify ? setState : setStateAndNotify;
+    fn(prev => ({
+      ...prev,
+      nodes: Object.values(prev.nodes).reduce((acc, n) => {
+        const delta = {
+          x: pos.x - prev.nodes[node.id].position.x,
+          y: pos.y - prev.nodes[node.id].position.y
+        };
+        if (snapToGrid) {
+          pos.x = Math.round(pos.x / gridSize) * gridSize;
+          pos.y = Math.round(pos.y / gridSize) * gridSize;
+          delta.x = pos.x - prev.nodes[node.id].position.x;
+          delta.y = pos.y - prev.nodes[node.id].position.y;
+        }
+        if (n.id === node.id) {
+          acc[n.id] = {
+            ...n,
+            position: pos,
+            connections: {
+              ...n.connections,
+              outputs: n.connections?.outputs?.map(conn => ({
+                ...conn,
+                waypoints: conn.waypoints?.map((wp, idx) => isWaypointSelected({
+                  srcNode: n.id,
+                  srcPort: conn.name,
+                  dstNode: conn.node,
+                  dstPort: conn.port,
+                  waypointIndex: idx
+                }) ? {
+                  x: wp.x + delta.x,
+                  y: wp.y + delta.y
+                } : wp)
+              }))
+            }
+          };
+        } else if (_selectedNodes.includes(n.id)) {
+          acc[n.id] = {
+            ...n,
+            position: {
+              x: n.position.x + delta.x,
+              y: n.position.y + delta.y
+            },
+            connections: {
+              ...n.connections,
+              outputs: n.connections?.outputs?.map(conn => ({
+                ...conn,
+                waypoints: conn.waypoints?.map((wp, idx) => isWaypointSelected({
+                  srcNode: n.id,
+                  srcPort: conn.name,
+                  dstNode: conn.node,
+                  dstPort: conn.port,
+                  waypointIndex: idx
+                }) ? {
+                  x: wp.x + delta.x,
+                  y: wp.y + delta.y
+                } : wp)
+              }))
+            }
+          };
+        } else {
+          acc[n.id] = n;
+        }
+        return acc;
+      }, {})
+    }));
+  }, [selectedNodes, selectedWaypoints, setSelectedNodes, setState, setStateAndNotify, snapToGrid, gridSize, isWaypointSelected]);
+  return {
+    moveHandler
+  };
+}
 
 const defaultI18n = {
   "contextMenu.search": "Search",
@@ -3792,7 +5052,9 @@ const defaultI18n = {
   "contextMenu.removeThisNode": "Remove this node",
   "contextMenu.removeSelectedNodes": "Remove selected nodes",
   "contextMenu.cloneThisNode": "Clone this node",
-  "contextMenu.removeThisConnection": "Remove this connection"
+  "contextMenu.removeThisConnection": "Remove this connection",
+  "contextMenu.addWaypoint": "Add waypoint",
+  "contextMenu.removeWaypoint": "Remove waypoint"
 };
 function Screen({
   portTypes,
@@ -3818,11 +5080,12 @@ function Screen({
   const PORT_SIZE = 20;
   const style = {
     "--port-size": `${PORT_SIZE}px`,
-    "--color-primary": currentTheme.colors.primary,
-    "--color-secondary": currentTheme.colors.secondary,
-    "--color-bg": currentTheme.colors.background,
-    "--color-text": currentTheme.colors.text,
-    "--color-hover": currentTheme.colors.hover,
+    "--color-primary": currentTheme.colors?.primary,
+    "--color-secondary": currentTheme.colors?.secondary,
+    "--color-bg": currentTheme.colors?.background,
+    "--color-text": currentTheme.colors?.text,
+    "--color-hover": currentTheme.colors?.hover,
+    "--color-selection-border": currentTheme.colors?.selectionBorder,
     "--roundness": currentTheme.roundness
   };
   const {
@@ -3842,17 +5105,32 @@ function Screen({
     x: 0,
     y: 0
   });
+  const [isInFadeout, setIsInFadeout] = React.useState(false);
+  const [lastConnectionSuccessful, setLastConnectionSuccessful] = React.useState(false);
   const [state, setState] = React.useState(initialState);
   const [shouldNotify, setShouldNotify] = React.useState(false);
   const [viewMode, setViewMode] = React.useState("select"); // 'select', 'move', 'select-add', 'select-remove'
-  const [selectedNodes, setSelectedNodes] = React.useState([]);
-  const [selectStartPoint, setSelectStartPoint] = React.useState({
-    x: 0,
-    y: 0
-  });
-  const [selectEndPoint, setSelectEndPoint] = React.useState({
-    x: 0,
-    y: 0
+
+  // Utilizando o hook de seleção para gerenciar seleção de elementos
+  const {
+    selectedNodes,
+    setSelectedNodes,
+    selectedWaypoints,
+    setSelectedWaypoints,
+    selectStartPoint,
+    setSelectStartPoint,
+    selectEndPoint,
+    setSelectEndPoint,
+    clearSelection,
+    selectAllNodes,
+    addNodesToSelection,
+    removeNodesFromSelection,
+    addWaypointToSelection,
+    removeWaypointFromSelection,
+    isWaypointSelected,
+    processAreaSelection
+  } = useElementSelection({
+    state
   });
   React.useState({
     x: 0,
@@ -3863,7 +5141,7 @@ function Screen({
     if (!initialState) return;
     if (initialState.scale) setScale(initialState.scale);
     if (initialState.position) setPosition(initialState.position);
-  }, []);
+  }, [initialState, setScale, setPosition]);
   const setStateAndNotify = React.useCallback(cb => {
     setState(prev => {
       const newState = cb(prev);
@@ -3871,172 +5149,56 @@ function Screen({
       return newState;
     });
   }, [setState]);
-  React.useEffect(() => {
-    if (shouldNotify) {
-      onChangeState(state);
-      setShouldNotify(false);
-    }
-  }, [state, shouldNotify, onChangeState]);
   const screenRef = React.useRef();
   const contRect = screenRef.current?.getBoundingClientRect();
   const wrapperRef = React.useRef();
-  React.useEffect(() => {
-    const srr = screenRef.current;
-    if (!srr) return;
-    const focusHandler = () => {};
-    const keyHandler = e => {
-      const inside = screenRef.current === document.activeElement;
-      if (!inside) return;
-      switch (e.key.toLowerCase()) {
-        case "delete":
-        case "backspace":
-          console.log("delete");
 
-          //delete selected nodes
-          removeNodes(selectedNodes);
-          break;
-        case "escape":
-          console.log("escape");
-          setSelectedNodes([]);
-          break;
-      }
-      if (e.ctrlKey || e.metaKey) {
-        switch (e.key.toLowerCase()) {
-          case "a":
-            console.log("select all");
-            e.preventDefault();
-            e.stopPropagation();
+  // Integrar hook de operações de nós
+  const {
+    addNode,
+    removeNodes,
+    cloneNode,
+    removeConnectionFromOutput,
+    addWaypoint,
+    updateWaypointPosition,
+    removeWaypoint,
+    connectNodes,
+    updateNodeValues
+  } = useNodeOperations({
+    state,
+    setStateAndNotify,
+    setSelectedNodes,
+    nodeTypes
+  });
 
-            //select all nodes
-            setSelectedNodes(Object.keys(state.nodes));
-            break;
-          case "c":
-            console.log("copy");
-            e.preventDefault();
-            e.stopPropagation();
+  // Integrate clipboard hook
+  const {
+    copyNodesToClipboard,
+    pasteNodesFromClipboard
+  } = useClipboard({
+    state,
+    setStateAndNotify,
+    setSelectedNodes,
+    setSelectedWaypoints,
+    nodeTypes,
+    position,
+    scale,
+    pointerPosition,
+    // Agora pointerPosition está sempre atualizado
+    screenRef
+  });
 
-            //copy selected to clipboard
-            const _selectedNodes = {};
-            for (const nodeId of selectedNodes) {
-              _selectedNodes[nodeId] = state.nodes[nodeId];
-            }
-            console.log("selected", _selectedNodes);
-            const data = JSON.stringify(_selectedNodes);
-            navigator.clipboard.writeText(data);
-            break;
-          case "v":
-            console.log("paste");
-            //paste from clipboard
-
-            e.preventDefault();
-            e.stopPropagation();
-            navigator.clipboard.readText().then(data => {
-              console.log("clipboard", data);
-              try {
-                const _nodes = JSON.parse(data);
-                console.log("clipboard", _nodes);
-
-                // validate nodes
-                const jsonNodes = Object.values(_nodes).filter(node => !node.root);
-                let valid = true;
-                for (const node of jsonNodes) {
-                  if (!nodeTypes[node.type]) {
-                    console.log("invalid node type", node.type);
-                    valid = false;
-                    break;
-                  }
-                  if (!node.position) {
-                    console.log("invalid node position", node.position);
-                    valid = false;
-                    break;
-                  }
-                  if (node.connections?.inputs == null || node.connections?.outputs == null) {
-                    console.log("invalid node connections", node.connections);
-                    valid = false;
-                    break;
-                  }
-                }
-                if (!valid) return;
-
-                // find node with minimum x position from nodes
-                const nodeWithMinX = jsonNodes.reduce((acc, node) => {
-                  var _acc$position$x;
-                  if (node.position.x < ((_acc$position$x = acc?.position?.x) !== null && _acc$position$x !== void 0 ? _acc$position$x : Number.POSITIVE_INFINITY)) return node;
-                  return acc;
-                }, null);
-                const delta = {
-                  x: nodeWithMinX.position.x,
-                  y: nodeWithMinX.position.y
-                };
-                const {
-                  x,
-                  y
-                } = screenRef.current.getBoundingClientRect();
-                const pos = {
-                  x: (pointerPosition.x - x - position.x) / scale,
-                  y: (pointerPosition.y - y - position.y) / scale
-                };
-                console.log("positioning", pointerPosition, x, y, position);
-                const idsDict = {};
-                const nodes = jsonNodes.map(node => {
-                  const oldId = node.id;
-                  const newId = nanoid();
-                  idsDict[oldId] = newId;
-                  return {
-                    ...node,
-                    id: newId,
-                    position: {
-                      x: node.position.x - delta.x + pos.x,
-                      y: node.position.y - delta.y + pos.y
-                    },
-                    connections: {
-                      inputs: node.connections?.inputs?.filter(conn => jsonNodes.find(it => it.id === conn.node)),
-                      outputs: node.connections?.outputs?.filter(conn => jsonNodes.find(it => it.id === conn.node))
-                    }
-                  };
-                });
-                for (const node of nodes) {
-                  if (node.connections?.inputs) {
-                    for (const conn of node.connections.inputs) {
-                      conn.node = idsDict[conn.node];
-                    }
-                  }
-                  if (node.connections?.outputs) {
-                    for (const conn of node.connections.outputs) {
-                      conn.node = idsDict[conn.node];
-                    }
-                  }
-                }
-                setStateAndNotify(prev => ({
-                  ...prev,
-                  nodes: {
-                    ...prev.nodes,
-                    ...nodes.reduce((acc, node) => {
-                      acc[node.id] = node;
-                      return acc;
-                    }, {})
-                  }
-                }));
-                setSelectedNodes(nodes.map(n => n.id));
-              } catch (err) {
-                console.log("invalid clipboard data", err);
-              }
-            });
-            break;
-        }
-      }
-    };
-    srr.addEventListener("focus", focusHandler);
-    srr.addEventListener("blur", focusHandler);
-    srr.addEventListener("keydown", keyHandler);
-    return () => {
-      srr.removeEventListener("focus", focusHandler);
-      srr.removeEventListener("blur", focusHandler);
-      srr.removeEventListener("keydown", keyHandler);
-    };
-  }, [screenRef.current, selectedNodes, state, position, scale, pointerPosition]);
+  // Integrar hook de atalhos de teclado
+  useKeyboardShortcuts({
+    screenRef,
+    removeNodes,
+    selectedNodes,
+    setSelectedNodes,
+    selectAllNodes,
+    copyNodesToClipboard,
+    pasteNodesFromClipboard
+  });
   const handleMouseDown = React.useCallback(event => {
-    console.log("target", event.target);
     if (event.button === 1) {
       //middle mouse button
       setViewMode("move");
@@ -4081,35 +5243,68 @@ function Screen({
         setSelectEndPoint(_posEnd);
         const _selectedNodes = [];
         const nodes = state.nodes ? Object.values(state.nodes) : [];
+
+        // Definir p1 e p2 fora do loop para que estejam disponíveis para o processAreaSelection
+        const p1 = {
+          x: Math.min(pos.x, _posEnd.x),
+          y: Math.min(pos.y, _posEnd.y)
+        };
+        const p2 = {
+          x: Math.max(pos.x, _posEnd.x),
+          y: Math.max(pos.y, _posEnd.y)
+        };
         nodes.forEach(node => {
-          console.log("picking", node.id);
+          const cardElement = document.getElementById(`card-${node.id}`);
+          if (!cardElement) return;
           const {
             x,
             y,
             width,
             height
-          } = document.getElementById(`card-${node.id}`).getBoundingClientRect();
-          const p1 = {
-            x: Math.min(pos.x, _posEnd.x),
-            y: Math.min(pos.y, _posEnd.y)
-          };
-          const p2 = {
-            x: Math.max(pos.x, _posEnd.x),
-            y: Math.max(pos.y, _posEnd.y)
-          };
+          } = cardElement.getBoundingClientRect();
           if (x > p1.x && x + width < p2.x && y > p1.y && y + height < p2.y) {
             _selectedNodes.push(node.id);
           }
         });
-        if (selectMode === "select") {
-          setSelectedNodes(_selectedNodes);
-        } else {
-          if (selectMode === "select-add") {
-            setSelectedNodes(prev => [...prev, ..._selectedNodes]);
-          } else if (selectMode === "select-remove") {
-            setSelectedNodes(prev => prev.filter(id => !_selectedNodes.includes(id)));
-          }
+
+        // Procurar por waypoints na área selecionada
+        const selectedWaypoints = [];
+
+        // Iterar por todos os nós para encontrar comentários e waypoints
+        if (state.nodes) {
+          Object.values(state.nodes).forEach(node => {
+            // Verificar waypoints em conexões
+            if (node.connections?.outputs) {
+              node.connections.outputs.forEach(connection => {
+                if (connection.waypoints) {
+                  connection.waypoints.forEach((waypoint, waypointIndex) => {
+                    // Converter a posição do waypoint para coordenadas da tela
+                    const waypointScreenX = waypoint.x * scale + position.x + window.scrollX;
+                    const waypointScreenY = waypoint.y * scale + position.y + window.scrollY;
+
+                    // Verificar se o waypoint está dentro da área selecionada
+                    if (waypointScreenX > p1.x && waypointScreenX < p2.x && waypointScreenY > p1.y && waypointScreenY < p2.y) {
+                      selectedWaypoints.push({
+                        srcNode: node.id,
+                        srcPort: connection.name,
+                        dstNode: connection.node,
+                        dstPort: connection.port,
+                        waypointIndex: waypointIndex
+                      });
+                    }
+                  });
+                }
+              });
+            }
+          });
         }
+        console.warn("selectedWaypoints", selectedWaypoints);
+
+        // Usa o método processAreaSelection do hook para processar a seleção
+        processAreaSelection({
+          p1,
+          p2
+        }, selectMode, _selectedNodes, selectedWaypoints);
         setSelectStartPoint(_posEnd);
       }
       setSelectStartPoint({
@@ -4128,21 +5323,48 @@ function Screen({
     //const { startX, startY } = dragInfo
 
     const mouseMoveListener = event => {
-      setPointerPosition({
+      const newPosition = {
         x: event.pageX - window.scrollX,
         y: event.pageY - window.scrollY
-      });
+      };
+
+      // Armazenar a posição do mouse em uma variável global para acesso imediato
+      window.mousePosition = newPosition;
+
+      // Only log when position changes significantly to avoid console overload
+      setPointerPosition(newPosition);
     };
     window.addEventListener("mousemove", mouseMoveListener);
     return () => {
       window.removeEventListener("mousemove", mouseMoveListener);
     };
-  }, []);
+  }, []); // Removi pointerPosition das dependências para evitar ciclos
+
   React.useEffect(() => {
     if (!dragInfo) {
-      setDstDragPosition(null);
+      // Quando o arrasto termina, ativamos o modo fadeout apenas se a conexão falhou
+      if (dstDragPosition && !lastConnectionSuccessful) {
+        setIsInFadeout(true);
+
+        // Manterá a linha por 1 segundo antes de desaparecer
+        const timeoutId = setTimeout(() => {
+          setDstDragPosition(null);
+          setIsInFadeout(false);
+        }, 500);
+        return () => clearTimeout(timeoutId);
+      } else {
+        // Se a conexão foi bem-sucedida, simplesmente limpa a posição
+        setDstDragPosition(null);
+      }
+
+      // Resetamos o estado de sucesso para a próxima tentativa
+      setLastConnectionSuccessful(false);
       return;
     }
+
+    // Se há um novo arrasto, saímos do modo fadeout e resetamos status de conexão
+    setIsInFadeout(false);
+    setLastConnectionSuccessful(false);
 
     //const { startX, startY } = dragInfo
 
@@ -4152,152 +5374,23 @@ function Screen({
 
       setDstDragPosition({
         x: dx,
-        y: dy
+        y: dy,
+        srcX: dragInfo.startX,
+        srcY: dragInfo.startY
       });
     };
     window.addEventListener("mousemove", mouseMoveListener);
     return () => {
       window.removeEventListener("mousemove", mouseMoveListener);
     };
-  }, [dragInfo]);
-  const addNode = React.useCallback((nodeType, pos) => {
-    const newNode = {
-      id: nanoid(),
-      name: nodeType.label,
-      type: nodeType.type,
-      position: pos,
-      values: nodeType.inputs().reduce((acc, input) => {
-        if (input.defaultValue == null) return acc;
-        acc[input.name] = input.defaultValue;
-        return acc;
-      }, {})
-    };
-    setStateAndNotify(prev => {
-      var _prev$nodes;
-      return {
-        ...prev,
-        nodes: {
-          ...((_prev$nodes = prev.nodes) !== null && _prev$nodes !== void 0 ? _prev$nodes : {}),
-          [newNode.id]: newNode
-        }
-      };
-    });
-  }, [setStateAndNotify]);
-  const removeNodes = React.useCallback(ids => {
-    const idsNoRoot = ids.filter(id => !nodeTypes[state.nodes[id].type].root);
-    const nodesToRemove = [...ids];
-    const nodesToAdd = {};
-    for (const nodeId of ids) {
-      const node = state.nodes[nodeId];
-      if (!node) continue;
-      if (node.connections?.outputs?.length) {
-        for (const conn of node.connections.outputs) {
-          var _otherNode$connection3, _otherNode$connection4;
-          const otherNode = state.nodes[conn.node];
-          if (!otherNode || idsNoRoot.includes(otherNode.id)) continue;
-          if (!nodesToRemove.includes(otherNode.id)) nodesToRemove.push(otherNode.id);
-          if (!nodesToAdd[otherNode.id]) {
-            var _otherNode$connection, _otherNode$connection2;
-            nodesToAdd[otherNode.id] = {
-              ...otherNode,
-              connections: {
-                ...otherNode.connections,
-                inputs: (_otherNode$connection = otherNode.connections?.inputs) !== null && _otherNode$connection !== void 0 ? _otherNode$connection : [],
-                outputs: (_otherNode$connection2 = otherNode.connections?.outputs) !== null && _otherNode$connection2 !== void 0 ? _otherNode$connection2 : []
-              }
-            };
-          }
-          nodesToAdd[otherNode.id].connections.outputs = [...((_otherNode$connection3 = otherNode.connections.outputs) !== null && _otherNode$connection3 !== void 0 ? _otherNode$connection3 : [])];
-          nodesToAdd[otherNode.id].connections.inputs = (_otherNode$connection4 = otherNode.connections?.inputs?.filter(c => !(c.port === conn.name && c.node === node.id))) !== null && _otherNode$connection4 !== void 0 ? _otherNode$connection4 : [];
-        }
-      }
-      if (node.connections?.inputs?.length) {
-        for (const conn of node.connections.inputs) {
-          var _otherNode$connection5, _otherNode$connection6;
-          const otherNode = state.nodes[conn.node];
-          if (!otherNode || idsNoRoot.includes(otherNode.id)) continue;
-          if (!nodesToRemove.includes(otherNode.id)) nodesToRemove.push(otherNode.id);
-          if (!nodesToAdd[otherNode.id]) nodesToAdd[otherNode.id] = {
-            ...otherNode
-          };
-          nodesToAdd[otherNode.id].connections.outputs = (_otherNode$connection5 = otherNode.connections?.outputs?.filter(c => !(c.port === conn.name && c.node === node.id))) !== null && _otherNode$connection5 !== void 0 ? _otherNode$connection5 : [];
-          nodesToAdd[otherNode.id].connections.inputs = [...((_otherNode$connection6 = otherNode.connections.inputs) !== null && _otherNode$connection6 !== void 0 ? _otherNode$connection6 : [])];
-        }
-      }
-    }
+  }, [dragInfo, dstDragPosition, lastConnectionSuccessful]);
 
-    // change nodes to object[id]
-    setSelectedNodes([]);
-    setStateAndNotify(prev => {
-      var _prev$nodes2;
-      const newNodes = {
-        ...((_prev$nodes2 = prev.nodes) !== null && _prev$nodes2 !== void 0 ? _prev$nodes2 : {})
-      };
-      nodesToRemove.filter(id => !nodeTypes[state.nodes[id].type].root).forEach(id => {
-        delete newNodes[id];
-      });
-      Object.values(nodesToAdd).forEach(node => {
-        newNodes[node.id] = node;
-      });
-      return {
-        ...prev,
-        nodes: newNodes
-      };
-    });
-  }, [state, setStateAndNotify]);
-  const cloneNode = React.useCallback(id => {
-    const node = state.nodes[id];
-    if (!node) return;
-    const newNode = {
-      ...node,
-      id: nanoid(),
-      position: {
-        x: node.position.x + 20,
-        y: node.position.y + 20
-      },
-      connections: {
-        inputs: [],
-        outputs: []
-      }
-    };
-    setStateAndNotify(prev => {
-      var _prev$nodes3;
-      return {
-        ...prev,
-        nodes: {
-          ...((_prev$nodes3 = prev.nodes) !== null && _prev$nodes3 !== void 0 ? _prev$nodes3 : {}),
-          [newNode.id]: newNode
-        }
-      };
-    });
-  }, [setStateAndNotify, state]);
-  const removeConnectionFromOutput = React.useCallback((srcNode, srcPort, dstNode, dstPort) => {
-    setStateAndNotify(prev => {
-      var _prev$nodes4;
-      const newNodes = {
-        ...((_prev$nodes4 = prev.nodes) !== null && _prev$nodes4 !== void 0 ? _prev$nodes4 : {})
-      };
-      if (!newNodes[srcNode] || !newNodes[dstNode]) return null;
-      newNodes[srcNode] = {
-        ...newNodes[srcNode],
-        connections: {
-          ...newNodes[srcNode].connections,
-          outputs: newNodes[srcNode].connections.outputs.filter(conn => !(conn.name === srcPort && conn.node === dstNode && conn.port === dstPort))
-        }
-      };
-      newNodes[dstNode] = {
-        ...newNodes[dstNode],
-        connections: {
-          ...newNodes[dstNode].connections,
-          inputs: newNodes[dstNode].connections.inputs.filter(conn => !(conn.name === dstPort && conn.node === srcNode && conn.port === srcPort))
-        }
-      };
-      return {
-        ...prev,
-        nodes: newNodes
-      };
-    });
-  }, [setStateAndNotify]);
+  // Funções de manipulação de nós foram movidas para o hook useNodeOperations
+
+  // Funções de manipulação de nós foram movidas para o hook useNodeOperations
+
+  // Funções de manipulação de nós foram movidas para o hook useNodeOperations
+
   const [isMoveable, setIsMoveable] = React.useState(false);
   const [canMove, setCanMove] = React.useState(true);
   const [snapToGrid, setSnapToGrid] = React.useState(true);
@@ -4361,59 +5454,29 @@ function Screen({
   const scaledGridSize = gridSize * (scale !== null && scale !== void 0 ? scale : 1);
   const scaledPositionX = ((_position$x = position?.x) !== null && _position$x !== void 0 ? _position$x : 0) % scaledGridSize;
   const scaledPositionY = ((_position$y = position?.y) !== null && _position$y !== void 0 ? _position$y : 0) % scaledGridSize;
-  const onConnect = React.useCallback(({
-    source,
-    target
-  }) => {
-    setStateAndNotify(prev => {
-      if (!prev?.nodes || !Object.keys(prev.nodes).length) return null;
-      const item = {
-        srcNode: source.nodeId,
-        dstNode: target.nodeId,
-        srcPort: source.portName,
-        dstPort: target.portName
-      };
-      if (item.srcNode === item.dstNode) return;
+  const {
+    moveHandler
+  } = useElementMovement({
+    state,
+    setState,
+    setStateAndNotify,
+    selectedWaypoints,
+    gridSize,
+    snapToGrid,
+    selectedNodes,
+    setSelectedNodes,
+    selectedWaypoints,
+    setSelectedWaypoints,
+    isWaypointSelected
+  });
 
-      // deep merge
-      const srcNode = JSON.parse(JSON.stringify(prev.nodes[item.srcNode]));
-      const dstNode = JSON.parse(JSON.stringify(prev.nodes[item.dstNode]));
-      const srcPort = nodeTypes[srcNode.type].outputs(srcNode.values, srcNode.connections?.inputs).find(p => p.name === item.srcPort);
-      const dstPort = nodeTypes[dstNode.type].inputs(dstNode.values).find(p => p.name === item.dstPort);
-      if (srcPort.type !== dstPort.type) return;
-      if (!srcNode.connections) srcNode.connections = {};
-      if (!srcNode.connections?.outputs) srcNode.connections.outputs = [];
-      if (!srcNode.connections?.inputs) srcNode.connections.inputs = [];
-      if (!dstNode.connections) dstNode.connections = {};
-      if (!dstNode.connections?.outputs) dstNode.connections.outputs = [];
-      if (!dstNode.connections?.inputs) dstNode.connections.inputs = [];
-      if (!srcNode.connections.outputs.find(c => c.node === dstNode.id && c.name === dstPort.name)) {
-        srcNode.connections.outputs.push({
-          name: srcPort.name,
-          node: dstNode.id,
-          port: dstPort.name,
-          type: srcPort.type
-        });
-      }
-      if (!dstNode.connections.inputs.find(c => c.node === srcNode.id && c.name === srcPort.name)) {
-        dstNode.connections.inputs.push({
-          name: dstPort.name,
-          node: srcNode.id,
-          port: srcPort.name,
-          type: srcPort.type
-        });
-      }
-      const nodes = {
-        ...prev.nodes,
-        [srcNode.id]: srcNode,
-        [dstNode.id]: dstNode
-      };
-      return {
-        ...prev,
-        nodes
-      };
-    });
-  }, [setStateAndNotify, nodeTypes]);
+  // Utilizando connectNodes do hook useNodeOperations
+  const onConnect = React.useCallback(connection => {
+    const success = connectNodes(connection);
+    setLastConnectionSuccessful(Boolean(success));
+    console.log("Connection attempt:", success ? "successful" : "failed");
+    return success;
+  }, [connectNodes]);
   const pinchOptions = React.useMemo(() => ({
     step: 5
   }), []);
@@ -4424,9 +5487,9 @@ function Screen({
   const wrapperStyle = React.useMemo(() => ({
     height: "100%",
     width: "100%",
-    backgroundColor: currentTheme.colors.background,
+    backgroundColor: currentTheme.colors?.background,
     backgroundSize: `${scaledGridSize}px ${scaledGridSize}px`,
-    backgroundImage: `linear-gradient(to right, ${currentTheme.colors.hover} 1px, transparent 1px), linear-gradient(to bottom, ${currentTheme.colors.hover} 1px, transparent 1px)`,
+    backgroundImage: `linear-gradient(to right, ${currentTheme.colors?.hover} 1px, transparent 1px), linear-gradient(to bottom, ${currentTheme.colors?.hover} 1px, transparent 1px)`,
     backgroundPosition: `${scaledPositionX}px ${scaledPositionY}px`
   }), [scaledGridSize, scaledPositionX, scaledPositionY, currentTheme]);
   const nodeTypesByCategory = React.useMemo(() => {
@@ -4434,7 +5497,6 @@ function Screen({
       var _nodeType$category;
       if (nodeType.root || nodeType.type === "comment") return acc;
       const _category = (_nodeType$category = nodeType.category) !== null && _nodeType$category !== void 0 ? _nodeType$category : "...";
-      console.log("nodeType", nodeType, _category);
       if (!acc[_category]) acc[_category] = [];
       acc[_category].push(nodeType);
       return acc;
@@ -4449,7 +5511,6 @@ function Screen({
     description: i(i18n, "contextMenu.addComment.description", {}, "Add a comment to the screen"),
     onClick: () => {
       const rect = e.target.getBoundingClientRect();
-      console.log("rect", rect, position, scale);
       const {
         x,
         y
@@ -4458,6 +5519,10 @@ function Screen({
         x: (e.clientX - position.x - x) / scale,
         y: (e.clientY - position.y - y) / scale
       };
+      if (snapToGrid) {
+        _position.x = Math.round(_position.x / gridSize) * gridSize;
+        _position.y = Math.round(_position.y / gridSize) * gridSize;
+      }
       addNode(internalCommentType, _position);
     }
   });
@@ -4483,7 +5548,6 @@ function Screen({
         onClick: () => {
           var _position$x2, _position$y2;
           const rect = e.target.getBoundingClientRect();
-          console.log("rect", rect, position, scale);
           const {
             x,
             y
@@ -4492,6 +5556,10 @@ function Screen({
             x: (e.clientX - ((_position$x2 = position?.x) !== null && _position$x2 !== void 0 ? _position$x2 : 0) - x) / scale,
             y: (e.clientY - ((_position$y2 = position?.y) !== null && _position$y2 !== void 0 ? _position$y2 : 0) - y) / scale
           };
+          if (snapToGrid) {
+            _position.x = Math.round(_position.x / gridSize) * gridSize;
+            _position.y = Math.round(_position.y / gridSize) * gridSize;
+          }
           addNode(nodeType, _position);
         }
       }))
@@ -4503,26 +5571,17 @@ function Screen({
       });
     }
   }), [state, viewMode, nodeTypesByCategory, addNode, position, scale]);
+
+  // Utilizando updateNodeValues do hook useNodeOperations
   const handleValueChange = React.useCallback((id, values) => {
-    setStateAndNotify(prev => {
-      return {
-        ...prev,
-        nodes: {
-          ...prev.nodes,
-          [id]: {
-            ...prev.nodes[id],
-            values
-          }
-        }
-      };
-    });
-  }, [setStateAndNotify]);
+    updateNodeValues(id, values);
+  }, [updateNodeValues]);
   const handleSnapToGrid = React.useCallback(() => {
     setSnapToGrid(prev => !prev);
   }, []);
   if (!state) return null;
   return /*#__PURE__*/jsxRuntime.jsx("div", {
-    className: css.container,
+    className: css$1.container,
     style: style,
     ref: screenRef,
     tabIndex: 0,
@@ -4563,102 +5622,29 @@ function Screen({
           y: 0
         };
         return /*#__PURE__*/jsxRuntime.jsxs(jsxRuntime.Fragment, {
-          children: [localStartPoint.x !== localEndPoint.x && localStartPoint.y !== localEndPoint.y && /*#__PURE__*/jsxRuntime.jsx("div", {
-            style: {
-              position: "absolute",
-              transform: `translate(${Math.min(localStartPoint.x, localEndPoint.x)}px, ${Math.min(localStartPoint.y, localEndPoint.y)}px)`,
-              width: Math.abs(localEndPoint.x - localStartPoint.x),
-              height: Math.abs(localEndPoint.y - localStartPoint.y),
-              border: "3px dashed black",
-              backgroundColor: "rgba(0,0,0,0.1)",
-              pointerEvents: "none"
-            }
-          }), /*#__PURE__*/jsxRuntime.jsxs("div", {
-            className: [css.panel, css.controlsPanelVertical].join(" "),
-            children: [/*#__PURE__*/jsxRuntime.jsx(Button, {
-              className: css.controlButton,
-              onClick: () => zoomIn(),
-              children: /*#__PURE__*/jsxRuntime.jsx(Icon$1, {
-                path: mdiMagnifyPlus,
-                size: 0.6
-              })
-            }), /*#__PURE__*/jsxRuntime.jsx(Button, {
-              className: css.controlButton,
-              onClick: () => zoomOut(),
-              children: /*#__PURE__*/jsxRuntime.jsx(Icon$1, {
-                path: mdiMagnifyMinus,
-                size: 0.6
-              })
-            }), /*#__PURE__*/jsxRuntime.jsx(Button, {
-              className: css.controlButton,
-              onClick: () => {
-                centerView();
-                setStateAndNotify(prev => ({
-                  ...prev,
-                  position,
-                  scale
-                }));
-              },
-              children: /*#__PURE__*/jsxRuntime.jsx(Icon$1, {
-                path: mdiSetCenter,
-                size: 0.6
-              })
-            }), /*#__PURE__*/jsxRuntime.jsx(Button, {
-              className: css.controlButton,
-              onClick: () => {
-                setTransform(position.x, position.y, 1);
-                setScale(1);
-                setStateAndNotify(prev => ({
-                  ...prev,
-                  position,
-                  scale: 1
-                }));
-              },
-              children: /*#__PURE__*/jsxRuntime.jsx(Icon$1, {
-                path: mdiMagnifyScan,
-                size: 0.6
-              })
-            }), /*#__PURE__*/jsxRuntime.jsx(Button, {
-              className: css.controlButton,
-              onClick: () => setCanMove(!canMove),
-              children: /*#__PURE__*/jsxRuntime.jsx(Icon$1, {
-                path: canMove ? mdiLockOpenVariant : mdiLock,
-                size: 0.6
-              })
-            })]
-          }), /*#__PURE__*/jsxRuntime.jsxs("div", {
-            className: [css.panel, css.controlsPanelHorizontal].join(" "),
-            children: [/*#__PURE__*/jsxRuntime.jsx(Button, {
-              className: css.controlButton,
-              onClick: handleSnapToGrid,
-              children: /*#__PURE__*/jsxRuntime.jsx(Icon$1, {
-                path: snapToGrid ? mdiGrid : mdiGridOff,
-                size: 0.6
-              })
-            }), /*#__PURE__*/jsxRuntime.jsxs(Button, {
-              disabled: true,
-              className: css.controlButton,
-              children: [viewMode === "select" && /*#__PURE__*/jsxRuntime.jsx(Icon$1, {
-                path: mdiSelect,
-                size: 0.6
-              }), viewMode === "select-add" && /*#__PURE__*/jsxRuntime.jsx(Icon$1, {
-                path: mdiSelectDrag,
-                size: 0.6
-              }), viewMode === "select-remove" && /*#__PURE__*/jsxRuntime.jsx(Icon$1, {
-                path: mdiSelectRemove,
-                size: 0.6
-              }), viewMode === "move" && /*#__PURE__*/jsxRuntime.jsx(Icon$1, {
-                path: mdiCursorMove,
-                size: 0.6
-              })]
-            })]
-          }), /*#__PURE__*/jsxRuntime.jsxs("div", {
-            className: [css.panel, css.statusPanel].join(" "),
-            children: [/*#__PURE__*/jsxRuntime.jsxs("div", {
-              children: ["Scale: ", scale]
-            }), /*#__PURE__*/jsxRuntime.jsxs("div", {
-              children: ["Position: ", JSON.stringify(position)]
-            })]
+          children: [/*#__PURE__*/jsxRuntime.jsx(SelectionArea, {
+            localStartPoint: localStartPoint,
+            localEndPoint: localEndPoint
+          }), /*#__PURE__*/jsxRuntime.jsx(ToolbarVertical, {
+            zoomIn: zoomIn,
+            zoomOut: zoomOut,
+            centerView: centerView,
+            resetView: () => {
+              setTransform(position.x, position.y, 1);
+              setScale(1);
+            },
+            canMove: canMove,
+            setCanMove: setCanMove,
+            position: position,
+            scale: scale,
+            setStateAndNotify: setStateAndNotify
+          }), /*#__PURE__*/jsxRuntime.jsx(ToolbarHorizontal, {
+            snapToGrid: snapToGrid,
+            handleSnapToGrid: handleSnapToGrid,
+            viewMode: viewMode
+          }), /*#__PURE__*/jsxRuntime.jsx(StatusPanel, {
+            scale: scale,
+            position: position
           }), /*#__PURE__*/jsxRuntime.jsx(ContextMenu, {
             containerRef: screenRef,
             i18n: i18n,
@@ -4672,8 +5658,9 @@ function Screen({
                 const nodeDef = nodeTypes[node.type];
                 if (node.type === "comment") return /*#__PURE__*/jsxRuntime.jsx(Comment, {
                   nodeId: node.id,
-                  text: node.value,
-                  title: node.title,
+                  text: node.value || "",
+                  title: node.title || "",
+                  isSelected: selectedNodes.includes(node.id),
                   onChangeText: value => {
                     setStateAndNotify(prev => ({
                       ...prev,
@@ -4717,86 +5704,8 @@ function Screen({
                       }
                     }));
                   },
-                  onMove: position => {
-                    const pos = {
-                      ...position
-                    };
-                    const _selectedNodes = selectedNodes;
-                    if (!_selectedNodes.includes(node.id)) _selectedNodes.length = 0;
-                    setSelectedNodes(_selectedNodes);
-                    setState(prev => ({
-                      ...prev,
-                      nodes: Object.values(prev.nodes).reduce((acc, n) => {
-                        const delta = {
-                          x: pos.x - prev.nodes[node.id].position.x,
-                          y: pos.y - prev.nodes[node.id].position.y
-                        };
-                        if (snapToGrid) {
-                          pos.x = Math.round(pos.x / gridSize) * gridSize;
-                          pos.y = Math.round(pos.y / gridSize) * gridSize;
-                          delta.x = pos.x - prev.nodes[node.id].position.x;
-                          delta.y = pos.y - prev.nodes[node.id].position.y;
-                        }
-                        if (n.id === node.id) {
-                          acc[n.id] = {
-                            ...n,
-                            position: pos
-                          };
-                        } else if (_selectedNodes.includes(n.id)) {
-                          acc[n.id] = {
-                            ...n,
-                            position: {
-                              x: n.position.x + delta.x,
-                              y: n.position.y + delta.y
-                            }
-                          };
-                        } else {
-                          acc[n.id] = n;
-                        }
-                        return acc;
-                      }, {})
-                    }));
-                  },
-                  onMoveEnd: position => {
-                    const pos = {
-                      ...position
-                    };
-                    const _selectedNodes = selectedNodes;
-                    if (!_selectedNodes.includes(node.id)) _selectedNodes.length = 0;
-                    setSelectedNodes(_selectedNodes);
-                    setStateAndNotify(prev => ({
-                      ...prev,
-                      nodes: Object.values(prev.nodes).reduce((acc, n) => {
-                        const delta = {
-                          x: pos.x - prev.nodes[node.id].position.x,
-                          y: pos.y - prev.nodes[node.id].position.y
-                        };
-                        if (snapToGrid) {
-                          pos.x = Math.round(pos.x / gridSize) * gridSize;
-                          pos.y = Math.round(pos.y / gridSize) * gridSize;
-                          delta.x = pos.x - prev.nodes[node.id].position.x;
-                          delta.y = pos.y - prev.nodes[node.id].position.y;
-                        }
-                        if (n.id === node.id) {
-                          acc[n.id] = {
-                            ...n,
-                            position: pos
-                          };
-                        } else if (_selectedNodes.includes(n.id)) {
-                          acc[n.id] = {
-                            ...n,
-                            position: {
-                              x: n.position.x + delta.x,
-                              y: n.position.y + delta.y
-                            }
-                          };
-                        } else {
-                          acc[n.id] = n;
-                        }
-                        return acc;
-                      }, {})
-                    }));
-                  },
+                  onMove: position => moveHandler(node, position, false),
+                  onMoveEnd: position => moveHandler(node, position, true),
                   onContextMenu: e => handleContextMenu(e, [{
                     label: i(i18n, "contextMenu.cloneThisComment", {}, "Clone this comment"),
                     onClick: () => {
@@ -4834,86 +5743,8 @@ function Screen({
                         ...v.values
                       });
                     },
-                    onChangePosition: position => {
-                      const pos = {
-                        ...position
-                      };
-                      const _selectedNodes = selectedNodes;
-                      if (!_selectedNodes.includes(node.id)) _selectedNodes.length = 0;
-                      setSelectedNodes(_selectedNodes);
-                      setState(prev => ({
-                        ...prev,
-                        nodes: Object.values(prev.nodes).reduce((acc, n) => {
-                          const delta = {
-                            x: pos.x - prev.nodes[node.id].position.x,
-                            y: pos.y - prev.nodes[node.id].position.y
-                          };
-                          if (snapToGrid) {
-                            pos.x = Math.round(pos.x / gridSize) * gridSize;
-                            pos.y = Math.round(pos.y / gridSize) * gridSize;
-                            delta.x = pos.x - prev.nodes[node.id].position.x;
-                            delta.y = pos.y - prev.nodes[node.id].position.y;
-                          }
-                          if (n.id === node.id) {
-                            acc[n.id] = {
-                              ...n,
-                              position: pos
-                            };
-                          } else if (_selectedNodes.includes(n.id)) {
-                            acc[n.id] = {
-                              ...n,
-                              position: {
-                                x: n.position.x + delta.x,
-                                y: n.position.y + delta.y
-                              }
-                            };
-                          } else {
-                            acc[n.id] = n;
-                          }
-                          return acc;
-                        }, {})
-                      }));
-                    },
-                    onDragEnd: position => {
-                      const pos = {
-                        ...position
-                      };
-                      const _selectedNodes = selectedNodes;
-                      if (!_selectedNodes.includes(node.id)) _selectedNodes.length = 0;
-                      setSelectedNodes(_selectedNodes);
-                      setStateAndNotify(prev => ({
-                        ...prev,
-                        nodes: Object.values(prev.nodes).reduce((acc, n) => {
-                          const delta = {
-                            x: pos.x - prev.nodes[node.id].position.x,
-                            y: pos.y - prev.nodes[node.id].position.y
-                          };
-                          if (snapToGrid) {
-                            pos.x = Math.round(pos.x / gridSize) * gridSize;
-                            pos.y = Math.round(pos.y / gridSize) * gridSize;
-                            delta.x = pos.x - prev.nodes[node.id].position.x;
-                            delta.y = pos.y - prev.nodes[node.id].position.y;
-                          }
-                          if (n.id === node.id) {
-                            acc[n.id] = {
-                              ...n,
-                              position: pos
-                            };
-                          } else if (_selectedNodes.includes(n.id)) {
-                            acc[n.id] = {
-                              ...n,
-                              position: {
-                                x: n.position.x + delta.x,
-                                y: n.position.y + delta.y
-                              }
-                            };
-                          } else {
-                            acc[n.id] = n;
-                          }
-                          return acc;
-                        }, {})
-                      }));
-                    },
+                    onChangePosition: position => moveHandler(node, position, false),
+                    onDragEnd: position => moveHandler(node, position, true),
                     containerRef: screenRef,
                     canMove: canMove,
                     onConnect: onConnect,
@@ -4966,6 +5797,7 @@ function Screen({
                     const dstNode = connection.node;
                     const dstPort = connection.port;
                     const connType = connection.type;
+                    const waypoints = connection.waypoints || [];
                     const srcBox = document.getElementById(`card-${srcNode}`);
                     const dstBox = document.getElementById(`card-${dstNode}`);
                     const srcElem = document.getElementById(`card-${srcNode}-output-${srcPort}`);
@@ -5005,7 +5837,75 @@ function Screen({
                       n1Box: box1,
                       n2Box: box2,
                       index: index,
+                      waypoints: waypoints,
+                      onUpdateWaypoint: (waypointIndex, newPosition) => updateWaypointPosition(srcNode, srcPort, dstNode, dstPort, waypointIndex, newPosition),
+                      isWaypointSelected: waypointIndex => isWaypointSelected({
+                        srcNode,
+                        srcPort,
+                        dstNode,
+                        dstPort,
+                        waypointIndex
+                      }),
+                      onWaypointMouseDown: (e, waypointIndex) => {
+                        // Verificar se Ctrl ou Shift está pressionado para seleção múltipla
+                        if (e.ctrlKey) {
+                          removeWaypointFromSelection({
+                            srcNode,
+                            srcPort,
+                            dstNode,
+                            dstPort,
+                            waypointIndex
+                          });
+                        } else if (e.shiftKey) {
+                          addWaypointToSelection({
+                            srcNode,
+                            srcPort,
+                            dstNode,
+                            dstPort,
+                            waypointIndex
+                          });
+                        } else {
+                          // Se não for seleção múltipla, limpar seleção anterior
+                          if (!isWaypointSelected({
+                            srcNode,
+                            srcPort,
+                            dstNode,
+                            dstPort,
+                            waypointIndex
+                          })) {
+                            setSelectedWaypoints([{
+                              srcNode,
+                              srcPort,
+                              dstNode,
+                              dstPort,
+                              waypointIndex
+                            }]);
+                          }
+                        }
+
+                        // Não bloqueamos o evento para permitir que o manipulador interno do ConnectorCurve
+                        // seja chamado para lidar com o arrasto
+                      },
+                      onWaypointContextMenu: (e, waypointIndex) => handleContextMenu(e, [canMove ? {
+                        label: i(i18n, "contextMenu.removeWaypoint", {}, "Remove waypoint"),
+                        style: {
+                          color: "red"
+                        },
+                        onClick: () => {
+                          removeWaypoint(srcNode, srcPort, dstNode, dstPort, waypointIndex);
+                        }
+                      } : null].filter(Boolean)),
                       onContextMenu: e => handleContextMenu(e, [canMove ? {
+                        label: i(i18n, "contextMenu.addWaypoint", {}, "Add waypoint"),
+                        onClick: () => {
+                          const pointerX = (e.clientX - contRect.left - position.x) / scale;
+                          const pointerY = (e.clientY - contRect.top - position.y) / scale;
+                          addWaypoint(srcNode, srcPort, dstNode, dstPort, {
+                            x: pointerX,
+                            y: pointerY
+                          });
+                        }
+                      } : null, canMove ? {
                         label: i(i18n, "contextMenu.removeThisConnection", {}, "Remove this connection"),
                         style: {
                           color: "red"
@@ -5017,11 +5917,12 @@ function Screen({
                     }, `connector-${srcNode}-${srcPort}-${dstNode}-${dstPort}`);
                   })]
                 });
-              }), dragInfo && dstDragPosition ? /*#__PURE__*/jsxRuntime.jsx(ConnectorCurveForward, {
+              }), (dragInfo || isInFadeout) && dstDragPosition ? /*#__PURE__*/jsxRuntime.jsx(ConnectorCurveForward, {
                 tmp: true,
+                invalid: isInFadeout,
                 src: {
-                  x: (dragInfo.startX - contRect.left - position.x + PORT_SIZE / 2 - 2) / scale,
-                  y: (dragInfo.startY - contRect.top - position.y + PORT_SIZE / 2 - 2) / scale
+                  x: ((dragInfo && dragInfo.startX || isInFadeout && dstDragPosition.srcX) - contRect.left - position.x + PORT_SIZE / 2 - 2) / scale,
+                  y: ((dragInfo && dragInfo.startY || isInFadeout && dstDragPosition.srcY) - contRect.top - position.y + PORT_SIZE / 2 - 2) / scale
                 },
                 dst: {
                   x: (dstDragPosition.x - window.scrollX - contRect.left - position.x) / scale,

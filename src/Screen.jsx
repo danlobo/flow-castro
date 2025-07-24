@@ -16,7 +16,7 @@ import css from "./Screen.module.css";
 import nodeCss from "./Node.module.css";
 import nodePortCss from "./NodePort.module.css";
 import commentCss from "./Comment.module.css";
-import { useTheme } from "./ThemeProvider.js";
+import { useTheme } from "./ThemeProvider.jsx";
 
 import { i } from "./util/i18n.js";
 import Comment from "./Comment.jsx";

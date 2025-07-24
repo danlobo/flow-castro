@@ -3,7 +3,7 @@ import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import NodePort from "./NodePort.jsx";
 import { useScreenContext } from "./ScreenContext.jsx";
 import css from "./Node.module.css";
-import { useTheme } from "./ThemeProvider.js";
+import { useTheme } from "./ThemeProvider.jsx";
 
 function Node({
   name,

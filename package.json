@@ -1,8 +1,26 @@
 {
   "name": "flow-castro",
   "homepage": ".",
-  "version": "0.1.12",
-  "private": true,
+  "version": "0.2.0",
+  "private": false,
+  "description": "A React library to create visual flow editors",
+  "keywords": [
+    "react",
+    "flow",
+    "editor",
+    "node-editor",
+    "visual-programming"
+  ],
+  "author": "Daniel Lobo",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danlobo/flow-castro.git"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
   "umd": "dist/umd/index.js",
@@ -27,7 +45,9 @@
     "build": "rollup -c",
     "clear": "rm -rf dist",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "prepublishOnly": "npm run build",
+    "prepare": "npm run clear && npm run build"
   },
   "eslintConfig": {
     "extends": [

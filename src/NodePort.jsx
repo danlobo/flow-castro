@@ -9,7 +9,7 @@ import React, {
 import { useDragContext } from "./DragContext.jsx";
 import { useScreenContext } from "./ScreenContext.jsx";
 import css from "./NodePort.module.css";
-import { useTheme } from "./ThemeProvider.js";
+import { useTheme } from "./ThemeProvider.jsx";
 
 const globalToLocal = (globalX, globalY, translate, scale) => {
   const localX = globalX / scale;

@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import css from "./ConnectorCurve.module.css";
-import { useTheme } from "./ThemeProvider";
-import { useScreenContext } from "./ScreenContext";
+import { useTheme } from "./ThemeProvider.jsx";
+import { useScreenContext } from "./ScreenContext.jsx";
 
 export function ConnectorCurveForward({
   type,

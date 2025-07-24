@@ -1,7 +1,7 @@
 import React from "react";
 import { useEffect, useRef, useState } from "react";
 import css from "./ContextMenu.module.css";
-import { useTheme } from "./ThemeProvider";
+import { useTheme } from "./ThemeProvider.jsx";
 import { i } from "./util/i18n.js";
 
 const ContextMenuList = ({ isFiltered, options, onSelectOption, style }) => {
