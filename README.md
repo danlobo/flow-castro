@@ -1,3 +1,18 @@
+# Flow-Castro
+
+Flow-Castro is a React library for creating and editing interactive flowcharts and visual programming interfaces (VPL). It enables users to build workflows, data flow diagrams, and visual logic through an intuitive drag-and-drop interface.
+
+With Flow-Castro, you can:
+
+- Create custom nodes with typed inputs and outputs
+- Connect nodes to create complex data flows
+- Define custom behaviors for data processing
+- Implement visual interfaces for various applications such as automation, data processing, and workflows
+
+## About this document
+
+This guide will walk you through the process of setting up and integrating the Flow-Castro library into your React application.
+
 # Setting up Flow-Castro in a React Application
 
 This guide will walk you through the process of setting up and integrating the Flow-Castro library into your React application.
