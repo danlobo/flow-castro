@@ -71,11 +71,12 @@ function Screen({
 
   const style = {
     "--port-size": `${PORT_SIZE}px`,
-    "--color-primary": currentTheme.colors.primary,
-    "--color-secondary": currentTheme.colors.secondary,
-    "--color-bg": currentTheme.colors.background,
-    "--color-text": currentTheme.colors.text,
-    "--color-hover": currentTheme.colors.hover,
+    "--color-primary": currentTheme.colors?.primary,
+    "--color-secondary": currentTheme.colors?.secondary,
+    "--color-bg": currentTheme.colors?.background,
+    "--color-text": currentTheme.colors?.text,
+    "--color-hover": currentTheme.colors?.hover,
+    "--color-selection-border": currentTheme.colors?.selectionBorder,
     "--roundness": currentTheme.roundness,
   };
 
@@ -84,6 +85,9 @@ function Screen({
 
   const [dstDragPosition, setDstDragPosition] = useState({ x: 0, y: 0 });
   const [pointerPosition, setPointerPosition] = useState({ x: 0, y: 0 });
+  const [isInFadeout, setIsInFadeout] = useState(false);
+  const [lastConnectionSuccessful, setLastConnectionSuccessful] =
+    useState(false);
 
   const [state, setState] = useState(initialState);
   const [shouldNotify, setShouldNotify] = useState(false);
@@ -344,9 +348,30 @@ function Screen({
 
   useEffect(() => {
     if (!dragInfo) {
-      setDstDragPosition(null);
+      // Quando o arrasto termina, ativamos o modo fadeout apenas se a conexão falhou
+      if (dstDragPosition && !lastConnectionSuccessful) {
+        setIsInFadeout(true);
+
+        // Manterá a linha por 1 segundo antes de desaparecer
+        const timeoutId = setTimeout(() => {
+          setDstDragPosition(null);
+          setIsInFadeout(false);
+        }, 500);
+
+        return () => clearTimeout(timeoutId);
+      } else {
+        // Se a conexão foi bem-sucedida, simplesmente limpa a posição
+        setDstDragPosition(null);
+      }
+
+      // Resetamos o estado de sucesso para a próxima tentativa
+      setLastConnectionSuccessful(false);
       return;
     }
+
+    // Se há um novo arrasto, saímos do modo fadeout e resetamos status de conexão
+    setIsInFadeout(false);
+    setLastConnectionSuccessful(false);
 
     //const { startX, startY } = dragInfo
 
@@ -354,14 +379,19 @@ function Screen({
       const dx = event.pageX; //- startX
       const dy = event.pageY; //- startY
 
-      setDstDragPosition({ x: dx, y: dy });
+      setDstDragPosition({
+        x: dx,
+        y: dy,
+        srcX: dragInfo.startX,
+        srcY: dragInfo.startY,
+      });
     };
 
     window.addEventListener("mousemove", mouseMoveListener);
     return () => {
       window.removeEventListener("mousemove", mouseMoveListener);
     };
-  }, [dragInfo]);
+  }, [dragInfo, dstDragPosition, lastConnectionSuccessful]);
 
   // Funções de manipulação de nós foram movidas para o hook useNodeOperations
 
@@ -461,7 +491,10 @@ function Screen({
   // Utilizando connectNodes do hook useNodeOperations
   const onConnect = useCallback(
     (connection) => {
-      connectNodes(connection);
+      const success = connectNodes(connection);
+      setLastConnectionSuccessful(Boolean(success));
+      console.log("Connection attempt:", success ? "successful" : "failed");
+      return success;
     },
     [connectNodes]
   );
@@ -491,9 +524,9 @@ function Screen({
     () => ({
       height: "100%",
       width: "100%",
-      backgroundColor: currentTheme.colors.background,
+      backgroundColor: currentTheme.colors?.background,
       backgroundSize: `${scaledGridSize}px ${scaledGridSize}px`,
-      backgroundImage: `linear-gradient(to right, ${currentTheme.colors.hover} 1px, transparent 1px), linear-gradient(to bottom, ${currentTheme.colors.hover} 1px, transparent 1px)`,
+      backgroundImage: `linear-gradient(to right, ${currentTheme.colors?.hover} 1px, transparent 1px), linear-gradient(to bottom, ${currentTheme.colors?.hover} 1px, transparent 1px)`,
       backgroundPosition: `${scaledPositionX}px ${scaledPositionY}px`,
     }),
     [scaledGridSize, scaledPositionX, scaledPositionY, currentTheme]
@@ -532,6 +565,11 @@ function Screen({
         x: (e.clientX - position.x - x) / scale,
         y: (e.clientY - position.y - y) / scale,
       };
+
+      if (snapToGrid) {
+        _position.x = Math.round(_position.x / gridSize) * gridSize;
+        _position.y = Math.round(_position.y / gridSize) * gridSize;
+      }
       addNode(internalCommentType, _position);
     },
   });
@@ -569,6 +607,12 @@ function Screen({
                     x: (e.clientX - (position?.x ?? 0) - x) / scale,
                     y: (e.clientY - (position?.y ?? 0) - y) / scale,
                   };
+
+                  if (snapToGrid) {
+                    _position.x = Math.round(_position.x / gridSize) * gridSize;
+                    _position.y = Math.round(_position.y / gridSize) * gridSize;
+                  }
+
                   addNode(nodeType, _position);
                 },
               })),
@@ -600,35 +644,6 @@ function Screen({
 
   return (
     <div className={css.container} style={style} ref={screenRef} tabIndex={0}>
-      <div
-        style={{
-          position: "absolute",
-          top: 10,
-          left: 20,
-          border: "1px solid red",
-          fontSize: "8px",
-          height: "calc( 100vh - 36px )",
-        }}
-      >
-        State
-        <pre style={{ height: "100%" }}>{JSON.stringify(state, null, 2)}</pre>
-      </div>
-
-      <div
-        style={{
-          position: "absolute",
-          top: 10,
-          right: 50,
-          border: "1px solid red",
-          fontSize: "8px",
-          height: "calc( 100vh - 36px )",
-        }}
-      >
-        Selections
-        <pre style={{ height: "100%" }}>
-          {JSON.stringify({ selectedNodes, selectedWaypoints }, null, 2)}
-        </pre>
-      </div>
       <TransformWrapper
         initialScale={state?.scale ?? 1}
         initialPositionX={state?.position?.x ?? 0}
@@ -713,12 +728,7 @@ function Screen({
                           return (
                             <Comment
                               nodeId={node.id}
-                              text={
-                                JSON.stringify({
-                                  selectedNodes,
-                                  selectedWaypoints,
-                                }) || ""
-                              }
+                              text={node.value || ""}
                               title={node.title || ""}
                               isSelected={selectedNodes.includes(node.id)}
                               onChangeText={(value) => {
@@ -1092,7 +1102,7 @@ function Screen({
                                                   i18n,
                                                   "contextMenu.removeWaypoint",
                                                   {},
-                                                  "Remover desvio"
+                                                  "Remove waypoint"
                                                 ),
                                                 style: { color: "red" },
                                                 onClick: () => {
@@ -1173,19 +1183,22 @@ function Screen({
                         );
                       })}
 
-                    {dragInfo && dstDragPosition ? (
+                    {(dragInfo || isInFadeout) && dstDragPosition ? (
                       <ConnectorCurveForward
                         tmp
+                        invalid={isInFadeout}
                         src={{
                           x:
-                            (dragInfo.startX -
+                            (((dragInfo && dragInfo.startX) ||
+                              (isInFadeout && dstDragPosition.srcX)) -
                               contRect.left -
                               position.x +
                               PORT_SIZE / 2 -
                               2) /
                             scale,
                           y:
-                            (dragInfo.startY -
+                            (((dragInfo && dragInfo.startY) ||
+                              (isInFadeout && dstDragPosition.srcY)) -
                               contRect.top -
                               position.y +
                               PORT_SIZE / 2 -

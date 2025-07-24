@@ -1,0 +1,11 @@
+.container {
+  position: absolute;
+  border: 1px solid var(--color-selection-border);
+  background-color: color-mix(
+    in srgb,
+    var(--color-selection-border),
+    transparent 90%
+  );
+  pointer-events: none;
+  z-index: 999;
+}

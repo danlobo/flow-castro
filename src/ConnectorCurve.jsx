@@ -9,6 +9,7 @@ export function ConnectorCurveForward({
   dst,
   scale,
   tmp,
+  invalid,
   onContextMenu,
   waypoints = [],
   onWaypointContextMenu,
@@ -126,11 +127,15 @@ export function ConnectorCurveForward({
         zIndex: tmp ? 1000 : -1,
         overflow: "visible", // Garantir que elementos não sejam cortados
       }}
-      className={css.container}
+      className={[css.container, invalid ? css.invalid : null].join(" ")}
     >
       <path
         style={{
-          stroke: currentTheme.connections?.[type?.type]?.color ?? "#ccc",
+          stroke:
+            currentTheme.connections?.[type?.type]?.color ??
+            type?.color ??
+            currentTheme.connections?.default?.color ??
+            "#ccc",
           strokeWidth: hovered
             ? Math.max(10, 10 * scale)
             : Math.max(4, 5 * scale),
@@ -163,7 +168,18 @@ export function ConnectorCurveForward({
             cx={waypoint.x + PADDING}
             cy={waypoint.y + PADDING}
             r={waypointRadius}
-            stroke={currentTheme.connections?.[type?.type]?.color ?? "#ccc"}
+            stroke={
+              currentTheme.connections?.[type?.type]?.color ??
+              type?.color ??
+              currentTheme.connections?.default?.color ??
+              "#ccc"
+            }
+            fill={
+              currentTheme.connections?.[type?.type]?.color ??
+              type?.color ??
+              currentTheme.connections?.default?.color ??
+              "#ccc"
+            }
             strokeWidth={
               isSelected ? Math.max(3, 3 * scale) : Math.max(2, 2 * scale)
             }
@@ -247,7 +263,7 @@ export function ConnectorCurve({
   isWaypointSelected,
 }) {
   if (!src || !dst) {
-    return;
+    return null;
   }
 
   return (

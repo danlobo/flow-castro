@@ -1,42 +1,78 @@
 .port {
   position: relative;
   width: 100%;
-  min-height: calc( var(--port-size) + 4px);
+  min-height: calc(var(--port-size) + 4px);
+  padding: 4px 0;
 
   display: flex;
   justify-content: center;
   flex-direction: column;
+  box-sizing: border-box;
+}
+.port.input {
+  padding-left: calc(var(--port-size) * 0.5);
+}
+
+.port.output {
+  padding-right: calc(var(--port-size) * 0.5);
 }
 
 .portOverlay {
   position: absolute;
   top: 0;
-  width: 100%;
+  width: calc(100% + 26px);
   height: 100%;
   z-index: 2000;
-  /* border-radius: 4px;
-  background-color: rgba(0,0,0,0.1); */
-  padding: 0 calc( var(--port-size) * 1.5 );
+  padding: 0;
+  box-sizing: border-box;
+}
+.portOverlay:hover {
+  background-color: #88888807;
+}
+
+.portOverlay.input {
+  left: -26px;
+  border-top-left-radius: 15px;
+  border-bottom-left-radius: 15px;
+}
+
+.portOverlay.output {
+  right: -26px;
+  border-top-right-radius: 15px;
+  border-bottom-right-radius: 15px;
 }
 
 .label {
-  font-size: 1rem;
+  font-size: 0.9rem;
   display: flex;
+  padding: 0 8px;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .formContainer {
   position: relative;
   z-index: 3000;
   width: 100%;
+  padding: 0 8px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .portConnector {
-  width: var(--port-size);
-  height: var(--port-size);
-  cursor: pointer;
   position: absolute;
-  top: calc(50% - var(--port-size) / 2);
+  width: calc(var(--port-size) * 0.5);
+  height: calc(var(--port-size) * 0.5);
   z-index: 10;
+}
+
+.portConnector.input {
+  left: 0;
+}
+.portConnector.output {
+  right: 0;
 }
 
 .circle {

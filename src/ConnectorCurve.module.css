@@ -28,21 +28,18 @@
 }
 
 .waypoint {
-  fill: #888;
   cursor: grab;
   pointer-events: all;
 }
 
 .waypoint:hover {
-  fill: #444;
   cursor: grab;
   filter: drop-shadow(0 0 4px #444);
 }
 
 .waypoint.selected {
   stroke-width: 3px;
-  fill: var(--color-primary) !important;
-  filter: drop-shadow(0 0 4px var(--color-primary));
+  filter: drop-shadow(0 0 4px var(--color-text));
   cursor: grab;
 }
 
@@ -57,4 +54,23 @@
 
 .waypoint:active {
   cursor: grabbing;
+}
+
+.invalid {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 0;
+  animation: destroy 0.4s ease forwards;
+}
+
+@keyframes destroy {
+  from {
+    stroke-dashoffset: 0;
+    opacity: 1;
+    filter: blur(0);
+  }
+  to {
+    stroke-dashoffset: 1000;
+    opacity: 0;
+    filter: blur(16px);
+  }
 }

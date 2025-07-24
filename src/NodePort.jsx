@@ -29,7 +29,7 @@ function NodePort({
   value,
   onValueChange,
   canMove,
-  options
+  options,
 }) {
   const { currentTheme } = useTheme();
   const { position: screenPosition, scale: screenScale } = useScreenContext();
@@ -165,23 +165,12 @@ function NodePort({
       style={{
         cursor: !hidePort && canMove ? "crosshair" : null,
       }}
-      className={css.port}
+      className={[css.port, css[direction]].join(" ")}
       onMouseDown={handleMouseDown}
     >
       {!hidePort && (
         <div
-          style={{
-            left:
-              direction === "input"
-                ? "calc( var(--port-size) * -1.5 )"
-                : "calc( var(--port-size) * 1.5 )",
-            right: 0,
-            borderTopLeftRadius: direction === "input" ? "15px" : null,
-            borderBottomLeftRadius: direction === "input" ? "15px" : null,
-            borderTopRightRadius: direction === "output" ? "15px" : null,
-            borderBottomRightRadius: direction === "output" ? "15px" : null,
-          }}
-          className={css.portOverlay}
+          className={[css.portOverlay, css[direction]].join(" ")}
           id={`card-${nodeId}-${direction}-${name}-overlay`}
           data-port-name={name}
           data-port-type={type.type}
@@ -221,19 +210,13 @@ function NodePort({
           style={{
             background:
               currentTheme.ports?.[type?.type ?? "default"]?.color ??
+              type?.color ??
               currentTheme.ports?.default?.color ??
-              currentTheme.colors.primary,
-            left:
-              direction === "input"
-                ? "calc( var(--port-size) * -1 - 4px )"
-                : null,
-            right:
-              direction === "output"
-                ? "calc( var(--port-size) * -1 - 4px )"
-                : null,
+              currentTheme.colors?.primary,
           }}
           className={[
             css.portConnector,
+            css[direction],
             shapeStyles[type?.shape ?? "circle"] ?? null,
           ]
             .filter(Boolean)

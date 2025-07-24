@@ -443,6 +443,8 @@ export function useNodeOperations({
    */
   const connectNodes = useCallback(
     ({ source, target }) => {
+      let connectionSuccess = false;
+
       setStateAndNotify((prev) => {
         if (!prev?.nodes || !Object.keys(prev.nodes).length) return null;
 
@@ -466,7 +468,7 @@ export function useNodeOperations({
           .inputs(dstNode.values)
           .find((p) => p.name === item.dstPort);
 
-        if (srcPort.type !== dstPort.type) return prev;
+        if (!srcPort || !dstPort || srcPort.type !== dstPort.type) return prev;
 
         if (!srcNode.connections) srcNode.connections = {};
         if (!srcNode.connections?.outputs) srcNode.connections.outputs = [];
@@ -509,11 +511,14 @@ export function useNodeOperations({
           [dstNode.id]: dstNode,
         };
 
+        connectionSuccess = true;
         return {
           ...prev,
           nodes,
         };
       });
+
+      return connectionSuccess;
     },
     [setStateAndNotify, nodeTypes]
   );
