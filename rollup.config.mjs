@@ -2,11 +2,9 @@ import serve from "rollup-plugin-serve";
 import livereload from "rollup-plugin-livereload";
 import resolve from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
-import typescript from "@rollup/plugin-typescript";
 import { terser } from "rollup-plugin-terser";
 import external from "rollup-plugin-peer-deps-external";
 import postcss from "rollup-plugin-postcss";
-import dts from "rollup-plugin-dts";
 import jsx from "rollup-plugin-jsx";
 import peerDepsExternal from "rollup-plugin-peer-deps-external";
 import fs from "fs";
@@ -19,6 +17,7 @@ import css from "@modular-css/rollup";
 import autoprefixer from "autoprefixer";
 
 const packageJson = JSON.parse(fs.readFileSync("./package.json"));
+const isProduction = process.env.NODE_ENV === "production";
 
 const config = [
   {
@@ -27,14 +26,14 @@ const config = [
       {
         dir: "dist/cjs",
         format: "cjs",
-        sourcemap: true,
+        sourcemap: !isProduction,
         name: "lib",
         //preserveModules: true
       },
       {
         dir: "dist/esm",
         format: "esm",
-        sourcemap: true,
+        sourcemap: !isProduction,
         //preserveModules: true
       },
     ],
@@ -65,7 +64,7 @@ const config = [
       //   namedExports: false
       // }),
       postcss({
-        sourceMap: true,
+        sourceMap: !isProduction,
         autoModules: false,
         extract: true,
         inject: false,
@@ -75,7 +74,7 @@ const config = [
         // namedExports: true,
         // include: ['src/**/*.css'],
       }),
-      //terser(),
+      isProduction && terser(),
       // serve({
       //   // open: true,
       //   verbose: true,

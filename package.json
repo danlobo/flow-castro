@@ -1,7 +1,7 @@
 {
   "name": "flow-castro",
   "homepage": ".",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": false,
   "description": "A React library to create visual flow editors",
   "keywords": [
@@ -28,21 +28,13 @@
   "dependencies": {
     "@mdi/js": "^7.3.67",
     "@mdi/react": "^1.6.1",
-    "@testing-library/jest-dom": "^5.14.1",
-    "@testing-library/react": "^13.0.0",
-    "@testing-library/user-event": "^13.2.1",
     "nanoid": "^4.0.2",
-    "react-dnd": "^16.0.1",
-    "react-dnd-html5-backend": "^16.0.1",
     "react-draggable": "^4.4.5",
-    "react-xarrows": "^2.0.2",
-    "react-zoom-pan-pinch": "^2.6.1",
-    "typescript": "^4.9.5",
-    "web-vitals": "^2.1.0"
+    "react-zoom-pan-pinch": "^2.6.1"
   },
   "scripts": {
     "dev": "rollup -c -w",
-    "build": "rollup -c",
+    "build": "NODE_ENV=production rollup -c",
     "clear": "rm -rf dist",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
@@ -89,6 +81,9 @@
     "@storybook/react": "^8.0.2",
     "@storybook/react-webpack5": "^8.0.2",
     "@storybook/test": "^8.0.2",
+    "@testing-library/jest-dom": "^5.14.1",
+    "@testing-library/react": "^13.0.0",
+    "@testing-library/user-event": "^13.2.1",
     "autoprefixer": "^10.4.14",
     "eslint-plugin-storybook": "^0.8.0",
     "node-sass": "^9.0.0",
