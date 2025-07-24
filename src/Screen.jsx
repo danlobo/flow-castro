@@ -119,12 +119,13 @@ function Screen({
     y: 0,
   });
 
-  const debounceEvent = useCallback(
-    (fn, wait = 200, time) =>
-      (...args) =>
-        clearTimeout(time, (time = setTimeout(() => fn(...args), wait))),
-    []
-  );
+  const debounceEvent = useCallback((fn, wait = 200) => {
+    let timeoutId; // Esta variável persiste entre chamadas da função retornada
+    return (...args) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => fn(...args), wait);
+    };
+  }, []);
 
   useEffect(() => {
     if (!initialState) return;
@@ -144,12 +145,17 @@ function Screen({
     [setState]
   );
 
+  const notifyStateChange = useCallback(
+    debounceEvent((s) => onChangeState?.(s), 200),
+    [onChangeState]
+  );
+
   useEffect(() => {
     if (shouldNotify) {
-      onChangeState?.(state);
+      notifyStateChange(state);
       setShouldNotify(false);
     }
-  }, [state, onChangeState, shouldNotify]);
+  }, [state, notifyStateChange, shouldNotify]);
 
   const screenRef = useRef();
   const contRect = screenRef.current?.getBoundingClientRect();
