@@ -12,7 +12,7 @@
 
 .path {
   fill: none;
-  position: relative; 
+  position: relative;
   pointer-events: visibleStroke;
   stroke: #ccc;
 }
@@ -21,7 +21,40 @@
   stroke: #888;
 }
 
-.path:hover, .pathTmp:hover {
+.path:hover,
+.pathTmp:hover {
   fill: none;
   stroke: #4f4 !important;
+}
+
+.waypoint {
+  fill: #888;
+  cursor: grab;
+  pointer-events: all;
+}
+
+.waypoint:hover {
+  fill: #444;
+  cursor: grab;
+  filter: drop-shadow(0 0 4px #444);
+}
+
+.waypoint.selected {
+  stroke-width: 3px;
+  fill: var(--color-primary) !important;
+  filter: drop-shadow(0 0 4px var(--color-primary));
+  cursor: grab;
+}
+
+.waypoint {
+  pointer-events: all;
+  cursor: grab;
+}
+
+.waypoint:hover {
+  filter: brightness(1.2);
+}
+
+.waypoint:active {
+  cursor: grabbing;
 }

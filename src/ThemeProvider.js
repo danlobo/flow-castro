@@ -1,43 +1,47 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from "react";
 import light from "./theme/light";
 import dark from "./theme/dark";
-import { deepMerge } from './util/deepMerge';
+import { deepMerge } from "./util/deepMerge";
 
 const _themes = {
   light,
-  dark
+  dark,
 };
 
 const _defaultTheme = {
-  themeName: 'light',
+  themeName: "light",
   currentTheme: _themes.light,
   setThemeName: (v) => {
-    console.log('setThemeName not initialized')
-  }
-}
+    console.log("setThemeName not initialized");
+  },
+};
 
 const ThemeContext = React.createContext(_defaultTheme);
 
-export const ThemeProvider = ({ children, themes, theme = 'light' }) => {
+export const ThemeProvider = ({ children, themes, theme = "light" }) => {
   const [currentTheme, setCurrentTheme] = useState(null);
   const [themeName, setThemeName] = useState(theme);
 
   useEffect(() => {
-    setCurrentTheme(deepMerge({}, _themes[themeName], themes[themeName], themes.common));
-  }, [themeName, themes])
+    setCurrentTheme(
+      deepMerge({}, _themes[themeName], themes[themeName], themes.common)
+    );
+  }, [themeName, themes]);
 
   useEffect(() => {
-    setThemeName(theme)
-  }, [theme])
+    setThemeName(theme);
+  }, [theme]);
 
-  if (!currentTheme) return null
+  if (!currentTheme) return null;
 
   return (
-    <ThemeContext.Provider value={{ 
-      themeName, 
-      currentTheme,
-      setThemeName
-    }}>
+    <ThemeContext.Provider
+      value={{
+        themeName,
+        currentTheme,
+        setThemeName,
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );

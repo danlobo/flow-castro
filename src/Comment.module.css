@@ -1,58 +1,61 @@
 .container {
-    width: 200px;
-    height: 200px;
-    min-width: 80px;
-    min-height: 40px;
-    background-color: #f8f8f8;
-    overflow: hidden;
-    resize: both;
-    border: 1px solid #ccc;
-    position: absolute;
-    z-index: -10;
+  width: 200px;
+  height: 200px;
+  min-width: 80px;
+  min-height: 40px;
+  background-color: #f8f8f8;
+  overflow: hidden;
+  resize: both;
+  border: 1px solid #ccc;
+  position: absolute;
+  z-index: -10;
 }
 
 .selected {
-    border: 4px solid var(--color-text);
-    box-shadow: 0 0 12px var(--color-text);
+  box-shadow: 0 0 12px var(--color-text);
 }
 
 .container:hover {
-    border-color: #888;
+  border-color: #888;
 }
 
 .handler {
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    width: 20px;
-    height: 20px;
-    /* background-color: #666; */
-    cursor: se-resize;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 20px;
+  height: 20px;
+  /* background-color: #666; */
+  cursor: se-resize;
 }
 
 .moveHandler {
-    width: 100%;
-    height: 0.75rem;
-    cursor: move;
+  width: 100%;
+  height: 0.75rem;
+  cursor: move;
 }
 
-.title, .title:active, .title:focus {
-    box-sizing: border-box;
-    width: 100%;
-    border: none;
-    background-color: rgba(0,0,0,0.15);
-    padding: 5px;
-    text-align: center;
-    font-weight: bold;
-    text-align: center;
-    font-size: 1.25rem;
+.title,
+.title:active,
+.title:focus {
+  box-sizing: border-box;
+  width: 100%;
+  border: none;
+  background-color: rgba(0, 0, 0, 0.15);
+  padding: 5px;
+  text-align: center;
+  font-weight: bold;
+  text-align: center;
+  font-size: 1.25rem;
 }
 
-.value, .value:active, .value:focus {
-    box-sizing: border-box;
-    width: 100%;
-    height: 100%;
-    border: none;
-    padding: 5px;
-    background-color: transparent;
+.value,
+.value:active,
+.value:focus {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  border: none;
+  padding: 5px;
+  background-color: transparent;
 }

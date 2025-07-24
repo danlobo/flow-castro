@@ -11,32 +11,14 @@ import { useDragContext } from "./DragContext.jsx";
 import { useScreenContext } from "./ScreenContext.jsx";
 import { ConnectorCurve, ConnectorCurveForward } from "./ConnectorCurve.jsx";
 import { ContextMenu } from "./ContextMenu.jsx";
-import { nanoid } from "nanoid";
 import css from "./Screen.module.css";
 
 import nodeCss from "./Node.module.css";
 import nodePortCss from "./NodePort.module.css";
 import commentCss from "./Comment.module.css";
 import { useTheme } from "./ThemeProvider.js";
-import Button from "./Button.jsx";
 
 import { i } from "./util/i18n.js";
-
-import Icon from "@mdi/react";
-import {
-  mdiMagnifyPlus,
-  mdiMagnifyMinus,
-  mdiSetCenter,
-  mdiMagnifyScan,
-  mdiLock,
-  mdiGrid,
-  mdiGridOff,
-  mdiSelectDrag,
-  mdiCursorMove,
-  mdiLockOpenVariant,
-  mdiSelectRemove,
-  mdiSelect,
-} from "@mdi/js";
 import Comment from "./Comment.jsx";
 
 const defaultI18n = {
@@ -46,7 +28,23 @@ const defaultI18n = {
   "contextMenu.removeSelectedNodes": "Remove selected nodes",
   "contextMenu.cloneThisNode": "Clone this node",
   "contextMenu.removeThisConnection": "Remove this connection",
+  "contextMenu.addWaypoint": "Add waypoint",
+  "contextMenu.removeWaypoint": "Remove waypoint",
 };
+
+import { useElementSelection } from "./hooks/useElementSelection";
+import { useClipboard } from "./hooks/useClipboard";
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { useNodeOperations } from "./hooks/useNodeOperations";
+
+// Importar componentes extraídos
+import {
+  ToolbarVertical,
+  ToolbarHorizontal,
+  StatusPanel,
+  SelectionArea,
+} from "./components";
+import { useElementMovement } from "./hooks/useElementMovement.js";
 
 function Screen({
   portTypes,
@@ -91,9 +89,26 @@ function Screen({
   const [shouldNotify, setShouldNotify] = useState(false);
 
   const [viewMode, setViewMode] = useState("select"); // 'select', 'move', 'select-add', 'select-remove'
-  const [selectedNodes, setSelectedNodes] = useState([]);
-  const [selectStartPoint, setSelectStartPoint] = useState({ x: 0, y: 0 });
-  const [selectEndPoint, setSelectEndPoint] = useState({ x: 0, y: 0 });
+
+  // Utilizando o hook de seleção para gerenciar seleção de elementos
+  const {
+    selectedNodes,
+    setSelectedNodes,
+    selectedWaypoints,
+    setSelectedWaypoints,
+    selectStartPoint,
+    setSelectStartPoint,
+    selectEndPoint,
+    setSelectEndPoint,
+    clearSelection,
+    selectAllNodes,
+    addNodesToSelection,
+    removeNodesFromSelection,
+    addWaypointToSelection,
+    removeWaypointFromSelection,
+    isWaypointSelected,
+    processAreaSelection,
+  } = useElementSelection({ state });
 
   const [nodeDragStartPosition, setNodeDragStartPosition] = useState({
     x: 0,
@@ -112,7 +127,7 @@ function Screen({
 
     if (initialState.scale) setScale(initialState.scale);
     if (initialState.position) setPosition(initialState.position);
-  }, []);
+  }, [initialState, setScale, setPosition]);
 
   const setStateAndNotify = useCallback(
     (cb) => {
@@ -125,219 +140,55 @@ function Screen({
     [setState]
   );
 
-  useEffect(() => {
-    if (shouldNotify) {
-      onChangeState(state);
-      setShouldNotify(false);
-    }
-  }, [state, shouldNotify, onChangeState]);
-
   const screenRef = useRef();
   const contRect = screenRef.current?.getBoundingClientRect();
 
   const wrapperRef = useRef();
 
-  useEffect(() => {
-    const srr = screenRef.current;
-
-    if (!srr) return;
-
-    const focusHandler = () => {};
-
-    const keyHandler = (e) => {
-      const inside = screenRef.current === document.activeElement;
-
-      if (!inside) return;
-
-      switch (e.key.toLowerCase()) {
-        case "delete":
-        case "backspace":
-          console.log("delete");
-
-          //delete selected nodes
-          removeNodes(selectedNodes);
-          break;
-        case "escape":
-          console.log("escape");
-          setSelectedNodes([]);
-          break;
-      }
-
-      if (e.ctrlKey || e.metaKey) {
-        switch (e.key.toLowerCase()) {
-          case "a":
-            console.log("select all");
-
-            e.preventDefault();
-            e.stopPropagation();
-
-            //select all nodes
-            setSelectedNodes(Object.keys(state.nodes));
-
-            break;
-          case "c":
-            console.log("copy");
-
-            e.preventDefault();
-            e.stopPropagation();
-
-            //copy selected to clipboard
-            const _selectedNodes = {};
-            for (const nodeId of selectedNodes) {
-              _selectedNodes[nodeId] = state.nodes[nodeId];
-            }
-            console.log("selected", _selectedNodes);
-            const data = JSON.stringify(_selectedNodes);
-            navigator.clipboard.writeText(data);
-
-            break;
-          case "v":
-            console.log("paste");
-            //paste from clipboard
-
-            e.preventDefault();
-            e.stopPropagation();
-
-            navigator.clipboard.readText().then((data) => {
-              console.log("clipboard", data);
-              try {
-                const _nodes = JSON.parse(data);
-                console.log("clipboard", _nodes);
-
-                // validate nodes
-                const jsonNodes = Object.values(_nodes).filter(
-                  (node) => !node.root
-                );
-                let valid = true;
-                for (const node of jsonNodes) {
-                  if (!nodeTypes[node.type]) {
-                    console.log("invalid node type", node.type);
-                    valid = false;
-                    break;
-                  }
-
-                  if (!node.position) {
-                    console.log("invalid node position", node.position);
-                    valid = false;
-                    break;
-                  }
-
-                  if (
-                    node.connections?.inputs == null ||
-                    node.connections?.outputs == null
-                  ) {
-                    console.log("invalid node connections", node.connections);
-                    valid = false;
-                    break;
-                  }
-                }
-
-                if (!valid) return;
-
-                // find node with minimum x position from nodes
-                const nodeWithMinX = jsonNodes.reduce((acc, node) => {
-                  if (
-                    node.position.x <
-                    (acc?.position?.x ?? Number.POSITIVE_INFINITY)
-                  )
-                    return node;
-                  return acc;
-                }, null);
-
-                const delta = {
-                  x: nodeWithMinX.position.x,
-                  y: nodeWithMinX.position.y,
-                };
-
-                const { x, y } = screenRef.current.getBoundingClientRect();
-                const pos = {
-                  x: (pointerPosition.x - x - position.x) / scale,
-                  y: (pointerPosition.y - y - position.y) / scale,
-                };
-
-                console.log("positioning", pointerPosition, x, y, position);
-
-                const idsDict = {};
-
-                const nodes = jsonNodes.map((node) => {
-                  const oldId = node.id;
-                  const newId = nanoid();
-
-                  idsDict[oldId] = newId;
-
-                  return {
-                    ...node,
-                    id: newId,
-                    position: {
-                      x: node.position.x - delta.x + pos.x,
-                      y: node.position.y - delta.y + pos.y,
-                    },
-                    connections: {
-                      inputs: node.connections?.inputs?.filter((conn) =>
-                        jsonNodes.find((it) => it.id === conn.node)
-                      ),
-                      outputs: node.connections?.outputs?.filter((conn) =>
-                        jsonNodes.find((it) => it.id === conn.node)
-                      ),
-                    },
-                  };
-                });
-
-                for (const node of nodes) {
-                  if (node.connections?.inputs) {
-                    for (const conn of node.connections.inputs) {
-                      conn.node = idsDict[conn.node];
-                    }
-                  }
-                  if (node.connections?.outputs) {
-                    for (const conn of node.connections.outputs) {
-                      conn.node = idsDict[conn.node];
-                    }
-                  }
-                }
-
-                setStateAndNotify((prev) => ({
-                  ...prev,
-                  nodes: {
-                    ...prev.nodes,
-                    ...nodes.reduce((acc, node) => {
-                      acc[node.id] = node;
-                      return acc;
-                    }, {}),
-                  },
-                }));
-
-                setSelectedNodes(nodes.map((n) => n.id));
-              } catch (err) {
-                console.log("invalid clipboard data", err);
-              }
-            });
-            break;
-        }
-      }
-    };
-
-    srr.addEventListener("focus", focusHandler);
-    srr.addEventListener("blur", focusHandler);
-    srr.addEventListener("keydown", keyHandler);
-
-    return () => {
-      srr.removeEventListener("focus", focusHandler);
-      srr.removeEventListener("blur", focusHandler);
-      srr.removeEventListener("keydown", keyHandler);
-    };
-  }, [
-    screenRef.current,
-    selectedNodes,
+  // Integrar hook de operações de nós
+  const {
+    addNode,
+    removeNodes,
+    cloneNode,
+    removeConnectionFromOutput,
+    addWaypoint,
+    updateWaypointPosition,
+    removeWaypoint,
+    connectNodes,
+    updateNodeValues,
+  } = useNodeOperations({
     state,
+    setStateAndNotify,
+    setSelectedNodes,
+    nodeTypes,
+  });
+
+  // Integrate clipboard hook
+  const { copyNodesToClipboard, pasteNodesFromClipboard } = useClipboard({
+    state,
+    setStateAndNotify,
+    setSelectedNodes,
+    setSelectedWaypoints,
+    nodeTypes,
     position,
     scale,
-    pointerPosition,
-  ]);
+    pointerPosition, // Agora pointerPosition está sempre atualizado
+    screenRef,
+  });
+
+  // Integrar hook de atalhos de teclado
+  useKeyboardShortcuts({
+    screenRef,
+    removeNodes,
+    selectedNodes,
+    setSelectedNodes,
+    selectAllNodes,
+    copyNodesToClipboard,
+    pasteNodesFromClipboard,
+  });
 
   const handleMouseDown = useCallback(
     (event) => {
-      console.log("target", event.target);
       if (event.button === 1) {
         //middle mouse button
         setViewMode("move");
@@ -386,38 +237,76 @@ function Screen({
           const _selectedNodes = [];
           const nodes = state.nodes ? Object.values(state.nodes) : [];
 
+          // Definir p1 e p2 fora do loop para que estejam disponíveis para o processAreaSelection
+          const p1 = {
+            x: Math.min(pos.x, _posEnd.x),
+            y: Math.min(pos.y, _posEnd.y),
+          };
+
+          const p2 = {
+            x: Math.max(pos.x, _posEnd.x),
+            y: Math.max(pos.y, _posEnd.y),
+          };
+
           nodes.forEach((node) => {
-            console.log("picking", node.id);
-            const { x, y, width, height } = document
-              .getElementById(`card-${node.id}`)
-              .getBoundingClientRect();
+            const cardElement = document.getElementById(`card-${node.id}`);
+            if (!cardElement) return;
 
-            const p1 = {
-              x: Math.min(pos.x, _posEnd.x),
-              y: Math.min(pos.y, _posEnd.y),
-            };
-
-            const p2 = {
-              x: Math.max(pos.x, _posEnd.x),
-              y: Math.max(pos.y, _posEnd.y),
-            };
+            const { x, y, width, height } = cardElement.getBoundingClientRect();
 
             if (x > p1.x && x + width < p2.x && y > p1.y && y + height < p2.y) {
               _selectedNodes.push(node.id);
             }
           });
 
-          if (selectMode === "select") {
-            setSelectedNodes(_selectedNodes);
-          } else {
-            if (selectMode === "select-add") {
-              setSelectedNodes((prev) => [...prev, ..._selectedNodes]);
-            } else if (selectMode === "select-remove") {
-              setSelectedNodes((prev) =>
-                prev.filter((id) => !_selectedNodes.includes(id))
-              );
-            }
+          // Procurar por waypoints na área selecionada
+          const selectedWaypoints = [];
+
+          // Iterar por todos os nós para encontrar comentários e waypoints
+          if (state.nodes) {
+            Object.values(state.nodes).forEach((node) => {
+              // Verificar waypoints em conexões
+              if (node.connections?.outputs) {
+                node.connections.outputs.forEach((connection) => {
+                  if (connection.waypoints) {
+                    connection.waypoints.forEach((waypoint, waypointIndex) => {
+                      // Converter a posição do waypoint para coordenadas da tela
+                      const waypointScreenX =
+                        waypoint.x * scale + position.x + window.scrollX;
+                      const waypointScreenY =
+                        waypoint.y * scale + position.y + window.scrollY;
+
+                      // Verificar se o waypoint está dentro da área selecionada
+                      if (
+                        waypointScreenX > p1.x &&
+                        waypointScreenX < p2.x &&
+                        waypointScreenY > p1.y &&
+                        waypointScreenY < p2.y
+                      ) {
+                        selectedWaypoints.push({
+                          srcNode: node.id,
+                          srcPort: connection.name,
+                          dstNode: connection.node,
+                          dstPort: connection.port,
+                          waypointIndex: waypointIndex,
+                        });
+                      }
+                    });
+                  }
+                });
+              }
+            });
           }
+
+          console.warn("selectedWaypoints", selectedWaypoints);
+
+          // Usa o método processAreaSelection do hook para processar a seleção
+          processAreaSelection(
+            { p1, p2 },
+            selectMode,
+            _selectedNodes,
+            selectedWaypoints
+          );
 
           setSelectStartPoint(_posEnd);
         }
@@ -435,17 +324,23 @@ function Screen({
     //const { startX, startY } = dragInfo
 
     const mouseMoveListener = (event) => {
-      setPointerPosition({
+      const newPosition = {
         x: event.pageX - window.scrollX,
         y: event.pageY - window.scrollY,
-      });
+      };
+
+      // Armazenar a posição do mouse em uma variável global para acesso imediato
+      window.mousePosition = newPosition;
+
+      // Only log when position changes significantly to avoid console overload
+      setPointerPosition(newPosition);
     };
 
     window.addEventListener("mousemove", mouseMoveListener);
     return () => {
       window.removeEventListener("mousemove", mouseMoveListener);
     };
-  }, []);
+  }, []); // Removi pointerPosition das dependências para evitar ciclos
 
   useEffect(() => {
     if (!dragInfo) {
@@ -468,195 +363,11 @@ function Screen({
     };
   }, [dragInfo]);
 
-  const addNode = useCallback(
-    (nodeType, pos) => {
-      const newNode = {
-        id: nanoid(),
-        name: nodeType.label,
-        type: nodeType.type,
-        position: pos,
-        values: nodeType.inputs().reduce((acc, input) => {
-          if (input.defaultValue == null) return acc;
+  // Funções de manipulação de nós foram movidas para o hook useNodeOperations
 
-          acc[input.name] = input.defaultValue;
-          return acc;
-        }, {}),
-      };
+  // Funções de manipulação de nós foram movidas para o hook useNodeOperations
 
-      setStateAndNotify((prev) => ({
-        ...prev,
-        nodes: {
-          ...(prev.nodes ?? {}),
-          [newNode.id]: newNode,
-        },
-      }));
-    },
-    [setStateAndNotify]
-  );
-
-  const removeNodes = useCallback(
-    (ids) => {
-      const idsNoRoot = ids.filter(
-        (id) => !nodeTypes[state.nodes[id].type].root
-      );
-      const nodesToRemove = [...ids];
-      const nodesToAdd = {};
-
-      for (const nodeId of ids) {
-        const node = state.nodes[nodeId];
-        if (!node) continue;
-
-        if (node.connections?.outputs?.length) {
-          for (const conn of node.connections.outputs) {
-            const otherNode = state.nodes[conn.node];
-
-            if (!otherNode || idsNoRoot.includes(otherNode.id)) continue;
-
-            if (!nodesToRemove.includes(otherNode.id))
-              nodesToRemove.push(otherNode.id);
-
-            if (!nodesToAdd[otherNode.id]) {
-              nodesToAdd[otherNode.id] = {
-                ...otherNode,
-                connections: {
-                  ...otherNode.connections,
-                  inputs: otherNode.connections?.inputs ?? [],
-                  outputs: otherNode.connections?.outputs ?? [],
-                },
-              };
-            }
-            nodesToAdd[otherNode.id].connections.outputs = [
-              ...(otherNode.connections.outputs ?? []),
-            ];
-            nodesToAdd[otherNode.id].connections.inputs =
-              otherNode.connections?.inputs?.filter(
-                (c) => !(c.port === conn.name && c.node === node.id)
-              ) ?? [];
-          }
-        }
-
-        if (node.connections?.inputs?.length) {
-          for (const conn of node.connections.inputs) {
-            const otherNode = state.nodes[conn.node];
-
-            if (!otherNode || idsNoRoot.includes(otherNode.id)) continue;
-
-            if (!nodesToRemove.includes(otherNode.id))
-              nodesToRemove.push(otherNode.id);
-
-            if (!nodesToAdd[otherNode.id])
-              nodesToAdd[otherNode.id] = { ...otherNode };
-
-            nodesToAdd[otherNode.id].connections.outputs =
-              otherNode.connections?.outputs?.filter(
-                (c) => !(c.port === conn.name && c.node === node.id)
-              ) ?? [];
-            nodesToAdd[otherNode.id].connections.inputs = [
-              ...(otherNode.connections.inputs ?? []),
-            ];
-          }
-        }
-      }
-
-      // change nodes to object[id]
-      setSelectedNodes([]);
-
-      setStateAndNotify((prev) => {
-        const newNodes = {
-          ...(prev.nodes ?? {}),
-        };
-
-        nodesToRemove
-          .filter((id) => !nodeTypes[state.nodes[id].type].root)
-          .forEach((id) => {
-            delete newNodes[id];
-          });
-        Object.values(nodesToAdd).forEach((node) => {
-          newNodes[node.id] = node;
-        });
-
-        return {
-          ...prev,
-          nodes: newNodes,
-        };
-      });
-    },
-    [state, setStateAndNotify]
-  );
-
-  const cloneNode = useCallback(
-    (id) => {
-      const node = state.nodes[id];
-      if (!node) return;
-
-      const newNode = {
-        ...node,
-        id: nanoid(),
-        position: { x: node.position.x + 20, y: node.position.y + 20 },
-        connections: {
-          inputs: [],
-          outputs: [],
-        },
-      };
-
-      setStateAndNotify((prev) => ({
-        ...prev,
-        nodes: {
-          ...(prev.nodes ?? {}),
-          [newNode.id]: newNode,
-        },
-      }));
-    },
-    [setStateAndNotify, state]
-  );
-
-  const removeConnectionFromOutput = useCallback(
-    (srcNode, srcPort, dstNode, dstPort) => {
-      setStateAndNotify((prev) => {
-        const newNodes = {
-          ...(prev.nodes ?? {}),
-        };
-
-        if (!newNodes[srcNode] || !newNodes[dstNode]) return null;
-
-        newNodes[srcNode] = {
-          ...newNodes[srcNode],
-          connections: {
-            ...newNodes[srcNode].connections,
-            outputs: newNodes[srcNode].connections.outputs.filter(
-              (conn) =>
-                !(
-                  conn.name === srcPort &&
-                  conn.node === dstNode &&
-                  conn.port === dstPort
-                )
-            ),
-          },
-        };
-
-        newNodes[dstNode] = {
-          ...newNodes[dstNode],
-          connections: {
-            ...newNodes[dstNode].connections,
-            inputs: newNodes[dstNode].connections.inputs.filter(
-              (conn) =>
-                !(
-                  conn.name === dstPort &&
-                  conn.node === srcNode &&
-                  conn.port === srcPort
-                )
-            ),
-          },
-        };
-
-        return {
-          ...prev,
-          nodes: newNodes,
-        };
-      });
-    },
-    [setStateAndNotify]
-  );
+  // Funções de manipulação de nós foram movidas para o hook useNodeOperations
 
   const [isMoveable, setIsMoveable] = useState(false);
   const [canMove, setCanMove] = useState(true);
@@ -733,80 +444,26 @@ function Screen({
   const scaledPositionX = (position?.x ?? 0) % scaledGridSize;
   const scaledPositionY = (position?.y ?? 0) % scaledGridSize;
 
+  const { moveHandler } = useElementMovement({
+    state,
+    setState,
+    setStateAndNotify,
+    selectedWaypoints,
+    gridSize,
+    snapToGrid,
+    selectedNodes,
+    setSelectedNodes,
+    selectedWaypoints,
+    setSelectedWaypoints,
+    isWaypointSelected,
+  });
+
+  // Utilizando connectNodes do hook useNodeOperations
   const onConnect = useCallback(
-    ({ source, target }) => {
-      setStateAndNotify((prev) => {
-        if (!prev?.nodes || !Object.keys(prev.nodes).length) return null;
-
-        const item = {
-          srcNode: source.nodeId,
-          dstNode: target.nodeId,
-          srcPort: source.portName,
-          dstPort: target.portName,
-        };
-
-        if (item.srcNode === item.dstNode) return;
-
-        // deep merge
-        const srcNode = JSON.parse(JSON.stringify(prev.nodes[item.srcNode]));
-        const dstNode = JSON.parse(JSON.stringify(prev.nodes[item.dstNode]));
-
-        const srcPort = nodeTypes[srcNode.type]
-          .outputs(srcNode.values, srcNode.connections?.inputs)
-          .find((p) => p.name === item.srcPort);
-        const dstPort = nodeTypes[dstNode.type]
-          .inputs(dstNode.values)
-          .find((p) => p.name === item.dstPort);
-
-        if (srcPort.type !== dstPort.type) return;
-
-        if (!srcNode.connections) srcNode.connections = {};
-        if (!srcNode.connections?.outputs) srcNode.connections.outputs = [];
-        if (!srcNode.connections?.inputs) srcNode.connections.inputs = [];
-
-        if (!dstNode.connections) dstNode.connections = {};
-        if (!dstNode.connections?.outputs) dstNode.connections.outputs = [];
-        if (!dstNode.connections?.inputs) dstNode.connections.inputs = [];
-
-        if (
-          !srcNode.connections.outputs.find(
-            (c) => c.node === dstNode.id && c.name === dstPort.name
-          )
-        ) {
-          srcNode.connections.outputs.push({
-            name: srcPort.name,
-            node: dstNode.id,
-            port: dstPort.name,
-            type: srcPort.type,
-          });
-        }
-
-        if (
-          !dstNode.connections.inputs.find(
-            (c) => c.node === srcNode.id && c.name === srcPort.name
-          )
-        ) {
-          dstNode.connections.inputs.push({
-            name: dstPort.name,
-            node: srcNode.id,
-            port: srcPort.name,
-            type: srcPort.type,
-          });
-        }
-
-        const nodes = {
-          ...prev.nodes,
-          [srcNode.id]: srcNode,
-          [dstNode.id]: dstNode,
-        };
-
-        return {
-          ...prev,
-          nodes,
-        };
-      });
+    (connection) => {
+      connectNodes(connection);
     },
-    [setStateAndNotify, nodeTypes]
+    [connectNodes]
   );
 
   const pinchOptions = useMemo(
@@ -848,8 +505,6 @@ function Screen({
 
       const _category = nodeType.category ?? "...";
 
-      console.log("nodeType", nodeType, _category);
-
       if (!acc[_category]) acc[_category] = [];
       acc[_category].push(nodeType);
       return acc;
@@ -871,8 +526,6 @@ function Screen({
     ),
     onClick: () => {
       const rect = e.target.getBoundingClientRect();
-      console.log("rect", rect, position, scale);
-
       const { x, y } = rect;
 
       const _position = {
@@ -910,7 +563,6 @@ function Screen({
                 description: nodeType.description,
                 onClick: () => {
                   const rect = e.target.getBoundingClientRect();
-                  console.log("rect", rect, position, scale);
                   const { x, y } = rect;
 
                   const _position = {
@@ -932,22 +584,12 @@ function Screen({
     [state, viewMode, nodeTypesByCategory, addNode, position, scale]
   );
 
+  // Utilizando updateNodeValues do hook useNodeOperations
   const handleValueChange = useCallback(
     (id, values) => {
-      setStateAndNotify((prev) => {
-        return {
-          ...prev,
-          nodes: {
-            ...prev.nodes,
-            [id]: {
-              ...prev.nodes[id],
-              values,
-            },
-          },
-        };
-      });
+      updateNodeValues(id, values);
     },
-    [setStateAndNotify]
+    [updateNodeValues]
   );
 
   const handleSnapToGrid = useCallback(() => {
@@ -958,6 +600,35 @@ function Screen({
 
   return (
     <div className={css.container} style={style} ref={screenRef} tabIndex={0}>
+      <div
+        style={{
+          position: "absolute",
+          top: 10,
+          left: 20,
+          border: "1px solid red",
+          fontSize: "8px",
+          height: "calc( 100vh - 36px )",
+        }}
+      >
+        State
+        <pre style={{ height: "100%" }}>{JSON.stringify(state, null, 2)}</pre>
+      </div>
+
+      <div
+        style={{
+          position: "absolute",
+          top: 10,
+          right: 50,
+          border: "1px solid red",
+          fontSize: "8px",
+          height: "calc( 100vh - 36px )",
+        }}
+      >
+        Selections
+        <pre style={{ height: "100%" }}>
+          {JSON.stringify({ selectedNodes, selectedWaypoints }, null, 2)}
+        </pre>
+      </div>
       <TransformWrapper
         initialScale={state?.scale ?? 1}
         initialPositionX={state?.position?.x ?? 0}
@@ -996,97 +667,37 @@ function Screen({
 
           return (
             <>
-              {localStartPoint.x !== localEndPoint.x &&
-                localStartPoint.y !== localEndPoint.y && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      transform: `translate(${Math.min(localStartPoint.x, localEndPoint.x)}px, ${Math.min(localStartPoint.y, localEndPoint.y)}px)`,
-                      width: Math.abs(localEndPoint.x - localStartPoint.x),
-                      height: Math.abs(localEndPoint.y - localStartPoint.y),
-                      border: "3px dashed black",
-                      backgroundColor: "rgba(0,0,0,0.1)",
-                      pointerEvents: "none",
-                    }}
-                  ></div>
-                )}
+              {/* Componente de área de seleção */}
+              <SelectionArea
+                localStartPoint={localStartPoint}
+                localEndPoint={localEndPoint}
+              />
 
-              <div className={[css.panel, css.controlsPanelVertical].join(" ")}>
-                <Button className={css.controlButton} onClick={() => zoomIn()}>
-                  <Icon path={mdiMagnifyPlus} size={0.6} />
-                </Button>
-                <Button className={css.controlButton} onClick={() => zoomOut()}>
-                  <Icon path={mdiMagnifyMinus} size={0.6} />
-                </Button>
-                <Button
-                  className={css.controlButton}
-                  onClick={() => {
-                    centerView();
-                    setStateAndNotify((prev) => ({
-                      ...prev,
-                      position,
-                      scale,
-                    }));
-                  }}
-                >
-                  <Icon path={mdiSetCenter} size={0.6} />
-                </Button>
-                <Button
-                  className={css.controlButton}
-                  onClick={() => {
-                    setTransform(position.x, position.y, 1);
-                    setScale(1);
+              {/* Barra de ferramentas vertical */}
+              <ToolbarVertical
+                zoomIn={zoomIn}
+                zoomOut={zoomOut}
+                centerView={centerView}
+                resetView={() => {
+                  setTransform(position.x, position.y, 1);
+                  setScale(1);
+                }}
+                canMove={canMove}
+                setCanMove={setCanMove}
+                position={position}
+                scale={scale}
+                setStateAndNotify={setStateAndNotify}
+              />
 
-                    setStateAndNotify((prev) => ({
-                      ...prev,
-                      position,
-                      scale: 1,
-                    }));
-                  }}
-                >
-                  <Icon path={mdiMagnifyScan} size={0.6} />
-                </Button>
+              {/* Barra de ferramentas horizontal */}
+              <ToolbarHorizontal
+                snapToGrid={snapToGrid}
+                handleSnapToGrid={handleSnapToGrid}
+                viewMode={viewMode}
+              />
 
-                <Button
-                  className={css.controlButton}
-                  onClick={() => setCanMove(!canMove)}
-                >
-                  <Icon
-                    path={canMove ? mdiLockOpenVariant : mdiLock}
-                    size={0.6}
-                  />
-                </Button>
-              </div>
-
-              <div
-                className={[css.panel, css.controlsPanelHorizontal].join(" ")}
-              >
-                <Button
-                  className={css.controlButton}
-                  onClick={handleSnapToGrid}
-                >
-                  <Icon path={snapToGrid ? mdiGrid : mdiGridOff} size={0.6} />
-                </Button>
-                <Button disabled={true} className={css.controlButton}>
-                  {viewMode === "select" && (
-                    <Icon path={mdiSelect} size={0.6} />
-                  )}
-                  {viewMode === "select-add" && (
-                    <Icon path={mdiSelectDrag} size={0.6} />
-                  )}
-                  {viewMode === "select-remove" && (
-                    <Icon path={mdiSelectRemove} size={0.6} />
-                  )}
-                  {viewMode === "move" && (
-                    <Icon path={mdiCursorMove} size={0.6} />
-                  )}
-                </Button>
-              </div>
-
-              <div className={[css.panel, css.statusPanel].join(" ")}>
-                <div>Scale: {scale}</div>
-                <div>Position: {JSON.stringify(position)}</div>
-              </div>
+              {/* Painel de status */}
+              <StatusPanel scale={scale} position={position} />
               <ContextMenu containerRef={screenRef} i18n={i18n}>
                 {({ handleContextMenu }) => (
                   <TransformComponent
@@ -1102,8 +713,14 @@ function Screen({
                           return (
                             <Comment
                               nodeId={node.id}
-                              text={node.value}
-                              title={node.title}
+                              text={
+                                JSON.stringify({
+                                  selectedNodes,
+                                  selectedWaypoints,
+                                }) || ""
+                              }
+                              title={node.title || ""}
+                              isSelected={selectedNodes.includes(node.id)}
                               onChangeText={(value) => {
                                 setStateAndNotify((prev) => ({
                                   ...prev,
@@ -1151,126 +768,12 @@ function Screen({
                                   },
                                 }));
                               }}
-                              onMove={(position) => {
-                                const pos = { ...position };
-
-                                const _selectedNodes = selectedNodes;
-                                if (!_selectedNodes.includes(node.id))
-                                  _selectedNodes.length = 0;
-                                setSelectedNodes(_selectedNodes);
-
-                                setState((prev) => ({
-                                  ...prev,
-                                  nodes: Object.values(prev.nodes).reduce(
-                                    (acc, n) => {
-                                      const delta = {
-                                        x:
-                                          pos.x -
-                                          prev.nodes[node.id].position.x,
-                                        y:
-                                          pos.y -
-                                          prev.nodes[node.id].position.y,
-                                      };
-
-                                      if (snapToGrid) {
-                                        pos.x =
-                                          Math.round(pos.x / gridSize) *
-                                          gridSize;
-                                        pos.y =
-                                          Math.round(pos.y / gridSize) *
-                                          gridSize;
-                                        delta.x =
-                                          pos.x -
-                                          prev.nodes[node.id].position.x;
-                                        delta.y =
-                                          pos.y -
-                                          prev.nodes[node.id].position.y;
-                                      }
-
-                                      if (n.id === node.id) {
-                                        acc[n.id] = {
-                                          ...n,
-                                          position: pos,
-                                        };
-                                      } else if (
-                                        _selectedNodes.includes(n.id)
-                                      ) {
-                                        acc[n.id] = {
-                                          ...n,
-                                          position: {
-                                            x: n.position.x + delta.x,
-                                            y: n.position.y + delta.y,
-                                          },
-                                        };
-                                      } else {
-                                        acc[n.id] = n;
-                                      }
-                                      return acc;
-                                    },
-                                    {}
-                                  ),
-                                }));
-                              }}
-                              onMoveEnd={(position) => {
-                                const pos = { ...position };
-
-                                const _selectedNodes = selectedNodes;
-                                if (!_selectedNodes.includes(node.id))
-                                  _selectedNodes.length = 0;
-                                setSelectedNodes(_selectedNodes);
-
-                                setStateAndNotify((prev) => ({
-                                  ...prev,
-                                  nodes: Object.values(prev.nodes).reduce(
-                                    (acc, n) => {
-                                      const delta = {
-                                        x:
-                                          pos.x -
-                                          prev.nodes[node.id].position.x,
-                                        y:
-                                          pos.y -
-                                          prev.nodes[node.id].position.y,
-                                      };
-
-                                      if (snapToGrid) {
-                                        pos.x =
-                                          Math.round(pos.x / gridSize) *
-                                          gridSize;
-                                        pos.y =
-                                          Math.round(pos.y / gridSize) *
-                                          gridSize;
-                                        delta.x =
-                                          pos.x -
-                                          prev.nodes[node.id].position.x;
-                                        delta.y =
-                                          pos.y -
-                                          prev.nodes[node.id].position.y;
-                                      }
-
-                                      if (n.id === node.id) {
-                                        acc[n.id] = {
-                                          ...n,
-                                          position: pos,
-                                        };
-                                      } else if (
-                                        _selectedNodes.includes(n.id)
-                                      ) {
-                                        acc[n.id] = {
-                                          ...n,
-                                          position: {
-                                            x: n.position.x + delta.x,
-                                            y: n.position.y + delta.y,
-                                          },
-                                        };
-                                      } else {
-                                        acc[n.id] = n;
-                                      }
-                                      return acc;
-                                    },
-                                    {}
-                                  ),
-                                }));
-                              }}
+                              onMove={(position) =>
+                                moveHandler(node, position, false)
+                              }
+                              onMoveEnd={(position) =>
+                                moveHandler(node, position, true)
+                              }
                               onContextMenu={(e) =>
                                 handleContextMenu(e, [
                                   {
@@ -1329,126 +832,12 @@ function Screen({
                               onValueChange={(v) => {
                                 handleValueChange(node.id, { ...v.values });
                               }}
-                              onChangePosition={(position) => {
-                                const pos = { ...position };
-
-                                const _selectedNodes = selectedNodes;
-                                if (!_selectedNodes.includes(node.id))
-                                  _selectedNodes.length = 0;
-                                setSelectedNodes(_selectedNodes);
-
-                                setState((prev) => ({
-                                  ...prev,
-                                  nodes: Object.values(prev.nodes).reduce(
-                                    (acc, n) => {
-                                      const delta = {
-                                        x:
-                                          pos.x -
-                                          prev.nodes[node.id].position.x,
-                                        y:
-                                          pos.y -
-                                          prev.nodes[node.id].position.y,
-                                      };
-
-                                      if (snapToGrid) {
-                                        pos.x =
-                                          Math.round(pos.x / gridSize) *
-                                          gridSize;
-                                        pos.y =
-                                          Math.round(pos.y / gridSize) *
-                                          gridSize;
-                                        delta.x =
-                                          pos.x -
-                                          prev.nodes[node.id].position.x;
-                                        delta.y =
-                                          pos.y -
-                                          prev.nodes[node.id].position.y;
-                                      }
-
-                                      if (n.id === node.id) {
-                                        acc[n.id] = {
-                                          ...n,
-                                          position: pos,
-                                        };
-                                      } else if (
-                                        _selectedNodes.includes(n.id)
-                                      ) {
-                                        acc[n.id] = {
-                                          ...n,
-                                          position: {
-                                            x: n.position.x + delta.x,
-                                            y: n.position.y + delta.y,
-                                          },
-                                        };
-                                      } else {
-                                        acc[n.id] = n;
-                                      }
-                                      return acc;
-                                    },
-                                    {}
-                                  ),
-                                }));
-                              }}
-                              onDragEnd={(position) => {
-                                const pos = { ...position };
-
-                                const _selectedNodes = selectedNodes;
-                                if (!_selectedNodes.includes(node.id))
-                                  _selectedNodes.length = 0;
-                                setSelectedNodes(_selectedNodes);
-
-                                setStateAndNotify((prev) => ({
-                                  ...prev,
-                                  nodes: Object.values(prev.nodes).reduce(
-                                    (acc, n) => {
-                                      const delta = {
-                                        x:
-                                          pos.x -
-                                          prev.nodes[node.id].position.x,
-                                        y:
-                                          pos.y -
-                                          prev.nodes[node.id].position.y,
-                                      };
-
-                                      if (snapToGrid) {
-                                        pos.x =
-                                          Math.round(pos.x / gridSize) *
-                                          gridSize;
-                                        pos.y =
-                                          Math.round(pos.y / gridSize) *
-                                          gridSize;
-                                        delta.x =
-                                          pos.x -
-                                          prev.nodes[node.id].position.x;
-                                        delta.y =
-                                          pos.y -
-                                          prev.nodes[node.id].position.y;
-                                      }
-
-                                      if (n.id === node.id) {
-                                        acc[n.id] = {
-                                          ...n,
-                                          position: pos,
-                                        };
-                                      } else if (
-                                        _selectedNodes.includes(n.id)
-                                      ) {
-                                        acc[n.id] = {
-                                          ...n,
-                                          position: {
-                                            x: n.position.x + delta.x,
-                                            y: n.position.y + delta.y,
-                                          },
-                                        };
-                                      } else {
-                                        acc[n.id] = n;
-                                      }
-                                      return acc;
-                                    },
-                                    {}
-                                  ),
-                                }));
-                              }}
+                              onChangePosition={(position) =>
+                                moveHandler(node, position, false)
+                              }
+                              onDragEnd={(position) =>
+                                moveHandler(node, position, true)
+                              }
                               containerRef={screenRef}
                               canMove={canMove}
                               onConnect={onConnect}
@@ -1526,6 +915,7 @@ function Screen({
                                 const dstNode = connection.node;
                                 const dstPort = connection.port;
                                 const connType = connection.type;
+                                const waypoints = connection.waypoints || [];
 
                                 const srcBox = document.getElementById(
                                   `card-${srcNode}`
@@ -1625,10 +1015,134 @@ function Screen({
                                     n1Box={box1}
                                     n2Box={box2}
                                     index={index}
+                                    waypoints={waypoints}
+                                    onUpdateWaypoint={(
+                                      waypointIndex,
+                                      newPosition
+                                    ) =>
+                                      updateWaypointPosition(
+                                        srcNode,
+                                        srcPort,
+                                        dstNode,
+                                        dstPort,
+                                        waypointIndex,
+                                        newPosition
+                                      )
+                                    }
+                                    isWaypointSelected={(waypointIndex) =>
+                                      isWaypointSelected({
+                                        srcNode,
+                                        srcPort,
+                                        dstNode,
+                                        dstPort,
+                                        waypointIndex,
+                                      })
+                                    }
+                                    onWaypointMouseDown={(e, waypointIndex) => {
+                                      // Verificar se Ctrl ou Shift está pressionado para seleção múltipla
+                                      if (e.ctrlKey) {
+                                        removeWaypointFromSelection({
+                                          srcNode,
+                                          srcPort,
+                                          dstNode,
+                                          dstPort,
+                                          waypointIndex,
+                                        });
+                                      } else if (e.shiftKey) {
+                                        addWaypointToSelection({
+                                          srcNode,
+                                          srcPort,
+                                          dstNode,
+                                          dstPort,
+                                          waypointIndex,
+                                        });
+                                      } else {
+                                        // Se não for seleção múltipla, limpar seleção anterior
+                                        if (
+                                          !isWaypointSelected({
+                                            srcNode,
+                                            srcPort,
+                                            dstNode,
+                                            dstPort,
+                                            waypointIndex,
+                                          })
+                                        ) {
+                                          setSelectedWaypoints([
+                                            {
+                                              srcNode,
+                                              srcPort,
+                                              dstNode,
+                                              dstPort,
+                                              waypointIndex,
+                                            },
+                                          ]);
+                                        }
+                                      }
+
+                                      // Não bloqueamos o evento para permitir que o manipulador interno do ConnectorCurve
+                                      // seja chamado para lidar com o arrasto
+                                    }}
+                                    onWaypointContextMenu={(e, waypointIndex) =>
+                                      handleContextMenu(
+                                        e,
+                                        [
+                                          canMove
+                                            ? {
+                                                label: i(
+                                                  i18n,
+                                                  "contextMenu.removeWaypoint",
+                                                  {},
+                                                  "Remover desvio"
+                                                ),
+                                                style: { color: "red" },
+                                                onClick: () => {
+                                                  removeWaypoint(
+                                                    srcNode,
+                                                    srcPort,
+                                                    dstNode,
+                                                    dstPort,
+                                                    waypointIndex
+                                                  );
+                                                },
+                                              }
+                                            : null,
+                                        ].filter(Boolean)
+                                      )
+                                    }
                                     onContextMenu={(e) =>
                                       handleContextMenu(
                                         e,
                                         [
+                                          canMove
+                                            ? {
+                                                label: i(
+                                                  i18n,
+                                                  "contextMenu.addWaypoint",
+                                                  {},
+                                                  "Add waypoint"
+                                                ),
+                                                onClick: () => {
+                                                  const pointerX =
+                                                    (e.clientX -
+                                                      contRect.left -
+                                                      position.x) /
+                                                    scale;
+                                                  const pointerY =
+                                                    (e.clientY -
+                                                      contRect.top -
+                                                      position.y) /
+                                                    scale;
+
+                                                  addWaypoint(
+                                                    srcNode,
+                                                    srcPort,
+                                                    dstNode,
+                                                    dstPort,
+                                                    { x: pointerX, y: pointerY }
+                                                  );
+                                                },
+                                              }
+                                            : null,
                                           canMove
                                             ? {
                                                 label: i(

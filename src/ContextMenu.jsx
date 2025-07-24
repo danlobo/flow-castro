@@ -192,7 +192,6 @@ export const ContextMenu = ({ containerRef, i18n, children }) => {
   };
 
   const nonNullOptions = options?.filter((it) => Boolean(it));
-  console.log("ContextMenu options", nonNullOptions);
   return (
     <>
       {children({ handleContextMenu })}
