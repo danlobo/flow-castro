@@ -144,6 +144,13 @@ function Screen({
     [setState]
   );
 
+  useEffect(() => {
+    if (shouldNotify) {
+      onChangeState?.(state);
+      setShouldNotify(false);
+    }
+  }, [state, onChangeState, shouldNotify]);
+
   const screenRef = useRef();
   const contRect = screenRef.current?.getBoundingClientRect();
 
@@ -301,8 +308,6 @@ function Screen({
               }
             });
           }
-
-          console.warn("selectedWaypoints", selectedWaypoints);
 
           // Usa o método processAreaSelection do hook para processar a seleção
           processAreaSelection(

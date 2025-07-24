@@ -13,9 +13,6 @@ export function useElementMovement({
   setSelectedWaypoints,
   isWaypointSelected,
 }) {
-  useEffect(() => {
-    console.log("[useElementMovement] Initialized with state:", state);
-  }, [state]);
   const moveHandler = useCallback(
     (node, position, notify) => {
       // Logic to handle moving the element
