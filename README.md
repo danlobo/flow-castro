@@ -1,70 +1,294 @@
-# Getting Started with Create React App
+# Setting up Flow-Castro in a React Application
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This guide will walk you through the process of setting up and integrating the Flow-Castro library into your React application.
 
-## Available Scripts
+## Installation
 
-In the project directory, you can run:
+First, install the Flow-Castro library along with its peer dependencies:
 
-### `yarn start`
+```bash
+npm install flow-castro react react-dom
+```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Basic Setup
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Create a new component in your React application that will use the Flow-Castro library:
 
-### `yarn test`
+```jsx
+import React, { useState } from "react";
+import { NodeContainer, ThemeProvider } from "flow-castro";
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+function FlowEditor() {
+  const [state, setState] = useState({
+    nodes: {
+      // Your initial node configuration
+    },
+  });
 
-### `yarn build`
+  return (
+    <div style={{ height: "100vh", width: "100vw", display: "flex" }}>
+      <ThemeProvider theme="light">
+        <NodeContainer
+          initialState={state}
+          onChangeState={(newState) => setState(newState)}
+          nodeTypes={nodeTypes}
+          portTypes={portTypes}
+          viewMode="select"
+        />
+      </ThemeProvider>
+    </div>
+  );
+}
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+export default FlowEditor;
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Defining Node Types
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Node types define the behavior and structure of nodes in your flow. Each node type requires several properties:
 
-### `yarn eject`
+- `type`: Defines a unique identifier for your node type
+- `label`: Displays a user-friendly name in the UI
+- `description`: Provides additional information about the node's purpose
+- `category`: Groups similar nodes together in the context menu
+- `inputs()`: A function that returns an array of input definitions with properties:
+  - `name`: Unique identifier for the input
+  - `type`: The data type (must match a defined port type)
+  - `label`: User-friendly name for the input
+  - `hidePort`: Optional boolean to hide the input port visually
+- `outputs()`: A function that returns an array of output definitions with properties:
+  - `name`: Unique identifier for the output
+  - `type`: The data type (must match a defined port type)
+  - `label`: User-friendly name for the output
+- `resolveOutputs`: An async function that processes input values and returns output values. The returned object's property names must match your output names.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Here's how to define them:
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```jsx
+const nodeTypes = {
+  string: {
+    type: "string",
+    label: "String",
+    description: "String node",
+    category: "Text",
+    inputs() {
+      return [
+        {
+          name: "string",
+          type: "string",
+          label: "String Input",
+        },
+      ];
+    },
+    outputs() {
+      return [
+        {
+          name: "string",
+          type: "string",
+          label: "String Output",
+        },
+      ];
+    },
+    resolveOutputs: async (inputValues) => {
+      // Process input values and return output values
+      return {
+        string: inputValues.string || "",
+      };
+    },
+  },
+  // Define more node types...
+};
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## Defining Port Types
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+Port types define how ports look and behave:
 
-## Learn More
+```jsx
+const portTypes = {
+  string: {
+    type: "string",
+    label: "String",
+    shape: "circle",
+    color: "#FFD700",
+    render({ value, onChange }) {
+      return (
+        <input
+          style={{ width: "100%" }}
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      );
+    },
+  },
+  // Define more port types...
+};
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Theming
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Flow-Castro supports light and dark themes. You can specify the theme using the `theme` prop:
 
-### Code Splitting
+```jsx
+<ThemeProvider theme="dark">
+  <NodeContainer {...props} />
+</ThemeProvider>
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Initial State
 
-### Analyzing the Bundle Size
+Define an initial state for your flow:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+```jsx
+const initialState = {
+  nodes: {
+    node1: {
+      id: "node1",
+      name: "String",
+      type: "string",
+      position: { x: 100, y: 100 },
+      values: {},
+      size: { width: 450, height: 140 },
+      connections: {
+        outputs: [],
+        inputs: [],
+      },
+    },
+    // More nodes...
+  },
+};
+```
 
-### Making a Progressive Web App
+## Full Example
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+Here's a complete example of a component using Flow-Castro:
 
-### Advanced Configuration
+```jsx
+import React, { useState } from "react";
+import { NodeContainer, ThemeProvider } from "flow-castro";
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+const nodeTypes = {
+  string: {
+    type: "string",
+    label: "String",
+    description: "String node",
+    category: "Text",
+    inputs() {
+      return [
+        {
+          name: "string",
+          type: "string",
+          label: "String Input",
+        },
+      ];
+    },
+    outputs() {
+      return [
+        {
+          name: "string",
+          type: "string",
+          label: "String Output",
+        },
+      ];
+    },
+    resolveOutputs: async (inputValues) => {
+      return {
+        string: inputValues.string || "",
+      };
+    },
+  },
+};
 
-### Deployment
+const portTypes = {
+  string: {
+    type: "string",
+    label: "String",
+    shape: "circle",
+    color: "#FFD700",
+    render({ value, onChange }) {
+      return (
+        <input
+          style={{ width: "100%" }}
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      );
+    },
+  },
+};
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+// This can be a saved state, loaded from database, for example
+const initialState = {
+  nodes: {
+    comment1: {
+      id: "comment1",
+      name: "Comment",
+      type: "comment",
+      position: { x: 30, y: 22 },
+      values: {},
+      size: { w: 320, h: 200 },
+      title: "Hello!",
+      value: "This is your first flow-castro canvas. Start adding nodes!",
+    },
+  },
+};
 
-### `yarn build` fails to minify
+function FlowEditor() {
+  const [state, setState] = useState(initialState);
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+  return (
+    <div style={{ height: "100vh", width: "100vw", display: "flex" }}>
+      <ThemeProvider theme="light">
+        <NodeContainer
+          initialState={state}
+          onChangeState={(newState) => {
+            // Here is a good opportunity to save updated data
+            setState(newState);
+          }}
+          nodeTypes={nodeTypes}
+          portTypes={portTypes}
+          viewMode="select"
+          debugMode={false}
+        />
+      </ThemeProvider>
+    </div>
+  );
+}
+
+export default FlowEditor;
+```
+
+## Features
+
+### Context Menu
+
+The library includes a context menu that appears on right-click:
+
+- Add new nodes
+- Delete nodes
+- Add waypoints to connections
+- Delete connections
+
+## Event Handling
+
+Track changes to your flow state:
+
+```jsx
+<NodeContainer
+  initialState={yourLoadedState}
+  onChangeState={(newState) => {
+    setState(newState);
+    console.log("Flow state updated:", newState);
+    // Perform any additional actions
+  }}
+  {...otherProps}
+/>
+```
+
+## Troubleshooting
+
+- If nodes aren't rendering properly, ensure the node types are correctly defined
+- For connection issues, check that port types match between source and target
+- For styling issues, verify the theme provider is correctly set up
+
+For more examples, refer to the Storybook documentation or check the NodeContainer.stories.tsx file.
