@@ -145,7 +145,7 @@ function Screen({
   );
 
   const notifyStateChange = useCallback(
-    debounceEvent((s) => onChangeState?.(s), 200),
+    debounceEvent((s) => onChangeState?.(s), 100),
     [onChangeState]
   );
 
@@ -230,6 +230,11 @@ function Screen({
   const throttledUpdateSelectEndPoint = useCallback(
     throttle(updateSelectEndPoint, 16, { leading: true, trailing: false }),
     [updateSelectEndPoint]
+  );
+
+  const throttledSetScale = useCallback(
+    throttle(setScale, 16, { leading: true, trailing: true }),
+    [setScale]
   );
 
   const handleMouseDown = useCallback(
@@ -427,15 +432,15 @@ function Screen({
   const onZoom = useCallback(
     (params) => {
       const _scale = params.state.scale;
-      setScale(_scale);
+      throttledSetScale(_scale);
 
       const _position = {
         x: params.state.positionX,
         y: params.state.positionY,
       };
-      setPosition(_position);
+      throttledPositionUpdate(_position);
     },
-    [setPosition, setScale]
+    [throttledPositionUpdate, throttledSetScale]
   );
 
   const onZoomEnd = useCallback(
@@ -457,15 +462,27 @@ function Screen({
     [setStateAndNotify]
   );
 
+  const throttledPositionUpdate = useRef(
+    throttle(
+      (newPos) => {
+        setPosition(newPos);
+        contRectRef.current = null;
+      },
+      16, // 60fps
+      { leading: true, trailing: true }
+    )
+  ).current;
+
   const onTransform = useCallback(
     (params) => {
       const _position = {
         x: params.state.positionX,
         y: params.state.positionY,
       };
-      setPosition(_position);
+      // Usar versão throttled para limitar atualizações
+      throttledPositionUpdate(_position);
     },
-    [setPosition]
+    [throttledPositionUpdate]
   );
 
   const onTransformEnd = useCallback(
@@ -473,6 +490,8 @@ function Screen({
       const {
         state: { positionX, positionY, scale: _scale },
       } = params;
+
+      contRectRef.current = null;
 
       setPosition({ x: positionX, y: positionY });
       setScale(_scale);
