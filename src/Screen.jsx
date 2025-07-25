@@ -144,10 +144,9 @@ function Screen({
     [setState]
   );
 
-  const notifyStateChange = useCallback(
-    debounceEvent((s) => onChangeState?.(s), 100),
-    [onChangeState]
-  );
+  const notifyStateChange = useCallback(debounceEvent(onChangeState, 100), [
+    onChangeState,
+  ]);
 
   useEffect(() => {
     if (shouldNotify) {
@@ -425,6 +424,17 @@ function Screen({
     };
   }, [dragInfo, dstDragPosition, lastConnectionSuccessful]);
 
+  const throttledPositionUpdate = useRef(
+    throttle(
+      (newPos) => {
+        setPosition(newPos);
+        contRectRef.current = null;
+      },
+      16, // 60fps
+      { leading: true, trailing: true }
+    )
+  ).current;
+
   const [isMoveable, setIsMoveable] = useState(false);
   const [canMove, setCanMove] = useState(true);
   const [snapToGrid, setSnapToGrid] = useState(true);
@@ -462,24 +472,12 @@ function Screen({
     [setStateAndNotify]
   );
 
-  const throttledPositionUpdate = useRef(
-    throttle(
-      (newPos) => {
-        setPosition(newPos);
-        contRectRef.current = null;
-      },
-      16, // 60fps
-      { leading: true, trailing: true }
-    )
-  ).current;
-
   const onTransform = useCallback(
     (params) => {
       const _position = {
         x: params.state.positionX,
         y: params.state.positionY,
       };
-      // Usar versão throttled para limitar atualizações
       throttledPositionUpdate(_position);
     },
     [throttledPositionUpdate]
@@ -495,18 +493,15 @@ function Screen({
 
       setPosition({ x: positionX, y: positionY });
       setScale(_scale);
-
-      debounceEvent((px, py, s) => {
-        setStateAndNotify((prev) => {
-          return {
-            ...prev,
-            position: { x: px, y: py },
-            scale: s,
-          };
-        });
-      }, 200)(positionX, positionY, _scale);
+      setStateAndNotify((prev) => {
+        return {
+          ...prev,
+          position: { x: positionX, y: positionY },
+          scale: _scale,
+        };
+      });
     },
-    [setPosition, setScale, setStateAndNotify, debounceEvent]
+    [setPosition, setScale, setStateAndNotify]
   );
 
   const gridSize = 40;

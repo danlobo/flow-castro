@@ -61,7 +61,19 @@ const config = [
 
         plugins: [autoprefixer()],
       }),
-      isProduction && terser(),
+      // isProduction &&
+      //   terser({
+      //     compress: {
+      //       // Desabilitar otimizações específicas que podem causar problemas
+      //       pure_getters: false,
+      //       keep_fnames: true,
+      //       keep_classnames: true,
+      //     },
+      //     mangle: {
+      //       keep_fnames: true,
+      //       keep_classnames: true,
+      //     },
+      //   }),
     ],
     external: ["react", "react-dom"],
   },
