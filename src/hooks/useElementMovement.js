@@ -1,5 +1,6 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useElementSelection } from "./useElementSelection";
+import { throttle } from "../util/throttle";
 
 export function useElementMovement({
   state,
@@ -13,19 +14,17 @@ export function useElementMovement({
   setSelectedWaypoints,
   isWaypointSelected,
 }) {
-  const moveHandler = useCallback(
+  const originalMoveHandler = useCallback(
     (node, position, notify) => {
-      // Logic to handle moving the element
       const pos = { ...position };
 
-      // Se o nó que está sendo arrastado não estiver na lista de selecionados,
-      // consideramos apenas ele como selecionado
       const _selectedNodes = [...selectedNodes];
       if (!_selectedNodes.includes(node.id)) {
         _selectedNodes.length = 0;
         _selectedNodes.push(node.id);
+
+        setSelectedNodes(_selectedNodes);
       }
-      setSelectedNodes(_selectedNodes);
 
       const fn = notify ? setState : setStateAndNotify;
       fn((prev) => ({
@@ -113,6 +112,20 @@ export function useElementMovement({
       gridSize,
       isWaypointSelected,
     ]
+  );
+
+  const throttledMoveHandler = useMemo(
+    () =>
+      throttle(originalMoveHandler, 16, {
+        leading: true,
+        trailing: true,
+      }),
+    [originalMoveHandler]
+  );
+
+  const moveHandler = useCallback(
+    (node, position, notify) => throttledMoveHandler(node, position, notify),
+    [throttledMoveHandler]
   );
 
   return {

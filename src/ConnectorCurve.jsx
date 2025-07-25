@@ -40,25 +40,15 @@ export function ConnectorCurveForward({
 
   const PADDING = 50;
 
-  // Calcular os limites do SVG considerando os waypoints
   let minX = Math.min(src.x, dst.x);
   let minY = Math.min(src.y, dst.y);
   let maxX = Math.max(src.x, dst.x);
   let maxY = Math.max(src.y, dst.y);
 
-  // Verificar e ajustar os limites com base nos waypoints
-  // waypoints.forEach((waypoint) => {
-  //   minX = Math.min(minX, waypoint.x);
-  //   minY = Math.min(minY, waypoint.y);
-  //   maxX = Math.max(maxX, waypoint.x);
-  //   maxY = Math.max(maxY, waypoint.y);
-  // });
-
-  // Transformar os waypoints para coordenadas relativas
   const transformedWaypoints = waypoints.map((waypoint) => {
     return {
       ...waypoint,
-      originalX: waypoint.x, // Preservar as coordenadas originais para arrasto
+      originalX: waypoint.x,
       originalY: waypoint.y,
       x: waypoint.x - minX,
       y: waypoint.y - minY,
@@ -85,14 +75,11 @@ export function ConnectorCurveForward({
     y: x2.y,
   };
 
-  // Caminho SVG para desenhar a curva com waypoints
   let pathData = `M ${x1.x + PADDING} ${x1.y + PADDING}`;
 
   if (waypoints.length === 0) {
-    // Sem waypoints, usar a curva bezier original
     pathData += ` C ${b1.x + PADDING} ${b1.y + PADDING}, ${b2.x + PADDING} ${b2.y + PADDING}, ${x2.x + PADDING} ${x2.y + PADDING}`;
   } else {
-    // Com waypoints, desenhar curvas entre cada ponto
     const allPoints = [
       { x: x1.x, y: x1.y },
       ...transformedWaypoints,
@@ -103,7 +90,6 @@ export function ConnectorCurveForward({
       const current = allPoints[i];
       const next = allPoints[i + 1];
 
-      // Calcular pontos de controle para cada segmento
       const ctrlPoint1 = {
         x: current.x + (next.x - current.x) / 2,
         y: current.y,
@@ -125,7 +111,7 @@ export function ConnectorCurveForward({
         width: maxX - minX + PADDING * 2,
         height: maxY - minY + PADDING * 2,
         zIndex: tmp ? 1000 : -1,
-        overflow: "visible", // Garantir que elementos não sejam cortados
+        overflow: "visible",
       }}
       className={[css.container, invalid ? css.invalid : null].join(" ")}
     >
@@ -151,16 +137,14 @@ export function ConnectorCurveForward({
 
       {/* Desenhar os waypoints */}
       {transformedWaypoints.map((waypoint, index) => {
-        // Verificar se o waypoint está selecionado (passamos um callback externo)
         const isSelected = isWaypointSelected && isWaypointSelected(index);
 
-        // Aumentar o raio quando o waypoint está com hover, selecionado ou sendo arrastado
         const waypointRadius =
           hoveredWaypointIndex === index ||
           (isDragging && hoveredWaypointIndex === index) ||
           isSelected
-            ? Math.max(10, 10 * scale) // Tamanho maior ao passar o mouse ou quando selecionado
-            : Math.max(6, 6 * scale); // Tamanho normal
+            ? Math.max(10, 10 * scale)
+            : Math.max(6, 6 * scale);
 
         return (
           <circle
@@ -192,15 +176,12 @@ export function ConnectorCurveForward({
             onMouseEnter={() => setHoveredWaypointIndex(index)}
             onMouseLeave={() => setHoveredWaypointIndex(-1)}
             onMouseDown={(e) => {
-              // Se temos um handler externo, chamamos primeiro para lidar com a seleção
               if (onWaypointMouseDown) {
                 onWaypointMouseDown(e, index);
               }
 
-              // Continuamos com o processo de drag & drop
               if (isDragging) return;
 
-              // Inicia o processo de arrasto
               e.preventDefault();
               e.stopPropagation();
 

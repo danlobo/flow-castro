@@ -74,12 +74,9 @@ export function useClipboard({
         return;
       }
 
-      // Use the provided position or the stored position
-      // If a pointer was provided, use it; otherwise, get the current mouse position
       const currentPointerPosition =
         currentPointer ||
         (() => {
-          // Get the most current mouse position
           return window.mousePosition || pointerPosition;
         })();
 
@@ -94,7 +91,6 @@ export function useClipboard({
 
             const _nodes = JSON.parse(data);
 
-            // Validate nodes
             const jsonNodes = Object.values(_nodes).filter(
               (node) => !node.root
             );
@@ -120,10 +116,7 @@ export function useClipboard({
                 break;
               }
 
-              // Check if the connections property exists and has inputs and outputs subproperties
-              // Some nodes may not have the connections property defined
               if (!node.connections) {
-                // If connections doesn't exist, create an empty default structure
                 node.connections = {
                   inputs: [],
                   outputs: [],
@@ -132,7 +125,6 @@ export function useClipboard({
                 node.connections.inputs === undefined ||
                 node.connections.outputs === undefined
               ) {
-                // If connections exists but inputs or outputs are missing, complete the structure
                 if (node.connections.inputs === undefined) {
                   node.connections.inputs = [];
                 }
@@ -147,7 +139,6 @@ export function useClipboard({
               return;
             }
 
-            // Find node with minimum X position
             const nodeWithMinX = jsonNodes.reduce((acc, node) => {
               if (
                 node.position.x < (acc?.position?.x ?? Number.POSITIVE_INFINITY)
@@ -225,7 +216,6 @@ export function useClipboard({
                 for (const conn of node.connections.outputs) {
                   conn.node = idsDict[conn.node];
 
-                  // Adjust waypoint coordinates
                   if (conn.waypoints && conn.waypoints.length > 0) {
                     conn.waypoints = conn.waypoints.map((waypoint) => ({
                       x: waypoint.x - delta.x + pos.x,
@@ -236,7 +226,6 @@ export function useClipboard({
               }
             }
 
-            // Collect information about new waypoints for selection
             const newWaypoints = [];
             for (const node of nodes) {
               if (node.connections?.outputs) {
@@ -299,8 +288,6 @@ export function useClipboard({
       nodeTypes,
       position,
       scale,
-      // We removed pointerPosition from dependencies since we now use window.mousePosition
-      // to access the most current value
       screenRef,
     ]
   );

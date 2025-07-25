@@ -142,7 +142,6 @@ export const ContextMenu = ({ containerRef, i18n, children }) => {
   };
 
   const handleMenuItemClick = (option, e) => {
-    // Impede que o evento se propague para o documento
     if (e) {
       e.stopPropagation();
     }
@@ -160,8 +159,6 @@ export const ContextMenu = ({ containerRef, i18n, children }) => {
   };
 
   useEffect(() => {
-    // Usamos o click em vez de mousedown para capturar todos os cliques
-    // incluindo aqueles que começam dentro do menu mas terminam fora
     document.addEventListener("click", handleOutsideClick);
     document.addEventListener("mousedown", handleOutsideClick);
 
@@ -181,7 +178,6 @@ export const ContextMenu = ({ containerRef, i18n, children }) => {
     if ((option.description?.toLowerCase()?.indexOf(_search) ?? -1) > -1)
       return true;
 
-    // TODO isso não é muito eficiente.
     if (
       option.children?.length &&
       option.children?.some((it) => isFiltered(it))

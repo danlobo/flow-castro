@@ -61,7 +61,7 @@ export function useKeyboardShortcuts({
           case "v":
             e.preventDefault();
             e.stopPropagation();
-            // Use global mouse position instead of event position
+
             const mousePosition = window.mousePosition || {
               x: e.clientX,
               y: e.clientY,

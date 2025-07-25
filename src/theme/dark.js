@@ -8,7 +8,7 @@ const theme = {
     text: "#DDD",
     hover: "#333",
     border: "#888",
-    selectionBorder: "#aaa", // Cor mais clara para ser visível no tema escuro
+    selectionBorder: "#aaa",
   },
 };
 

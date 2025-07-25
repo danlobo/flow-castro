@@ -37,7 +37,6 @@ import { useClipboard } from "./hooks/useClipboard";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useNodeOperations } from "./hooks/useNodeOperations";
 
-// Importar componentes extraídos
 import {
   ToolbarVertical,
   ToolbarHorizontal,
@@ -45,6 +44,7 @@ import {
   SelectionArea,
 } from "./components";
 import { useElementMovement } from "./hooks/useElementMovement.js";
+import { throttle } from "./util/throttle";
 
 function Screen({
   portTypes,
@@ -92,9 +92,8 @@ function Screen({
   const [state, setState] = useState(initialState);
   const [shouldNotify, setShouldNotify] = useState(false);
 
-  const [viewMode, setViewMode] = useState("select"); // 'select', 'move', 'select-add', 'select-remove'
+  const [viewMode, setViewMode] = useState("select");
 
-  // Utilizando o hook de seleção para gerenciar seleção de elementos
   const {
     selectedNodes,
     setSelectedNodes,
@@ -120,7 +119,7 @@ function Screen({
   });
 
   const debounceEvent = useCallback((fn, wait = 200) => {
-    let timeoutId; // Esta variável persiste entre chamadas da função retornada
+    let timeoutId;
     return (...args) => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => fn(...args), wait);
@@ -158,11 +157,28 @@ function Screen({
   }, [state, notifyStateChange, shouldNotify]);
 
   const screenRef = useRef();
-  const contRect = screenRef.current?.getBoundingClientRect();
+
+  const contRectRef = useRef(null);
+  const getContRect = useCallback(() => {
+    if (!contRectRef.current && screenRef.current) {
+      contRectRef.current = screenRef.current.getBoundingClientRect();
+    }
+    return contRectRef.current;
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      contRectRef.current = null;
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   const wrapperRef = useRef();
 
-  // Integrar hook de operações de nós
   const {
     addNode,
     removeNodes,
@@ -180,7 +196,6 @@ function Screen({
     nodeTypes,
   });
 
-  // Integrate clipboard hook
   const { copyNodesToClipboard, pasteNodesFromClipboard } = useClipboard({
     state,
     setStateAndNotify,
@@ -189,11 +204,10 @@ function Screen({
     nodeTypes,
     position,
     scale,
-    pointerPosition, // Agora pointerPosition está sempre atualizado
+    pointerPosition,
     screenRef,
   });
 
-  // Integrar hook de atalhos de teclado
   useKeyboardShortcuts({
     screenRef,
     removeNodes,
@@ -203,6 +217,20 @@ function Screen({
     copyNodesToClipboard,
     pasteNodesFromClipboard,
   });
+
+  const updateSelectEndPoint = useCallback(
+    (event) => {
+      const dx = event.pageX + window.scrollX;
+      const dy = event.pageY + window.scrollY;
+      setSelectEndPoint({ x: dx, y: dy });
+    },
+    [setSelectEndPoint]
+  );
+
+  const throttledUpdateSelectEndPoint = useCallback(
+    throttle(updateSelectEndPoint, 16, { leading: true, trailing: false }),
+    [updateSelectEndPoint]
+  );
 
   const handleMouseDown = useCallback(
     (event) => {
@@ -218,7 +246,6 @@ function Screen({
       //select mode below
       event.stopPropagation();
 
-      // check if shift is pressed
       const selectMode = event.ctrlKey
         ? "select-remove"
         : event.shiftKey
@@ -233,12 +260,7 @@ function Screen({
       setSelectStartPoint(pos);
       setSelectEndPoint(pos);
 
-      const handleMouseMove = (event) => {
-        const dx = event.pageX + window.scrollX;
-        const dy = event.pageY + window.scrollY;
-
-        setSelectEndPoint({ x: dx, y: dy });
-      };
+      const handleMouseMove = throttledUpdateSelectEndPoint;
 
       const handleMouseUp = (e) => {
         window.removeEventListener("mousemove", handleMouseMove);
@@ -254,7 +276,6 @@ function Screen({
           const _selectedNodes = [];
           const nodes = state.nodes ? Object.values(state.nodes) : [];
 
-          // Definir p1 e p2 fora do loop para que estejam disponíveis para o processAreaSelection
           const p1 = {
             x: Math.min(pos.x, _posEnd.x),
             y: Math.min(pos.y, _posEnd.y),
@@ -276,24 +297,19 @@ function Screen({
             }
           });
 
-          // Procurar por waypoints na área selecionada
           const selectedWaypoints = [];
 
-          // Iterar por todos os nós para encontrar comentários e waypoints
           if (state.nodes) {
             Object.values(state.nodes).forEach((node) => {
-              // Verificar waypoints em conexões
               if (node.connections?.outputs) {
                 node.connections.outputs.forEach((connection) => {
                   if (connection.waypoints) {
                     connection.waypoints.forEach((waypoint, waypointIndex) => {
-                      // Converter a posição do waypoint para coordenadas da tela
                       const waypointScreenX =
                         waypoint.x * scale + position.x + window.scrollX;
                       const waypointScreenY =
                         waypoint.y * scale + position.y + window.scrollY;
 
-                      // Verificar se o waypoint está dentro da área selecionada
                       if (
                         waypointScreenX > p1.x &&
                         waypointScreenX < p2.x &&
@@ -315,7 +331,6 @@ function Screen({
             });
           }
 
-          // Usa o método processAreaSelection do hook para processar a seleção
           processAreaSelection(
             { p1, p2 },
             selectMode,
@@ -335,35 +350,37 @@ function Screen({
     [position, scale, state, selectedNodes]
   );
 
-  useEffect(() => {
-    //const { startX, startY } = dragInfo
-
-    const mouseMoveListener = (event) => {
+  const handleMousePositionUpdate = useCallback(
+    (event) => {
       const newPosition = {
         x: event.pageX - window.scrollX,
         y: event.pageY - window.scrollY,
       };
 
-      // Armazenar a posição do mouse em uma variável global para acesso imediato
       window.mousePosition = newPosition;
 
-      // Only log when position changes significantly to avoid console overload
       setPointerPosition(newPosition);
-    };
+    },
+    [setPointerPosition]
+  );
 
-    window.addEventListener("mousemove", mouseMoveListener);
+  const throttledMouseMoveListener = useCallback(
+    throttle(handleMousePositionUpdate, 16, { leading: true, trailing: false }),
+    [handleMousePositionUpdate]
+  );
+
+  useEffect(() => {
+    window.addEventListener("mousemove", throttledMouseMoveListener);
     return () => {
-      window.removeEventListener("mousemove", mouseMoveListener);
+      window.removeEventListener("mousemove", throttledMouseMoveListener);
     };
-  }, []); // Removi pointerPosition das dependências para evitar ciclos
+  }, [throttledMouseMoveListener]);
 
   useEffect(() => {
     if (!dragInfo) {
-      // Quando o arrasto termina, ativamos o modo fadeout apenas se a conexão falhou
       if (dstDragPosition && !lastConnectionSuccessful) {
         setIsInFadeout(true);
 
-        // Manterá a linha por 1 segundo antes de desaparecer
         const timeoutId = setTimeout(() => {
           setDstDragPosition(null);
           setIsInFadeout(false);
@@ -371,44 +388,37 @@ function Screen({
 
         return () => clearTimeout(timeoutId);
       } else {
-        // Se a conexão foi bem-sucedida, simplesmente limpa a posição
         setDstDragPosition(null);
       }
 
-      // Resetamos o estado de sucesso para a próxima tentativa
       setLastConnectionSuccessful(false);
       return;
     }
 
-    // Se há um novo arrasto, saímos do modo fadeout e resetamos status de conexão
     setIsInFadeout(false);
     setLastConnectionSuccessful(false);
 
-    //const { startX, startY } = dragInfo
+    const updateDragPosition = (event) => {
+      const dx = event.pageX;
+      const dy = event.pageY;
 
-    const mouseMoveListener = (event) => {
-      const dx = event.pageX; //- startX
-      const dy = event.pageY; //- startY
-
-      setDstDragPosition({
-        x: dx,
-        y: dy,
-        srcX: dragInfo.startX,
-        srcY: dragInfo.startY,
-      });
+      if (dragInfo) {
+        setDstDragPosition({
+          x: dx,
+          y: dy,
+          srcX: dragInfo.startX,
+          srcY: dragInfo.startY,
+        });
+      }
     };
 
-    window.addEventListener("mousemove", mouseMoveListener);
+    const throttledDragMoveListener = throttle(updateDragPosition, 16);
+
+    window.addEventListener("mousemove", throttledDragMoveListener);
     return () => {
-      window.removeEventListener("mousemove", mouseMoveListener);
+      window.removeEventListener("mousemove", throttledDragMoveListener);
     };
   }, [dragInfo, dstDragPosition, lastConnectionSuccessful]);
-
-  // Funções de manipulação de nós foram movidas para o hook useNodeOperations
-
-  // Funções de manipulação de nós foram movidas para o hook useNodeOperations
-
-  // Funções de manipulação de nós foram movidas para o hook useNodeOperations
 
   const [isMoveable, setIsMoveable] = useState(false);
   const [canMove, setCanMove] = useState(true);
@@ -499,7 +509,6 @@ function Screen({
     isWaypointSelected,
   });
 
-  // Utilizando connectNodes do hook useNodeOperations
   const onConnect = useCallback(
     (connection) => {
       const success = connectNodes(connection);
@@ -639,7 +648,6 @@ function Screen({
     [state, viewMode, nodeTypesByCategory, addNode, position, scale]
   );
 
-  // Utilizando updateNodeValues do hook useNodeOperations
   const handleValueChange = useCallback(
     (id, values) => {
       updateNodeValues(id, values);
@@ -678,16 +686,17 @@ function Screen({
           centerView,
           ...rest
         }) => {
-          const localStartPoint = contRect
+          const rect = getContRect();
+          const localStartPoint = rect
             ? {
-                x: selectStartPoint.x - contRect.left,
-                y: selectStartPoint.y - contRect.top,
+                x: selectStartPoint.x - rect.left,
+                y: selectStartPoint.y - rect.top,
               }
             : { x: 0, y: 0 };
-          const localEndPoint = contRect
+          const localEndPoint = rect
             ? {
-                x: selectEndPoint.x - contRect.left,
-                y: selectEndPoint.y - contRect.top,
+                x: selectEndPoint.x - rect.left,
+                y: selectEndPoint.y - rect.top,
               }
             : { x: 0, y: 0 };
 
@@ -908,8 +917,6 @@ function Screen({
                                 ])
                               }
                               onResize={(size) => {
-                                // O objetivo aqui é disparar a renderização das conexões.
-                                // Se houver um modo melhor, por favor, me avise.
                                 setState((prev) => ({
                                   ...prev,
                                   nodes: {
@@ -952,10 +959,11 @@ function Screen({
                                   `card-${dstNode}-input-${dstPort}`
                                 );
 
+                                const containerRect = getContRect();
                                 if (
                                   !srcElem ||
                                   !dstElem ||
-                                  !contRect ||
+                                  !containerRect ||
                                   !srcBox ||
                                   !dstBox
                                 ) {
@@ -970,17 +978,19 @@ function Screen({
                                 const dstBoxRect =
                                   dstBox.getBoundingClientRect();
 
+                                const screenRect = getContRect();
+
                                 const srcPos = {
                                   x:
                                     (srcRect.x -
                                       position.x -
-                                      contRect.left +
+                                      screenRect.left +
                                       srcRect.width / 2) /
                                     scale,
                                   y:
                                     (srcRect.y -
                                       position.y -
-                                      contRect.top +
+                                      screenRect.top +
                                       srcRect.height / 2) /
                                     scale,
                                 };
@@ -989,13 +999,13 @@ function Screen({
                                   x:
                                     (dstRect.x -
                                       position.x -
-                                      contRect.left +
+                                      screenRect.left +
                                       dstRect.width / 2) /
                                     scale,
                                   y:
                                     (dstRect.y -
                                       position.y -
-                                      contRect.top +
+                                      screenRect.top +
                                       dstRect.height / 2) /
                                     scale,
                                 };
@@ -1004,10 +1014,12 @@ function Screen({
                                   x:
                                     (srcBoxRect.x -
                                       position.x -
-                                      contRect.left) /
+                                      screenRect.left) /
                                     scale,
                                   y:
-                                    (srcBoxRect.y - position.y - contRect.top) /
+                                    (srcBoxRect.y -
+                                      position.y -
+                                      screenRect.top) /
                                     scale,
                                   w: srcBoxRect.width,
                                   h: srcBoxRect.height,
@@ -1017,10 +1029,12 @@ function Screen({
                                   x:
                                     (dstBoxRect.x -
                                       position.x -
-                                      contRect.left) /
+                                      screenRect.left) /
                                     scale,
                                   y:
-                                    (dstBoxRect.y - position.y - contRect.top) /
+                                    (dstBoxRect.y -
+                                      position.y -
+                                      screenRect.top) /
                                     scale,
                                   w: dstBoxRect.width,
                                   h: dstBoxRect.height,
@@ -1060,7 +1074,6 @@ function Screen({
                                       })
                                     }
                                     onWaypointMouseDown={(e, waypointIndex) => {
-                                      // Verificar se Ctrl ou Shift está pressionado para seleção múltipla
                                       if (e.ctrlKey) {
                                         removeWaypointFromSelection({
                                           srcNode,
@@ -1078,7 +1091,6 @@ function Screen({
                                           waypointIndex,
                                         });
                                       } else {
-                                        // Se não for seleção múltipla, limpar seleção anterior
                                         if (
                                           !isWaypointSelected({
                                             srcNode,
@@ -1099,9 +1111,6 @@ function Screen({
                                           ]);
                                         }
                                       }
-
-                                      // Não bloqueamos o evento para permitir que o manipulador interno do ConnectorCurve
-                                      // seja chamado para lidar com o arrasto
                                     }}
                                     onWaypointContextMenu={(e, waypointIndex) =>
                                       handleContextMenu(
@@ -1143,14 +1152,16 @@ function Screen({
                                                   "Add waypoint"
                                                 ),
                                                 onClick: () => {
+                                                  const contextMenuRect =
+                                                    getContRect();
                                                   const pointerX =
                                                     (e.clientX -
-                                                      contRect.left -
+                                                      contextMenuRect.left -
                                                       position.x) /
                                                     scale;
                                                   const pointerY =
                                                     (e.clientY -
-                                                      contRect.top -
+                                                      contextMenuRect.top -
                                                       position.y) /
                                                     scale;
 
@@ -1202,7 +1213,7 @@ function Screen({
                           x:
                             (((dragInfo && dragInfo.startX) ||
                               (isInFadeout && dstDragPosition.srcX)) -
-                              contRect.left -
+                              getContRect().left -
                               position.x +
                               PORT_SIZE / 2 -
                               2) /
@@ -1210,7 +1221,7 @@ function Screen({
                           y:
                             (((dragInfo && dragInfo.startY) ||
                               (isInFadeout && dstDragPosition.srcY)) -
-                              contRect.top -
+                              getContRect().top -
                               position.y +
                               PORT_SIZE / 2 -
                               2) /
@@ -1220,13 +1231,13 @@ function Screen({
                           x:
                             (dstDragPosition.x -
                               window.scrollX -
-                              contRect.left -
+                              getContRect().left -
                               position.x) /
                             scale,
                           y:
                             (dstDragPosition.y -
                               window.scrollY -
-                              contRect.top -
+                              getContRect().top -
                               position.y) /
                             scale,
                         }}

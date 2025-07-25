@@ -10,6 +10,7 @@ import { useDragContext } from "./DragContext.jsx";
 import { useScreenContext } from "./ScreenContext.jsx";
 import css from "./NodePort.module.css";
 import { useTheme } from "./ThemeProvider.jsx";
+import { throttle } from "./util/throttle";
 
 const globalToLocal = (globalX, globalY, translate, scale) => {
   const localX = globalX / scale;
@@ -112,19 +113,31 @@ function NodePort({
 
     setDragInfo(_dragInfo);
 
-    const handleMouseMove = (event) => {
-      if (!_dragInfo) return;
+    const handleMouseMove = throttle(
+      (event) => {
+        if (!_dragInfo) return;
+        if (_dragInfo.type !== "connector") return;
 
-      if (_dragInfo.type !== "connector") return;
+        const localPos = globalToLocal(
+          event.pageX - nodePos.left,
+          event.pageY - nodePos.top,
+          screenPosition,
+          screenScale
+        );
 
-      const localPos = globalToLocal(
-        event.pageX - nodePos.left,
-        event.pageY - nodePos.top,
-        screenPosition,
-        screenScale
-      );
-      setPointerPos({ x: localPos.x, y: localPos.y });
-    };
+        setPointerPos((prevPos) => {
+          if (
+            Math.abs(prevPos.x - localPos.x) < 1 &&
+            Math.abs(prevPos.y - localPos.y) < 1
+          ) {
+            return prevPos;
+          }
+          return { x: localPos.x, y: localPos.y };
+        });
+      },
+      16,
+      { leading: true, trailing: false }
+    );
 
     const handleMouseUp = (e) => {
       window.removeEventListener("mousemove", handleMouseMove);

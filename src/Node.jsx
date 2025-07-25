@@ -4,6 +4,7 @@ import NodePort from "./NodePort.jsx";
 import { useScreenContext } from "./ScreenContext.jsx";
 import css from "./Node.module.css";
 import { useTheme } from "./ThemeProvider.jsx";
+import { throttle } from "./util/throttle";
 
 function Node({
   name,
@@ -63,7 +64,6 @@ function Node({
     (event) => {
       if (!canMove) return;
 
-      // event.preventDefault();
       event.stopPropagation();
 
       const startX = event.pageX;
@@ -71,15 +71,19 @@ function Node({
 
       onDragStart?.({ x: nodePosition.x, y: nodePosition.y });
 
-      const handleMouseMove = (event) => {
-        const dx = event.pageX - startX;
-        const dy = event.pageY - startY;
+      const handleMouseMove = throttle(
+        (event) => {
+          const dx = event.pageX - startX;
+          const dy = event.pageY - startY;
 
-        onChangePosition({
-          x: nodePosition.x + dx / screenScale,
-          y: nodePosition.y + dy / screenScale,
-        });
-      };
+          onChangePosition({
+            x: nodePosition.x + dx / screenScale,
+            y: nodePosition.y + dy / screenScale,
+          });
+        },
+        16,
+        { leading: true, trailing: false }
+      );
 
       const handleMouseUp = (e) => {
         window.removeEventListener("mousemove", handleMouseMove);

@@ -23,13 +23,8 @@ const Comment = ({
 
   const mouseDownHandler = useCallback(
     (e) => {
-      // Impedir a propagação do evento para o componente pai (Screen)
-      // para evitar que a seleção de área seja iniciada
       e.stopPropagation();
 
-      // const rect = currentRef.getBoundingClientRect()
-      // const offsetX = e.clientX - rect.x
-      // const offsetY = e.clientY - rect.y
       const startX = e.pageX;
       const startY = e.pageY;
 
@@ -90,12 +85,9 @@ const Comment = ({
         height: size?.h ?? 200,
       }}
       onClick={(e) => {
-        // Evita a propagação para o wrapper e permite a seleção do comentário
         e.stopPropagation();
       }}
       onMouseDown={(e) => {
-        // Impede que cliques em qualquer parte do comentário iniciem a seleção de área
-        // A menos que seja dentro dos elementos de input/textarea
         if (!e.target.closest("input") && !e.target.closest("textarea")) {
           e.stopPropagation();
         }

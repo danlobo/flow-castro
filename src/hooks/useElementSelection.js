@@ -8,7 +8,7 @@ import { useState, useCallback } from "react";
  */
 export function useElementSelection({ state }) {
   const [selectedNodes, setSelectedNodes] = useState([]);
-  // Stores selected waypoints in the format {srcNode, srcPort, dstNode, dstPort, waypointIndex}
+
   const [selectedWaypoints, setSelectedWaypoints] = useState([]);
   const [selectStartPoint, setSelectStartPoint] = useState({ x: 0, y: 0 });
   const [selectEndPoint, setSelectEndPoint] = useState({ x: 0, y: 0 });
@@ -35,7 +35,6 @@ export function useElementSelection({ state }) {
    */
   const addNodesToSelection = useCallback((nodeIds) => {
     setSelectedNodes((prev) => {
-      // Filtra para evitar duplicatas
       const uniqueNewIds = nodeIds.filter((id) => !prev.includes(id));
       return [...prev, ...uniqueNewIds];
     });
@@ -55,7 +54,6 @@ export function useElementSelection({ state }) {
    */
   const addWaypointToSelection = useCallback((waypointInfo) => {
     setSelectedWaypoints((prev) => {
-      // Check if the waypoint is already selected
       const isAlreadySelected = prev.some(
         (wp) =>
           wp.srcNode === waypointInfo.srcNode &&
@@ -96,10 +94,6 @@ export function useElementSelection({ state }) {
    */
   const isWaypointSelected = useCallback(
     (waypointInfo) => {
-      // Se waypointInfo for apenas um objeto com x e y (coordenadas do waypoint)
-      // ou se não tiver todas as propriedades necessárias, não podemos verificar
-      // a seleção adequadamente e retornamos false
-
       if (
         !waypointInfo ||
         typeof waypointInfo !== "object" ||
@@ -131,7 +125,6 @@ export function useElementSelection({ state }) {
    */
   const addCommentsToSelection = useCallback((commentIds) => {
     setSelectedNodes((prev) => {
-      // Filtra para evitar duplicatas
       const uniqueNewIds = commentIds.filter((id) => !prev.includes(id));
       return [...prev, ...uniqueNewIds];
     });
@@ -146,32 +139,25 @@ export function useElementSelection({ state }) {
   }, []);
   const processAreaSelection = useCallback(
     (selectionArea, selectionMode, nodesInArea, waypointsInArea = []) => {
-      // Garantindo que temos uma área de seleção válida
       if (!selectionArea) return;
 
-      // Processar a seleção de nós, waypoints e comentários
       const hasElements =
         nodesInArea?.length > 0 || waypointsInArea?.length > 0;
 
       if (hasElements) {
         if (selectionMode === "select") {
-          // Em modo de seleção simples, substituir seleções anteriores
           setSelectedNodes(nodesInArea || []);
           setSelectedWaypoints(waypointsInArea || []);
         } else if (selectionMode === "select-add") {
-          // Adicionar elementos à seleção existente
           if (nodesInArea?.length > 0) addNodesToSelection(nodesInArea);
           if (waypointsInArea?.length > 0)
             waypointsInArea.forEach((wp) => addWaypointToSelection(wp));
         } else if (selectionMode === "select-remove") {
-          // Remover elementos da seleção existente
           if (nodesInArea?.length > 0) removeNodesFromSelection(nodesInArea);
           if (waypointsInArea?.length > 0)
             waypointsInArea.forEach((wp) => removeWaypointFromSelection(wp));
         }
       } else if (selectionMode === "select") {
-        // Caso em que a área foi selecionada mas não contém nenhum elemento
-        // Limpar todas as seleções existentes
         clearSelection();
       }
     },

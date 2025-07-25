@@ -245,7 +245,6 @@ export function useNodeOperations({
 
         if (!newNodes[srcNode]) return prev;
 
-        // Encontrar a conexão correspondente nos outputs do nó de origem
         const connectionIndex = newNodes[
           srcNode
         ].connections?.outputs?.findIndex(
@@ -257,7 +256,6 @@ export function useNodeOperations({
 
         if (connectionIndex === -1) return prev;
 
-        // Clonar a conexão e garantir que o array de waypoints existe
         const connection = {
           ...newNodes[srcNode].connections.outputs[connectionIndex],
           waypoints: [
@@ -266,10 +264,8 @@ export function useNodeOperations({
           ],
         };
 
-        // Adicionar o novo waypoint
         connection.waypoints.push(position);
 
-        // Atualizar a conexão no objeto newNodes
         newNodes[srcNode] = {
           ...newNodes[srcNode],
           connections: {
@@ -314,7 +310,6 @@ export function useNodeOperations({
 
         if (!newNodes[srcNode]) return prev;
 
-        // Encontrar a conexão correspondente nos outputs do nó de origem
         const connectionIndex = newNodes[
           srcNode
         ].connections?.outputs?.findIndex(
@@ -326,7 +321,6 @@ export function useNodeOperations({
 
         if (connectionIndex === -1) return prev;
 
-        // Clonar a conexão e garantir que o array de waypoints existe
         const connection = {
           ...newNodes[srcNode].connections.outputs[connectionIndex],
           waypoints: [
@@ -335,12 +329,10 @@ export function useNodeOperations({
           ],
         };
 
-        // Atualizar a posição do waypoint
         if (waypointIndex >= 0 && waypointIndex < connection.waypoints.length) {
           connection.waypoints[waypointIndex] = newPosition;
         }
 
-        // Atualizar a conexão no objeto newNodes
         newNodes[srcNode] = {
           ...newNodes[srcNode],
           connections: {
@@ -384,7 +376,6 @@ export function useNodeOperations({
 
         if (!newNodes[srcNode]) return prev;
 
-        // Encontrar a conexão correspondente nos outputs do nó de origem
         const connectionIndex = newNodes[
           srcNode
         ].connections?.outputs?.findIndex(
@@ -396,7 +387,6 @@ export function useNodeOperations({
 
         if (connectionIndex === -1) return prev;
 
-        // Clonar a conexão e garantir que o array de waypoints existe
         const connection = {
           ...newNodes[srcNode].connections.outputs[connectionIndex],
           waypoints: [
@@ -405,10 +395,8 @@ export function useNodeOperations({
           ],
         };
 
-        // Remover o waypoint pelo índice
         connection.waypoints.splice(waypointIndex, 1);
 
-        // Atualizar a conexão no objeto newNodes
         newNodes[srcNode] = {
           ...newNodes[srcNode],
           connections: {
@@ -457,7 +445,6 @@ export function useNodeOperations({
 
         if (item.srcNode === item.dstNode) return prev;
 
-        // deep merge
         const srcNode = JSON.parse(JSON.stringify(prev.nodes[item.srcNode]));
         const dstNode = JSON.parse(JSON.stringify(prev.nodes[item.dstNode]));
 
@@ -488,7 +475,7 @@ export function useNodeOperations({
             node: dstNode.id,
             port: dstPort.name,
             type: srcPort.type,
-            waypoints: [], // Array vazio que armazenará os waypoints
+            waypoints: [],
           });
         }
 
