@@ -56,7 +56,7 @@
   cursor: grabbing;
 }
 
-/* .invalid {
+.invalid {
   stroke-dasharray: 1000;
   stroke-dashoffset: 0;
   animation: destroy 0.4s ease forwards;
@@ -73,4 +73,4 @@
     opacity: 0;
     filter: blur(16px);
   }
-} */
+}
