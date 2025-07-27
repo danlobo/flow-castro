@@ -12,6 +12,7 @@ import { useScreenContext } from "./ScreenContext.jsx";
 import { ConnectorCurve, ConnectorCurveForward } from "./ConnectorCurve.jsx";
 import { ContextMenu } from "./ContextMenu.jsx";
 import css from "./Screen.module.css";
+import { useDebounceCallback } from "./hooks/useDebounceCallback";
 
 import nodeCss from "./Node.module.css";
 import nodePortCss from "./NodePort.module.css";
@@ -118,14 +119,6 @@ function Screen({
     y: 0,
   });
 
-  const debounceEvent = useCallback((fn, wait = 200) => {
-    let timeoutId;
-    return (...args) => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => fn(...args), wait);
-    };
-  }, []);
-
   useEffect(() => {
     if (!initialState) return;
 
@@ -144,9 +137,7 @@ function Screen({
     [setState]
   );
 
-  const notifyStateChange = useCallback(debounceEvent(onChangeState, 100), [
-    onChangeState,
-  ]);
+  const notifyStateChange = useDebounceCallback(onChangeState, 150);
 
   useEffect(() => {
     if (shouldNotify) {

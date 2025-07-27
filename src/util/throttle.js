@@ -1,18 +1,18 @@
 /**
- * Limita a execução de uma função a uma vez a cada intervalo de tempo
- * @param {Function} func Função a ser executada
- * @param {Number} limit Limite de tempo em ms
- * @returns {Function} Função com throttle aplicado
+ * Limits the execution of a function to once per time interval
+ * @param {Function} func Function to be executed
+ * @param {Number} limit Time limit in ms
+ * @returns {Function} Function with throttle applied
  */
 /**
- * Versão otimizada da função throttle que prioriza performance em situações de alta carga
+ * Optimized version of the throttle function that prioritizes performance in high-load situations
  *
- * @param {Function} func Função a ser executada
- * @param {Number} limit Limite de tempo em ms
- * @param {Object} options Opções adicionais
- * @param {Boolean} options.leading Executar na primeira chamada (padrão: true)
- * @param {Boolean} options.trailing Executar na última chamada após o limite (padrão: true)
- * @returns {Function} Função com throttle aplicado
+ * @param {Function} func Function to be executed
+ * @param {Number} limit Time limit in ms
+ * @param {Object} options Additional options
+ * @param {Boolean} options.leading Execute on the first call (default: true)
+ * @param {Boolean} options.trailing Execute on the last call after the limit (default: true)
+ * @returns {Function} Function with throttle applied
  */
 export function throttle(func, limit = 16, options = {}) {
   const { leading = true, trailing = true } = options;

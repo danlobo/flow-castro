@@ -123,8 +123,8 @@ export function ConnectorCurveForward({
             currentTheme.connections?.default?.color ??
             "#ccc",
           strokeWidth: hovered
-            ? Math.max(10, 10 * scale)
-            : Math.max(4, 5 * scale),
+            ? Math.max(10, 10 * (scale || 1))
+            : Math.max(4, 5 * (scale || 1)),
         }}
         className={[css.path, tmp ? css.pathTmp : null]
           .filter(Boolean)
@@ -151,7 +151,7 @@ export function ConnectorCurveForward({
             key={`waypoint-${index}`}
             cx={waypoint.x + PADDING}
             cy={waypoint.y + PADDING}
-            r={waypointRadius}
+            r={waypointRadius || 0}
             stroke={
               currentTheme.connections?.[type?.type]?.color ??
               type?.color ??
