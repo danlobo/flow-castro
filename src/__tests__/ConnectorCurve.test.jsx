@@ -73,7 +73,7 @@ describe("ConnectorCurve Component", () => {
     const { container } = render(<ConnectorCurve {...defaultProps} />);
 
     expect(container).toBeTruthy();
-    expect(container.querySelector("svg")).toBeTruthy();
+    expect(container.querySelector("g")).toBeTruthy();
   });
 
   test("ConnectorCurve does not render when src or dst are not defined", () => {
@@ -104,8 +104,8 @@ describe("ConnectorCurve Component", () => {
     const { container } = render(
       <ConnectorCurve {...defaultProps} invalid={true} />
     );
-    const svgElement = container.querySelector("svg");
-    expect(svgElement).toBeTruthy();
+    const pathElement = container.querySelector("path");
+    expect(pathElement).toBeTruthy();
   });
 
   test("ConnectorCurve applies 'tmp' class when tmp property is true", () => {
@@ -124,7 +124,7 @@ describe("ConnectorCurve Component", () => {
     const pathElement = container.querySelector("path");
     expect(pathElement).toBeTruthy();
 
-    expect(container.querySelector("svg")).toBeTruthy();
+    expect(container.querySelector("g")).toBeTruthy();
 
     expect(pathElement).toBeInTheDocument();
 
@@ -236,8 +236,8 @@ describe("ConnectorCurve Component", () => {
   test("ConnectorCurveForward responds to mouse events", () => {
     const { container } = render(<ConnectorCurveForward {...defaultProps} />);
 
-    const svgElement = container.querySelector("svg");
-    expect(svgElement).toBeTruthy();
+    const groupElement = container.querySelector("g");
+    expect(groupElement).toBeTruthy();
 
     const pathElement = container.querySelector("path");
     expect(pathElement).toBeTruthy();

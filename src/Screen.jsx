@@ -941,314 +941,326 @@ function Screen({
                                 }));
                               }}
                             />
-                            {node.connections?.outputs?.map(
-                              (connection, index) => {
-                                const srcNode = node.id;
-                                const srcPort = connection.name;
-                                const dstNode = connection.node;
-                                const dstPort = connection.port;
-                                const connType = connection.type;
-                                const waypoints = connection.waypoints || [];
+                          </>
+                        );
+                      })}
 
-                                const srcBox = document.getElementById(
-                                  `card-${srcNode}`
-                                );
-                                const dstBox = document.getElementById(
-                                  `card-${dstNode}`
-                                );
+                    {/* Camada única de SVG para todas as conexões */}
+                    <svg
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: (rect ? rect.width : 0) / (scale || 1),
+                        height: (rect ? rect.height : 0) / (scale || 1),
+                        overflow: "visible",
+                        zIndex: 5,
+                        pointerEvents: "none",
+                      }}
+                    >
+                      {state?.nodes &&
+                        Object.values(state.nodes).map((node) =>
+                          node.connections?.outputs?.map(
+                            (connection, index) => {
+                              const srcNode = node.id;
+                              const srcPort = connection.name;
+                              const dstNode = connection.node;
+                              const dstPort = connection.port;
+                              const connType = connection.type;
+                              const waypoints = connection.waypoints || [];
 
-                                const srcElem = document.getElementById(
-                                  `card-${srcNode}-output-${srcPort}`
-                                );
-                                const dstElem = document.getElementById(
-                                  `card-${dstNode}-input-${dstPort}`
-                                );
+                              const srcBox = document.getElementById(
+                                `card-${srcNode}`
+                              );
+                              const dstBox = document.getElementById(
+                                `card-${dstNode}`
+                              );
 
-                                const containerRect = getContRect();
-                                if (
-                                  !srcElem ||
-                                  !dstElem ||
-                                  !containerRect ||
-                                  !srcBox ||
-                                  !dstBox
-                                ) {
-                                  return null;
-                                }
+                              const srcElem = document.getElementById(
+                                `card-${srcNode}-output-${srcPort}`
+                              );
+                              const dstElem = document.getElementById(
+                                `card-${dstNode}-input-${dstPort}`
+                              );
 
-                                const srcRect = srcElem.getBoundingClientRect();
-                                const dstRect = dstElem.getBoundingClientRect();
+                              const containerRect = getContRect();
+                              if (
+                                !srcElem ||
+                                !dstElem ||
+                                !containerRect ||
+                                !srcBox ||
+                                !dstBox
+                              ) {
+                                return null;
+                              }
 
-                                const srcBoxRect =
-                                  srcBox.getBoundingClientRect();
-                                const dstBoxRect =
-                                  dstBox.getBoundingClientRect();
+                              const srcRect = srcElem.getBoundingClientRect();
+                              const dstRect = dstElem.getBoundingClientRect();
 
-                                const screenRect = getContRect();
+                              const srcBoxRect = srcBox.getBoundingClientRect();
+                              const dstBoxRect = dstBox.getBoundingClientRect();
 
-                                const srcPos = {
-                                  x:
-                                    (srcRect.x -
-                                      position.x -
-                                      screenRect.left +
-                                      srcRect.width / 2) /
-                                    scale,
-                                  y:
-                                    (srcRect.y -
-                                      position.y -
-                                      screenRect.top +
-                                      srcRect.height / 2) /
-                                    scale,
-                                };
+                              const screenRect = getContRect();
 
-                                const dstPos = {
-                                  x:
-                                    (dstRect.x -
-                                      position.x -
-                                      screenRect.left +
-                                      dstRect.width / 2) /
-                                    scale,
-                                  y:
-                                    (dstRect.y -
-                                      position.y -
-                                      screenRect.top +
-                                      dstRect.height / 2) /
-                                    scale,
-                                };
+                              const srcPos = {
+                                x:
+                                  (srcRect.x -
+                                    position.x -
+                                    screenRect.left +
+                                    srcRect.width / 2) /
+                                  scale,
+                                y:
+                                  (srcRect.y -
+                                    position.y -
+                                    screenRect.top +
+                                    srcRect.height / 2) /
+                                  scale,
+                              };
 
-                                const box1 = {
-                                  x:
-                                    (srcBoxRect.x -
-                                      position.x -
-                                      screenRect.left) /
-                                    scale,
-                                  y:
-                                    (srcBoxRect.y -
-                                      position.y -
-                                      screenRect.top) /
-                                    scale,
-                                  w: srcBoxRect.width,
-                                  h: srcBoxRect.height,
-                                };
+                              const dstPos = {
+                                x:
+                                  (dstRect.x -
+                                    position.x -
+                                    screenRect.left +
+                                    dstRect.width / 2) /
+                                  scale,
+                                y:
+                                  (dstRect.y -
+                                    position.y -
+                                    screenRect.top +
+                                    dstRect.height / 2) /
+                                  scale,
+                              };
 
-                                const box2 = {
-                                  x:
-                                    (dstBoxRect.x -
-                                      position.x -
-                                      screenRect.left) /
-                                    scale,
-                                  y:
-                                    (dstBoxRect.y -
-                                      position.y -
-                                      screenRect.top) /
-                                    scale,
-                                  w: dstBoxRect.width,
-                                  h: dstBoxRect.height,
-                                };
+                              const box1 = {
+                                x:
+                                  (srcBoxRect.x -
+                                    position.x -
+                                    screenRect.left) /
+                                  scale,
+                                y:
+                                  (srcBoxRect.y - position.y - screenRect.top) /
+                                  scale,
+                                w: srcBoxRect.width,
+                                h: srcBoxRect.height,
+                              };
 
-                                return (
-                                  <ConnectorCurve
-                                    key={`connector-${srcNode}-${srcPort}-${dstNode}-${dstPort}`}
-                                    type={portTypes[connType]}
-                                    src={srcPos}
-                                    dst={dstPos}
-                                    scale={scale}
-                                    n1Box={box1}
-                                    n2Box={box2}
-                                    index={index}
-                                    waypoints={waypoints}
-                                    onUpdateWaypoint={(
+                              const box2 = {
+                                x:
+                                  (dstBoxRect.x -
+                                    position.x -
+                                    screenRect.left) /
+                                  scale,
+                                y:
+                                  (dstBoxRect.y - position.y - screenRect.top) /
+                                  scale,
+                                w: dstBoxRect.width,
+                                h: dstBoxRect.height,
+                              };
+
+                              return (
+                                <ConnectorCurve
+                                  key={`connector-${srcNode}-${srcPort}-${dstNode}-${dstPort}`}
+                                  type={portTypes[connType]}
+                                  src={srcPos}
+                                  dst={dstPos}
+                                  scale={scale}
+                                  n1Box={box1}
+                                  n2Box={box2}
+                                  index={index}
+                                  waypoints={waypoints}
+                                  onUpdateWaypoint={(
+                                    waypointIndex,
+                                    newPosition
+                                  ) =>
+                                    updateWaypointPosition(
+                                      srcNode,
+                                      srcPort,
+                                      dstNode,
+                                      dstPort,
                                       waypointIndex,
                                       newPosition
-                                    ) =>
-                                      updateWaypointPosition(
+                                    )
+                                  }
+                                  isWaypointSelected={(waypointIndex) =>
+                                    isWaypointSelected({
+                                      srcNode,
+                                      srcPort,
+                                      dstNode,
+                                      dstPort,
+                                      waypointIndex,
+                                    })
+                                  }
+                                  onWaypointMouseDown={(e, waypointIndex) => {
+                                    if (e.ctrlKey) {
+                                      removeWaypointFromSelection({
                                         srcNode,
                                         srcPort,
                                         dstNode,
                                         dstPort,
                                         waypointIndex,
-                                        newPosition
-                                      )
-                                    }
-                                    isWaypointSelected={(waypointIndex) =>
-                                      isWaypointSelected({
+                                      });
+                                    } else if (e.shiftKey) {
+                                      addWaypointToSelection({
                                         srcNode,
                                         srcPort,
                                         dstNode,
                                         dstPort,
                                         waypointIndex,
-                                      })
-                                    }
-                                    onWaypointMouseDown={(e, waypointIndex) => {
-                                      if (e.ctrlKey) {
-                                        removeWaypointFromSelection({
+                                      });
+                                    } else {
+                                      if (
+                                        !isWaypointSelected({
                                           srcNode,
                                           srcPort,
                                           dstNode,
                                           dstPort,
                                           waypointIndex,
-                                        });
-                                      } else if (e.shiftKey) {
-                                        addWaypointToSelection({
-                                          srcNode,
-                                          srcPort,
-                                          dstNode,
-                                          dstPort,
-                                          waypointIndex,
-                                        });
-                                      } else {
-                                        if (
-                                          !isWaypointSelected({
+                                        })
+                                      ) {
+                                        setSelectedWaypoints([
+                                          {
                                             srcNode,
                                             srcPort,
                                             dstNode,
                                             dstPort,
                                             waypointIndex,
-                                          })
-                                        ) {
-                                          setSelectedWaypoints([
-                                            {
-                                              srcNode,
-                                              srcPort,
-                                              dstNode,
-                                              dstPort,
-                                              waypointIndex,
-                                            },
-                                          ]);
-                                        }
+                                          },
+                                        ]);
                                       }
-                                    }}
-                                    onWaypointContextMenu={(e, waypointIndex) =>
-                                      handleContextMenu(
-                                        e,
-                                        [
-                                          canMove
-                                            ? {
-                                                label: i(
-                                                  i18n,
-                                                  "contextMenu.removeWaypoint",
-                                                  {},
-                                                  "Remove waypoint"
-                                                ),
-                                                style: { color: "red" },
-                                                onClick: () => {
-                                                  removeWaypoint(
-                                                    srcNode,
-                                                    srcPort,
-                                                    dstNode,
-                                                    dstPort,
-                                                    waypointIndex
-                                                  );
-                                                },
-                                              }
-                                            : null,
-                                        ].filter(Boolean)
-                                      )
                                     }
-                                    onContextMenu={(e) =>
-                                      handleContextMenu(
-                                        e,
-                                        [
-                                          canMove
-                                            ? {
-                                                label: i(
-                                                  i18n,
-                                                  "contextMenu.addWaypoint",
-                                                  {},
-                                                  "Add waypoint"
-                                                ),
-                                                onClick: () => {
-                                                  const contextMenuRect =
-                                                    getContRect();
-                                                  const pointerX =
-                                                    (e.clientX -
-                                                      contextMenuRect.left -
-                                                      position.x) /
-                                                    scale;
-                                                  const pointerY =
-                                                    (e.clientY -
-                                                      contextMenuRect.top -
-                                                      position.y) /
-                                                    scale;
+                                  }}
+                                  onWaypointContextMenu={(e, waypointIndex) =>
+                                    handleContextMenu(
+                                      e,
+                                      [
+                                        canMove
+                                          ? {
+                                              label: i(
+                                                i18n,
+                                                "contextMenu.removeWaypoint",
+                                                {},
+                                                "Remove waypoint"
+                                              ),
+                                              style: { color: "red" },
+                                              onClick: () => {
+                                                removeWaypoint(
+                                                  srcNode,
+                                                  srcPort,
+                                                  dstNode,
+                                                  dstPort,
+                                                  waypointIndex
+                                                );
+                                              },
+                                            }
+                                          : null,
+                                      ].filter(Boolean)
+                                    )
+                                  }
+                                  onContextMenu={(e) =>
+                                    handleContextMenu(
+                                      e,
+                                      [
+                                        canMove
+                                          ? {
+                                              label: i(
+                                                i18n,
+                                                "contextMenu.addWaypoint",
+                                                {},
+                                                "Add waypoint"
+                                              ),
+                                              onClick: () => {
+                                                const contextMenuRect =
+                                                  getContRect();
+                                                const pointerX =
+                                                  (e.clientX -
+                                                    contextMenuRect.left -
+                                                    position.x) /
+                                                  scale;
+                                                const pointerY =
+                                                  (e.clientY -
+                                                    contextMenuRect.top -
+                                                    position.y) /
+                                                  scale;
 
-                                                  addWaypoint(
-                                                    srcNode,
-                                                    srcPort,
-                                                    dstNode,
-                                                    dstPort,
-                                                    { x: pointerX, y: pointerY }
-                                                  );
-                                                },
-                                              }
-                                            : null,
-                                          canMove
-                                            ? {
-                                                label: i(
-                                                  i18n,
-                                                  "contextMenu.removeThisConnection",
-                                                  {},
-                                                  "Remove this connection"
-                                                ),
-                                                style: { color: "red" },
-                                                onClick: () => {
-                                                  removeConnectionFromOutput(
-                                                    srcNode,
-                                                    srcPort,
-                                                    dstNode,
-                                                    dstPort
-                                                  );
-                                                },
-                                              }
-                                            : null,
-                                        ].filter(Boolean)
-                                      )
-                                    }
-                                  />
-                                );
-                              }
-                            )}
-                          </>
-                        );
-                      })}
+                                                addWaypoint(
+                                                  srcNode,
+                                                  srcPort,
+                                                  dstNode,
+                                                  dstPort,
+                                                  { x: pointerX, y: pointerY }
+                                                );
+                                              },
+                                            }
+                                          : null,
+                                        canMove
+                                          ? {
+                                              label: i(
+                                                i18n,
+                                                "contextMenu.removeThisConnection",
+                                                {},
+                                                "Remove this connection"
+                                              ),
+                                              style: { color: "red" },
+                                              onClick: () => {
+                                                removeConnectionFromOutput(
+                                                  srcNode,
+                                                  srcPort,
+                                                  dstNode,
+                                                  dstPort
+                                                );
+                                              },
+                                            }
+                                          : null,
+                                      ].filter(Boolean)
+                                    )
+                                  }
+                                />
+                              );
+                            }
+                          )
+                        )}
 
-                    {(dragInfo || isInFadeout) && dstDragPosition ? (
-                      <ConnectorCurveForward
-                        tmp
-                        invalid={isInFadeout}
-                        src={{
-                          x:
-                            (((dragInfo && dragInfo.startX) ||
-                              (isInFadeout && dstDragPosition.srcX)) -
-                              getContRect().left -
-                              position.x +
-                              PORT_SIZE / 2 -
-                              2) /
-                            scale,
-                          y:
-                            (((dragInfo && dragInfo.startY) ||
-                              (isInFadeout && dstDragPosition.srcY)) -
-                              getContRect().top -
-                              position.y +
-                              PORT_SIZE / 2 -
-                              2) /
-                            scale,
-                        }}
-                        dst={{
-                          x:
-                            (dstDragPosition.x -
-                              window.scrollX -
-                              getContRect().left -
-                              position.x) /
-                            scale,
-                          y:
-                            (dstDragPosition.y -
-                              window.scrollY -
-                              getContRect().top -
-                              position.y) /
-                            scale,
-                        }}
-                        scale={scale}
-                      />
-                    ) : null}
+                      {(dragInfo || isInFadeout) && dstDragPosition ? (
+                        <ConnectorCurveForward
+                          tmp
+                          invalid={isInFadeout}
+                          src={{
+                            x:
+                              (((dragInfo && dragInfo.startX) ||
+                                (isInFadeout && dstDragPosition.srcX)) -
+                                getContRect().left -
+                                position.x +
+                                PORT_SIZE / 2 -
+                                2) /
+                              scale,
+                            y:
+                              (((dragInfo && dragInfo.startY) ||
+                                (isInFadeout && dstDragPosition.srcY)) -
+                                getContRect().top -
+                                position.y +
+                                PORT_SIZE / 2 -
+                                2) /
+                              scale,
+                          }}
+                          dst={{
+                            x:
+                              (dstDragPosition.x -
+                                window.scrollX -
+                                getContRect().left -
+                                position.x) /
+                              scale,
+                            y:
+                              (dstDragPosition.y -
+                                window.scrollY -
+                                getContRect().top -
+                                position.y) /
+                              scale,
+                          }}
+                          scale={scale}
+                        />
+                      ) : null}
+                    </svg>
                   </TransformComponent>
                 )}
               </ContextMenu>

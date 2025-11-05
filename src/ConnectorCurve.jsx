@@ -104,16 +104,13 @@ export function ConnectorCurveForward({
     }
   }
 
+  const OFFSET_X = 5;
+  const OFFSET_Y = 5;
+
   return (
-    <svg
-      style={{
-        transform: `translate(${minX - PADDING}px, ${minY - PADDING}px)`,
-        width: maxX - minX + PADDING * 2,
-        height: maxY - minY + PADDING * 2,
-        zIndex: tmp ? 1000 : -1,
-        overflow: "visible",
-      }}
-      className={[css.container, invalid ? css.invalid : null].join(" ")}
+    <g
+      transform={`translate(${minX - PADDING - OFFSET_X}, ${minY - PADDING - OFFSET_Y})`}
+      data-connector-group
     >
       <path
         style={{
@@ -223,7 +220,7 @@ export function ConnectorCurveForward({
           />
         );
       })}
-    </svg>
+    </g>
   );
 }
 
