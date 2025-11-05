@@ -954,7 +954,7 @@ function Screen({
                         width: (rect ? rect.width : 0) / (scale || 1),
                         height: (rect ? rect.height : 0) / (scale || 1),
                         overflow: "visible",
-                        zIndex: 5,
+                        zIndex: -1,
                         pointerEvents: "none",
                       }}
                     >
