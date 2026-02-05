@@ -134,7 +134,7 @@ function Screen({
         return newState;
       });
     },
-    [setState]
+    [setState],
   );
 
   const notifyStateChange = useDebounceCallback(onChangeState, 150);
@@ -168,6 +168,90 @@ function Screen({
   }, []);
 
   const wrapperRef = useRef();
+  const transformControlsRef = useRef({ setTransform: null });
+  const middleMousePanRef = useRef({
+    isPanning: false,
+    startX: 0,
+    startY: 0,
+    lastPosX: 0,
+    lastPosY: 0,
+  });
+  const positionRef = useRef(position);
+  const scaleRef = useRef(scale);
+
+  // Manter refs atualizadas
+  useEffect(() => {
+    positionRef.current = position;
+    scaleRef.current = scale;
+  }, [position, scale]);
+
+  // Handler para pan com botão do meio do mouse
+  useEffect(() => {
+    if (!screenRef.current) return;
+
+    const handleMiddleMouseDown = (e) => {
+      if (e.button === 1) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        middleMousePanRef.current = {
+          isPanning: true,
+          startX: e.clientX,
+          startY: e.clientY,
+          lastPosX: positionRef.current.x,
+          lastPosY: positionRef.current.y,
+        };
+
+        const handleMiddleMouseMove = (e) => {
+          if (
+            middleMousePanRef.current.isPanning &&
+            transformControlsRef.current.setTransform
+          ) {
+            e.preventDefault();
+
+            // Calcular imediatamente sem esperar
+            requestAnimationFrame(() => {
+              const deltaX = e.clientX - middleMousePanRef.current.startX;
+              const deltaY = e.clientY - middleMousePanRef.current.startY;
+
+              const newPosX = middleMousePanRef.current.lastPosX + deltaX;
+              const newPosY = middleMousePanRef.current.lastPosY + deltaY;
+
+              transformControlsRef.current.setTransform(
+                newPosX,
+                newPosY,
+                scaleRef.current,
+                0,
+              );
+            });
+          }
+        };
+
+        const handleMiddleMouseUp = (e) => {
+          if (e.button === 1 && middleMousePanRef.current.isPanning) {
+            middleMousePanRef.current.isPanning = false;
+
+            document.removeEventListener("mousemove", handleMiddleMouseMove);
+            document.removeEventListener("mouseup", handleMiddleMouseUp);
+          }
+        };
+
+        document.addEventListener("mousemove", handleMiddleMouseMove);
+        document.addEventListener("mouseup", handleMiddleMouseUp);
+      }
+    };
+
+    screenRef.current.addEventListener("mousedown", handleMiddleMouseDown);
+
+    return () => {
+      if (screenRef.current) {
+        screenRef.current.removeEventListener(
+          "mousedown",
+          handleMiddleMouseDown,
+        );
+      }
+    };
+  }, []); // Sem dependências - só roda uma vez!
 
   const {
     addNode,
@@ -214,24 +298,23 @@ function Screen({
       const dy = event.pageY + window.scrollY;
       setSelectEndPoint({ x: dx, y: dy });
     },
-    [setSelectEndPoint]
+    [setSelectEndPoint],
   );
 
   const throttledUpdateSelectEndPoint = useCallback(
     throttle(updateSelectEndPoint, 16, { leading: true, trailing: false }),
-    [updateSelectEndPoint]
+    [updateSelectEndPoint],
   );
 
   const throttledSetScale = useCallback(
     throttle(setScale, 16, { leading: true, trailing: true }),
-    [setScale]
+    [setScale],
   );
 
   const handleMouseDown = useCallback(
     (event) => {
       if (event.button === 1) {
-        //middle mouse button
-        setViewMode("move");
+        //middle mouse button - do not capture it, let TransformWrapper handle it
         return;
       } else if (event.button !== 0) {
         //NOT left mouse button
@@ -330,7 +413,7 @@ function Screen({
             { p1, p2 },
             selectMode,
             _selectedNodes,
-            selectedWaypoints
+            selectedWaypoints,
           );
 
           setSelectStartPoint(_posEnd);
@@ -342,7 +425,7 @@ function Screen({
       window.addEventListener("mousemove", handleMouseMove);
       window.addEventListener("mouseup", handleMouseUp);
     },
-    [position, scale, state, selectedNodes]
+    [position, scale, state, selectedNodes],
   );
 
   const handleMousePositionUpdate = useCallback(
@@ -356,12 +439,12 @@ function Screen({
 
       setPointerPosition(newPosition);
     },
-    [setPointerPosition]
+    [setPointerPosition],
   );
 
   const throttledMouseMoveListener = useCallback(
     throttle(handleMousePositionUpdate, 16, { leading: true, trailing: false }),
-    [handleMousePositionUpdate]
+    [handleMousePositionUpdate],
   );
 
   useEffect(() => {
@@ -422,8 +505,8 @@ function Screen({
         contRectRef.current = null;
       },
       16, // 60fps
-      { leading: true, trailing: true }
-    )
+      { leading: true, trailing: true },
+    ),
   ).current;
 
   const [isMoveable, setIsMoveable] = useState(false);
@@ -441,7 +524,7 @@ function Screen({
       };
       throttledPositionUpdate(_position);
     },
-    [throttledPositionUpdate, throttledSetScale]
+    [throttledPositionUpdate, throttledSetScale],
   );
 
   const onZoomEnd = useCallback(
@@ -460,7 +543,7 @@ function Screen({
         };
       });
     },
-    [setStateAndNotify]
+    [setStateAndNotify],
   );
 
   const onTransform = useCallback(
@@ -471,7 +554,7 @@ function Screen({
       };
       throttledPositionUpdate(_position);
     },
-    [throttledPositionUpdate]
+    [throttledPositionUpdate],
   );
 
   const onTransformEnd = useCallback(
@@ -492,7 +575,7 @@ function Screen({
         };
       });
     },
-    [setPosition, setScale, setStateAndNotify]
+    [setPosition, setScale, setStateAndNotify],
   );
 
   const gridSize = 40;
@@ -521,14 +604,14 @@ function Screen({
       console.log("Connection attempt:", success ? "successful" : "failed");
       return success;
     },
-    [connectNodes]
+    [connectNodes],
   );
 
   const pinchOptions = useMemo(
     () => ({
       step: 5,
     }),
-    []
+    [],
   );
   const panningOptions = useMemo(
     () => ({
@@ -542,7 +625,7 @@ function Screen({
         commentCss.moveHandler,
       ],
     }),
-    [isMoveable]
+    [isMoveable],
   );
 
   const wrapperStyle = useMemo(
@@ -554,7 +637,7 @@ function Screen({
       backgroundImage: `linear-gradient(to right, ${currentTheme.colors?.hover} 1px, transparent 1px), linear-gradient(to bottom, ${currentTheme.colors?.hover} 1px, transparent 1px)`,
       backgroundPosition: `${scaledPositionX}px ${scaledPositionY}px`,
     }),
-    [scaledGridSize, scaledPositionX, scaledPositionY, currentTheme]
+    [scaledGridSize, scaledPositionX, scaledPositionY, currentTheme],
   );
 
   const nodeTypesByCategory = useMemo(() => {
@@ -580,7 +663,7 @@ function Screen({
       i18n,
       "contextMenu.addComment.description",
       {},
-      "Add a comment to the screen"
+      "Add a comment to the screen",
     ),
     onClick: () => {
       const rect = e.target.getBoundingClientRect();
@@ -621,7 +704,7 @@ function Screen({
                   i18n,
                   "contextMenu.add",
                   { nodeType: nodeType.label },
-                  "Add " + nodeType.label
+                  "Add " + nodeType.label,
                 ),
                 description: nodeType.description,
                 onClick: () => {
@@ -650,14 +733,14 @@ function Screen({
           screenRef.current.focus({ preventScroll: true });
       },
     }),
-    [state, viewMode, nodeTypesByCategory, addNode, position, scale]
+    [state, viewMode, nodeTypesByCategory, addNode, position, scale],
   );
 
   const handleValueChange = useCallback(
     (id, values) => {
       updateNodeValues(id, values);
     },
-    [updateNodeValues]
+    [updateNodeValues],
   );
 
   const handleSnapToGrid = useCallback(() => {
@@ -691,6 +774,9 @@ function Screen({
           centerView,
           ...rest
         }) => {
+          // Guardar setTransform na ref para uso no handler de botão do meio
+          transformControlsRef.current.setTransform = setTransform;
+
           const rect = getContRect();
           const localStartPoint = rect
             ? {
@@ -816,7 +902,7 @@ function Screen({
                                       i18n,
                                       "contextMenu.cloneThisComment",
                                       {},
-                                      "Clone this comment"
+                                      "Clone this comment",
                                     ),
                                     onClick: () => {
                                       cloneNode(node.id);
@@ -827,7 +913,7 @@ function Screen({
                                       i18n,
                                       "contextMenu.removeThisComment",
                                       {},
-                                      "Remove this comment"
+                                      "Remove this comment",
                                     ),
                                     style: { color: "red" },
                                     onClick: () => {
@@ -840,7 +926,7 @@ function Screen({
                                           i18n,
                                           "contextMenu.removeSelectedNodes",
                                           {},
-                                          "Remove selected nodes"
+                                          "Remove selected nodes",
                                         ),
                                         style: { color: "red" },
                                         onClick: () => {
@@ -884,7 +970,7 @@ function Screen({
                                           i18n,
                                           "contextMenu.cloneThisNode",
                                           {},
-                                          "Clone this node"
+                                          "Clone this node",
                                         ),
                                         onClick: () => {
                                           cloneNode(node.id);
@@ -897,7 +983,7 @@ function Screen({
                                           i18n,
                                           "contextMenu.removeThisNode",
                                           {},
-                                          "Remove this node"
+                                          "Remove this node",
                                         ),
                                         style: { color: "red" },
                                         onClick: () => {
@@ -911,7 +997,7 @@ function Screen({
                                           i18n,
                                           "contextMenu.removeSelectedNodes",
                                           {},
-                                          "Remove selected nodes"
+                                          "Remove selected nodes",
                                         ),
                                         style: { color: "red" },
                                         onClick: () => {
@@ -970,17 +1056,17 @@ function Screen({
                               const waypoints = connection.waypoints || [];
 
                               const srcBox = document.getElementById(
-                                `card-${srcNode}`
+                                `card-${srcNode}`,
                               );
                               const dstBox = document.getElementById(
-                                `card-${dstNode}`
+                                `card-${dstNode}`,
                               );
 
                               const srcElem = document.getElementById(
-                                `card-${srcNode}-output-${srcPort}`
+                                `card-${srcNode}-output-${srcPort}`,
                               );
                               const dstElem = document.getElementById(
-                                `card-${dstNode}-input-${dstPort}`
+                                `card-${dstNode}-input-${dstPort}`,
                               );
 
                               const containerRect = getContRect();
@@ -1071,7 +1157,7 @@ function Screen({
                                   waypoints={waypoints}
                                   onUpdateWaypoint={(
                                     waypointIndex,
-                                    newPosition
+                                    newPosition,
                                   ) =>
                                     updateWaypointPosition(
                                       srcNode,
@@ -1079,7 +1165,7 @@ function Screen({
                                       dstNode,
                                       dstPort,
                                       waypointIndex,
-                                      newPosition
+                                      newPosition,
                                     )
                                   }
                                   isWaypointSelected={(waypointIndex) =>
@@ -1140,7 +1226,7 @@ function Screen({
                                                 i18n,
                                                 "contextMenu.removeWaypoint",
                                                 {},
-                                                "Remove waypoint"
+                                                "Remove waypoint",
                                               ),
                                               style: { color: "red" },
                                               onClick: () => {
@@ -1149,12 +1235,12 @@ function Screen({
                                                   srcPort,
                                                   dstNode,
                                                   dstPort,
-                                                  waypointIndex
+                                                  waypointIndex,
                                                 );
                                               },
                                             }
                                           : null,
-                                      ].filter(Boolean)
+                                      ].filter(Boolean),
                                     )
                                   }
                                   onContextMenu={(e) =>
@@ -1167,7 +1253,7 @@ function Screen({
                                                 i18n,
                                                 "contextMenu.addWaypoint",
                                                 {},
-                                                "Add waypoint"
+                                                "Add waypoint",
                                               ),
                                               onClick: () => {
                                                 const contextMenuRect =
@@ -1188,7 +1274,7 @@ function Screen({
                                                   srcPort,
                                                   dstNode,
                                                   dstPort,
-                                                  { x: pointerX, y: pointerY }
+                                                  { x: pointerX, y: pointerY },
                                                 );
                                               },
                                             }
@@ -1199,7 +1285,7 @@ function Screen({
                                                 i18n,
                                                 "contextMenu.removeThisConnection",
                                                 {},
-                                                "Remove this connection"
+                                                "Remove this connection",
                                               ),
                                               style: { color: "red" },
                                               onClick: () => {
@@ -1207,18 +1293,18 @@ function Screen({
                                                   srcNode,
                                                   srcPort,
                                                   dstNode,
-                                                  dstPort
+                                                  dstPort,
                                                 );
                                               },
                                             }
                                           : null,
-                                      ].filter(Boolean)
+                                      ].filter(Boolean),
                                     )
                                   }
                                 />
                               );
-                            }
-                          )
+                            },
+                          ),
                         )}
 
                       {(dragInfo || isInFadeout) && dstDragPosition ? (
