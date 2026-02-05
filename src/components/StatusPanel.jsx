@@ -7,7 +7,7 @@ import css from "../Screen.module.css";
 const StatusPanel = ({ scale, position }) => {
   return (
     <div className={[css.panel, css.statusPanel].join(" ")}>
-      <div>Scale 12: {scale}</div>
+      <div>Scale: {scale}</div>
       <div>Position: {JSON.stringify(position)}</div>
     </div>
   );
