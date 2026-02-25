@@ -62,6 +62,17 @@
   animation: destroy 0.4s ease forwards;
 }
 
+.pathAnimated {
+  stroke-dasharray: 12 6;
+  animation: flowDash 0.6s linear infinite;
+}
+
+@keyframes flowDash {
+  to {
+    stroke-dashoffset: -18;
+  }
+}
+
 @keyframes destroy {
   from {
     stroke-dashoffset: 0;

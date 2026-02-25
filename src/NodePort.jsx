@@ -30,6 +30,7 @@ function NodePort({
   value,
   onValueChange,
   canMove,
+  readOnly,
   options,
 }) {
   const { currentTheme } = useTheme();
@@ -44,7 +45,7 @@ function NodePort({
       square: css.square,
       diamond: css.diamond,
     }),
-    []
+    [],
   );
 
   useEffect(() => {
@@ -69,7 +70,7 @@ function NodePort({
 
       onValueChange?.(internalValue);
     },
-    [internalValue]
+    [internalValue],
   );
 
   const connectorRect = useRef();
@@ -87,7 +88,7 @@ function NodePort({
   const [pointerPos, setPointerPos] = useState({ x: 0, y: 0 });
 
   const handleMouseDown = (event) => {
-    if (hidePort || !canMove) return;
+    if (hidePort || !canMove || readOnly) return;
 
     //event.preventDefault();
     event.stopPropagation();
@@ -97,7 +98,7 @@ function NodePort({
       event.pageX - nodePos.left,
       event.pageY - nodePos.top,
       screenPosition,
-      screenScale
+      screenScale,
     );
 
     const connectorRect = connectorRef.current.getBoundingClientRect();
@@ -122,7 +123,7 @@ function NodePort({
           event.pageX - nodePos.left,
           event.pageY - nodePos.top,
           screenPosition,
-          screenScale
+          screenScale,
         );
 
         setPointerPos((prevPos) => {
@@ -136,7 +137,7 @@ function NodePort({
         });
       },
       16,
-      { leading: true, trailing: false }
+      { leading: true, trailing: false },
     );
 
     const handleMouseUp = (e) => {
@@ -148,13 +149,13 @@ function NodePort({
 
       const targets = document.elementsFromPoint(
         e.pageX - window.scrollX,
-        e.pageY - window.scrollY
+        e.pageY - window.scrollY,
       );
       const target = targets.find(
         (t) =>
           t.classList?.contains(css.portOverlay) &&
           t.dataset.portDirection.toString() !== direction.toString() &&
-          t.dataset.portType.toString() === type.type?.toString()
+          t.dataset.portType.toString() === type.type?.toString(),
       );
 
       if (target) {
@@ -209,7 +210,12 @@ function NodePort({
       >
         {(direction === "input" &&
           !isConnected &&
-          type.render?.({ value, onChange: onValueChange, options })) ??
+          type.render?.({
+            value,
+            onChange: onValueChange,
+            options,
+            readOnly,
+          })) ??
           null}
       </div>
       {!hidePort && (

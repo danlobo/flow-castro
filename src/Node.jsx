@@ -22,6 +22,9 @@ function Node({
   onResize,
   onValueChange,
   debugMode,
+  highlight,
+  readOnly,
+  onClick,
 }) {
   const { currentTheme } = useTheme();
 
@@ -82,7 +85,7 @@ function Node({
           });
         },
         16,
-        { leading: true, trailing: false }
+        { leading: true, trailing: false },
       );
 
       const handleMouseUp = (e) => {
@@ -103,21 +106,21 @@ function Node({
       window.addEventListener("mousemove", handleMouseMove);
       window.addEventListener("mouseup", handleMouseUp);
     },
-    [nodePosition, screenScale, onChangePosition, onDragStart, onDragEnd]
+    [nodePosition, screenScale, onChangePosition, onDragStart, onDragEnd],
   );
 
   const onOutputPortConnected = useCallback(
     ({ source, target }) => {
       onConnect?.({ source, target });
     },
-    [onConnect]
+    [onConnect],
   );
 
   const onInputPortConnected = useCallback(
     ({ source, target }) => {
       onConnect?.({ source: target, target: source });
     },
-    [onConnect]
+    [onConnect],
   );
 
   const nodeInputs = useMemo(() => {
@@ -131,7 +134,7 @@ function Node({
     if (nodeValues == null) return;
 
     const extraValues = Object.keys(nodeValues).filter(
-      (key) => !nodeInputs.some((input) => input.name === key)
+      (key) => !nodeInputs.some((input) => input.name === key),
     );
     if (extraValues.length > 0) {
       const newValues = Object.keys(nodeValues)
@@ -165,18 +168,41 @@ function Node({
         backgroundColor:
           currentTheme?.nodes?.[nodeType?.type]?.body?.background ??
           currentTheme?.nodes?.common?.body?.background,
-        border:
-          currentTheme?.nodes?.[nodeType?.type]?.body?.border ??
-          currentTheme?.nodes?.common?.body?.border,
+        border: highlight
+          ? `3px solid ${highlight.color}`
+          : currentTheme?.nodes?.[nodeType?.type]?.body?.border ??
+            currentTheme?.nodes?.common?.body?.border,
+        boxShadow: highlight ? `0 0 14px 2px ${highlight.color}` : undefined,
         color:
           currentTheme?.nodes?.[nodeType?.type]?.body?.color ??
           currentTheme?.nodes?.common?.body?.color,
         transform: `translate(${nodePosition.x}px, ${nodePosition.y}px)`,
-        cursor: canMove ? "grab" : null,
+        cursor: canMove ? "grab" : onClick ? "pointer" : null,
       }}
       onMouseDown={handleMouseDown}
       onContextMenu={onContextMenu}
+      onClick={onClick}
     >
+      {highlight?.label && (
+        <span
+          style={{
+            position: "absolute",
+            top: -10,
+            right: 8,
+            background: highlight.color,
+            color: "#fff",
+            fontSize: "0.7rem",
+            fontWeight: "bold",
+            padding: "1px 6px",
+            borderRadius: 8,
+            pointerEvents: "none",
+            zIndex: 10,
+            letterSpacing: "0.02em",
+          }}
+        >
+          {highlight.label}
+        </span>
+      )}
       <div
         className={css.title}
         style={{
@@ -222,9 +248,10 @@ function Node({
                 hidePort={Boolean(hidePort)}
                 containerRef={containerRef}
                 isConnected={value.connections?.inputs?.some(
-                  (c) => c.name === input.name
+                  (c) => c.name === input.name,
                 )}
                 onConnected={onInputPortConnected}
+                readOnly={readOnly}
                 canMove={canMove}
                 options={input.options}
               />
@@ -245,10 +272,11 @@ function Node({
                 label={output.label}
                 containerRef={containerRef}
                 isConnected={value.connections?.outputs?.some(
-                  (c) => c.name === output.name
+                  (c) => c.name === output.name,
                 )}
                 onConnected={onOutputPortConnected}
                 canMove={canMove}
+                readOnly={readOnly}
                 options={output.options}
               />
             );

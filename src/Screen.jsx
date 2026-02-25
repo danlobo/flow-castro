@@ -54,6 +54,11 @@ function Screen({
   initialState,
   i18n = defaultI18n,
   debugMode,
+  readOnly = false,
+  highlightedNodes,
+  highlightedConnections,
+  onNodeClick,
+  centerOnNode,
 }) {
   const internalCommentType = {
     label: i(i18n, "contextMenu.comment.label", {}, "Comment"),
@@ -169,6 +174,22 @@ function Screen({
 
   const wrapperRef = useRef();
   const transformControlsRef = useRef({ setTransform: null });
+
+  // Centralizar / zoom no nó indicado quando centerOnNode mudar
+  useEffect(() => {
+    if (!centerOnNode || !wrapperRef.current || !screenRef.current) return;
+    const element = document.getElementById(`card-${centerOnNode}`);
+    if (!element) return;
+    const wrapperWidth = screenRef.current.offsetWidth;
+    const wrapperHeight = screenRef.current.offsetHeight;
+    const nodeWidth = element.offsetWidth;
+    const nodeHeight = element.offsetHeight;
+    const fitScale = Math.min(
+      wrapperWidth / nodeWidth,
+      wrapperHeight / nodeHeight,
+    );
+    wrapperRef.current.zoomToElement(element, fitScale * 0.85);
+  }, [centerOnNode]);
   const middleMousePanRef = useRef({
     isPanning: false,
     startX: 0,
@@ -313,6 +334,7 @@ function Screen({
 
   const handleMouseDown = useCallback(
     (event) => {
+      if (readOnly) return;
       if (event.button === 1) {
         //middle mouse button - do not capture it, let TransformWrapper handle it
         return;
@@ -425,7 +447,7 @@ function Screen({
       window.addEventListener("mousemove", handleMouseMove);
       window.addEventListener("mouseup", handleMouseUp);
     },
-    [position, scale, state, selectedNodes],
+    [position, scale, state, selectedNodes, readOnly],
   );
 
   const handleMousePositionUpdate = useCallback(
@@ -692,48 +714,52 @@ function Screen({
         e.preventDefault();
         e.stopPropagation();
       },
-      onContextMenu: (e) =>
-        handleContextMenu(e, [
-          ...nodeTypesByCategory.map(({ category, nodeTypes }) => ({
-            label: category,
-            children: nodeTypes
-              .filter((t) => !t.root && t.type !== internalCommentType.type)
-              .sort((a, b) => a.label.localeCompare(b.label))
-              .map((nodeType) => ({
-                label: i(
-                  i18n,
-                  "contextMenu.add",
-                  { nodeType: nodeType.label },
-                  "Add " + nodeType.label,
-                ),
-                description: nodeType.description,
-                onClick: () => {
-                  const rect = e.target.getBoundingClientRect();
-                  const { x, y } = rect;
+      onContextMenu: readOnly
+        ? undefined
+        : (e) =>
+            handleContextMenu(e, [
+              ...nodeTypesByCategory.map(({ category, nodeTypes }) => ({
+                label: category,
+                children: nodeTypes
+                  .filter((t) => !t.root && t.type !== internalCommentType.type)
+                  .sort((a, b) => a.label.localeCompare(b.label))
+                  .map((nodeType) => ({
+                    label: i(
+                      i18n,
+                      "contextMenu.add",
+                      { nodeType: nodeType.label },
+                      "Add " + nodeType.label,
+                    ),
+                    description: nodeType.description,
+                    onClick: () => {
+                      const rect = e.target.getBoundingClientRect();
+                      const { x, y } = rect;
 
-                  const _position = {
-                    x: (e.clientX - (position?.x ?? 0) - x) / scale,
-                    y: (e.clientY - (position?.y ?? 0) - y) / scale,
-                  };
+                      const _position = {
+                        x: (e.clientX - (position?.x ?? 0) - x) / scale,
+                        y: (e.clientY - (position?.y ?? 0) - y) / scale,
+                      };
 
-                  if (snapToGrid) {
-                    _position.x = Math.round(_position.x / gridSize) * gridSize;
-                    _position.y = Math.round(_position.y / gridSize) * gridSize;
-                  }
+                      if (snapToGrid) {
+                        _position.x =
+                          Math.round(_position.x / gridSize) * gridSize;
+                        _position.y =
+                          Math.round(_position.y / gridSize) * gridSize;
+                      }
 
-                  addNode(nodeType, _position);
-                },
+                      addNode(nodeType, _position);
+                    },
+                  })),
               })),
-          })),
-          cmMenu(e),
-        ]),
+              cmMenu(e),
+            ]),
       onMouseDown: handleMouseDown,
       onClick: (e) => {
         if (e.target === wrapperRef.current.instance.wrapperComponent)
           screenRef.current.focus({ preventScroll: true });
       },
     }),
-    [state, viewMode, nodeTypesByCategory, addNode, position, scale],
+    [state, viewMode, nodeTypesByCategory, addNode, position, scale, readOnly],
   );
 
   const handleValueChange = useCallback(
@@ -950,62 +976,84 @@ function Screen({
                               debugMode={debugMode}
                               value={node}
                               isSelected={selectedNodes.includes(node.id)}
-                              onValueChange={(v) => {
-                                handleValueChange(node.id, { ...v.values });
-                              }}
-                              onChangePosition={(position) =>
-                                moveHandler(node, position, false)
+                              onValueChange={
+                                readOnly
+                                  ? undefined
+                                  : (v) => {
+                                      handleValueChange(node.id, {
+                                        ...v.values,
+                                      });
+                                    }
                               }
-                              onDragEnd={(position) =>
-                                moveHandler(node, position, true)
+                              onChangePosition={
+                                readOnly
+                                  ? undefined
+                                  : (position) =>
+                                      moveHandler(node, position, false)
+                              }
+                              onDragEnd={
+                                readOnly
+                                  ? undefined
+                                  : (position) =>
+                                      moveHandler(node, position, true)
                               }
                               containerRef={screenRef}
-                              canMove={canMove}
-                              onConnect={onConnect}
-                              onContextMenu={(e) =>
-                                handleContextMenu(e, [
-                                  !nodeDef.root
-                                    ? {
-                                        label: i(
-                                          i18n,
-                                          "contextMenu.cloneThisNode",
-                                          {},
-                                          "Clone this node",
-                                        ),
-                                        onClick: () => {
-                                          cloneNode(node.id);
-                                        },
-                                      }
-                                    : null,
-                                  !nodeDef.root
-                                    ? {
-                                        label: i(
-                                          i18n,
-                                          "contextMenu.removeThisNode",
-                                          {},
-                                          "Remove this node",
-                                        ),
-                                        style: { color: "red" },
-                                        onClick: () => {
-                                          removeNodes([node.id]);
-                                        },
-                                      }
-                                    : null,
-                                  selectedNodes?.length > 0
-                                    ? {
-                                        label: i(
-                                          i18n,
-                                          "contextMenu.removeSelectedNodes",
-                                          {},
-                                          "Remove selected nodes",
-                                        ),
-                                        style: { color: "red" },
-                                        onClick: () => {
-                                          removeNodes(selectedNodes);
-                                        },
-                                      }
-                                    : null,
-                                ])
+                              canMove={readOnly ? false : canMove}
+                              onConnect={readOnly ? undefined : onConnect}
+                              highlight={highlightedNodes?.[node.id]}
+                              readOnly={readOnly}
+                              onClick={
+                                onNodeClick
+                                  ? () => onNodeClick(node.id)
+                                  : undefined
+                              }
+                              onContextMenu={
+                                readOnly
+                                  ? undefined
+                                  : (e) =>
+                                      handleContextMenu(e, [
+                                        !nodeDef.root
+                                          ? {
+                                              label: i(
+                                                i18n,
+                                                "contextMenu.cloneThisNode",
+                                                {},
+                                                "Clone this node",
+                                              ),
+                                              onClick: () => {
+                                                cloneNode(node.id);
+                                              },
+                                            }
+                                          : null,
+                                        !nodeDef.root
+                                          ? {
+                                              label: i(
+                                                i18n,
+                                                "contextMenu.removeThisNode",
+                                                {},
+                                                "Remove this node",
+                                              ),
+                                              style: { color: "red" },
+                                              onClick: () => {
+                                                removeNodes([node.id]);
+                                              },
+                                            }
+                                          : null,
+                                        selectedNodes?.length > 0
+                                          ? {
+                                              label: i(
+                                                i18n,
+                                                "contextMenu.removeSelectedNodes",
+                                                {},
+                                                "Remove selected nodes",
+                                              ),
+                                              style: { color: "red" },
+                                              onClick: () => {
+                                                removeNodes(selectedNodes);
+                                              },
+                                            }
+                                          : null,
+                                      ])
                               }
                               onResize={(size) => {
                                 setState((prev) => ({
@@ -1144,6 +1192,10 @@ function Screen({
                                 h: dstBoxRect.height,
                               };
 
+                              const connKey = `${srcNode}:${srcPort}>${dstNode}:${dstPort}`;
+                              const highlight =
+                                highlightedConnections?.[connKey] ?? null;
+
                               return (
                                 <ConnectorCurve
                                   key={`connector-${srcNode}-${srcPort}-${dstNode}-${dstPort}`}
@@ -1155,6 +1207,7 @@ function Screen({
                                   n2Box={box2}
                                   index={index}
                                   waypoints={waypoints}
+                                  highlight={highlight}
                                   onUpdateWaypoint={(
                                     waypointIndex,
                                     newPosition,

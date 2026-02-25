@@ -9,6 +9,7 @@ export function ConnectorCurveForward({
   dst,
   scale,
   tmp,
+  highlight,
   invalid,
   onContextMenu,
   waypoints = [],
@@ -114,16 +115,26 @@ export function ConnectorCurveForward({
     >
       <path
         style={{
-          stroke:
-            currentTheme.connections?.[type?.type]?.color ??
-            type?.color ??
-            currentTheme.connections?.default?.color ??
-            "#ccc",
-          strokeWidth: hovered
-            ? Math.max(10, 10 * (scale || 1))
-            : Math.max(4, 5 * (scale || 1)),
+          stroke: highlight
+            ? highlight.color
+            : currentTheme.connections?.[type?.type]?.color ??
+              type?.color ??
+              currentTheme.connections?.default?.color ??
+              "#ccc",
+          strokeWidth: highlight
+            ? Math.max(8, 10 * (scale || 1))
+            : hovered
+              ? Math.max(10, 10 * (scale || 1))
+              : Math.max(4, 5 * (scale || 1)),
+          ...(highlight
+            ? { filter: `drop-shadow(0 0 6px ${highlight.color})` }
+            : {}),
         }}
-        className={[css.path, tmp ? css.pathTmp : null]
+        className={[
+          css.path,
+          tmp ? css.pathTmp : null,
+          highlight?.animated ? css.pathAnimated : null, // opcional
+        ]
           .filter(Boolean)
           .join(" ")}
         d={pathData}
@@ -215,7 +226,7 @@ export function ConnectorCurveForward({
               onWaypointContextMenu && onWaypointContextMenu(e, index)
             }
             className={[css.waypoint, isSelected ? css.selected : null].join(
-              " "
+              " ",
             )}
           />
         );
@@ -230,6 +241,7 @@ export function ConnectorCurve({
   dst,
   scale,
   tmp,
+  highlight,
   onContextMenu,
   index,
   n1Box,
@@ -251,6 +263,7 @@ export function ConnectorCurve({
       dst={dst}
       scale={scale}
       tmp={tmp}
+      highlight={highlight}
       onContextMenu={onContextMenu}
       waypoints={waypoints}
       onWaypointContextMenu={onWaypointContextMenu}
