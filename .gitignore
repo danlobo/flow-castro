@@ -27,3 +27,4 @@ yarn-error.log*
 
 *.tgz
 dist/
+.yarn

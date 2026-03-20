@@ -13,8 +13,8 @@ import { useTheme } from "./ThemeProvider.jsx";
 import { throttle } from "./util/throttle";
 
 const globalToLocal = (globalX, globalY, translate, scale) => {
-  const localX = globalX / scale;
-  const localY = globalY / scale;
+  const localX = (globalX - translate.x) / scale;
+  const localY = (globalY - translate.y) / scale;
   return { x: localX, y: localY };
 };
 

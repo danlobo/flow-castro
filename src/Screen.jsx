@@ -1,7 +1,9 @@
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
 } from "react";
@@ -153,24 +155,17 @@ function Screen({
 
   const screenRef = useRef();
 
-  const contRectRef = useRef(null);
   const getContRect = useCallback(() => {
-    if (!contRectRef.current && screenRef.current) {
-      contRectRef.current = screenRef.current.getBoundingClientRect();
-    }
-    return contRectRef.current;
+    return screenRef.current?.getBoundingClientRect() ?? null;
   }, []);
 
-  useEffect(() => {
-    const handleResize = () => {
-      contRectRef.current = null;
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
+  // Força um render extra APÓS cada commit que alterou posições de nós.
+  // Isso garante que getBoundingClientRect() nos conectores leia o DOM
+  // já atualizado (e não o DOM do commit anterior).
+  const [, forceConnectorUpdate] = useReducer((x) => x + 1, 0);
+  useLayoutEffect(() => {
+    forceConnectorUpdate();
+  }, [state?.nodes]);
 
   const wrapperRef = useRef();
   const transformControlsRef = useRef({ setTransform: null });
@@ -178,7 +173,7 @@ function Screen({
   // Centralizar / zoom no nó indicado quando centerOnNode mudar
   useEffect(() => {
     if (!centerOnNode || !wrapperRef.current || !screenRef.current) return;
-    const element = document.getElementById(`card-${centerOnNode}`);
+    const element = screenRef.current.querySelector(`#card-${CSS.escape(centerOnNode)}`);
     if (!element) return;
     const wrapperWidth = screenRef.current.offsetWidth;
     const wrapperHeight = screenRef.current.offsetHeight;
@@ -387,7 +382,7 @@ function Screen({
           };
 
           nodes.forEach((node) => {
-            const cardElement = document.getElementById(`card-${node.id}`);
+            const cardElement = screenRef.current?.querySelector(`#card-${CSS.escape(node.id)}`);
             if (!cardElement) return;
 
             const { x, y, width, height } = cardElement.getBoundingClientRect();
@@ -524,7 +519,6 @@ function Screen({
     throttle(
       (newPos) => {
         setPosition(newPos);
-        contRectRef.current = null;
       },
       16, // 60fps
       { leading: true, trailing: true },
@@ -584,8 +578,6 @@ function Screen({
       const {
         state: { positionX, positionY, scale: _scale },
       } = params;
-
-      contRectRef.current = null;
 
       setPosition({ x: positionX, y: positionY });
       setScale(_scale);
@@ -1103,18 +1095,18 @@ function Screen({
                               const connType = connection.type;
                               const waypoints = connection.waypoints || [];
 
-                              const srcBox = document.getElementById(
-                                `card-${srcNode}`,
+                              const srcBox = screenRef.current?.querySelector(
+                                `#card-${CSS.escape(srcNode)}`,
                               );
-                              const dstBox = document.getElementById(
-                                `card-${dstNode}`,
+                              const dstBox = screenRef.current?.querySelector(
+                                `#card-${CSS.escape(dstNode)}`,
                               );
 
-                              const srcElem = document.getElementById(
-                                `card-${srcNode}-output-${srcPort}`,
+                              const srcElem = screenRef.current?.querySelector(
+                                `#card-${CSS.escape(srcNode)}-output-${CSS.escape(srcPort)}`,
                               );
-                              const dstElem = document.getElementById(
-                                `card-${dstNode}-input-${dstPort}`,
+                              const dstElem = screenRef.current?.querySelector(
+                                `#card-${CSS.escape(dstNode)}-input-${CSS.escape(dstPort)}`,
                               );
 
                               const containerRect = getContRect();
