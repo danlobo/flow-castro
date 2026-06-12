@@ -173,7 +173,9 @@ function Screen({
   // Centralizar / zoom no nó indicado quando centerOnNode mudar
   useEffect(() => {
     if (!centerOnNode || !wrapperRef.current || !screenRef.current) return;
-    const element = screenRef.current.querySelector(`#card-${CSS.escape(centerOnNode)}`);
+    const element = screenRef.current.querySelector(
+      `#card-${CSS.escape(centerOnNode)}`,
+    );
     if (!element) return;
     const wrapperWidth = screenRef.current.offsetWidth;
     const wrapperHeight = screenRef.current.offsetHeight;
@@ -382,7 +384,9 @@ function Screen({
           };
 
           nodes.forEach((node) => {
-            const cardElement = screenRef.current?.querySelector(`#card-${CSS.escape(node.id)}`);
+            const cardElement = screenRef.current?.querySelector(
+              `#card-${CSS.escape(node.id)}`,
+            );
             if (!cardElement) return;
 
             const { x, y, width, height } = cardElement.getBoundingClientRect();
@@ -632,7 +636,6 @@ function Screen({
       disabled: isMoveable,
       excluded: [
         nodeCss.node,
-        "react-draggable",
         nodePortCss.port,
         nodePortCss.portConnector,
         commentCss.container,
