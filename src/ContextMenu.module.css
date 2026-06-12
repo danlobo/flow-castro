@@ -23,7 +23,7 @@
   --context-menu-min-width: 280px;
   --context-menu-border-radius: var(--roundness, 4px);
   --context-menu-box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.15);
-  --context-menu-z-index: 999;
+  --context-menu-z-index: 10000;
 }
 
 /* ========================================

@@ -87,6 +87,7 @@
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
+    "ajv-keywords": "^5.0.0",
     "autoprefixer": "^10.4.14",
     "babel-jest": "^30.0.5",
     "eslint-plugin-storybook": "^0.8.0",
@@ -95,6 +96,8 @@
     "jest-environment-jsdom": "^30.0.5",
     "node-sass": "^9.0.0",
     "postcss": "^8.4.27",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "react-test-renderer": "^18.3.1",
     "rollup": "^3.29.5",
     "rollup-plugin-dts": "^5.3.0",
@@ -109,6 +112,9 @@
   "peerDependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
+  },
+  "resolutions": {
+    "ajv-keywords": "^5.0.0"
   },
   "packageManager": "yarn@3.6.0+sha512.418e45c2268c4d6b69a28f3939084b5853d5f392c43c0b5588bd1995a96e328414ae4b7777a8980c64bad4328c52586ff879b289f98ae65372a55fa4d0ff70dd"
 }
