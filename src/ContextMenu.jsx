@@ -1,17 +1,22 @@
-import React from "react";
-import { useEffect, useRef, useState } from "react";
+import React, { forwardRef, useEffect, useLayoutEffect, useRef, useState } from "react";
 import css from "./ContextMenu.module.css";
 import { useTheme } from "./ThemeProvider.jsx";
 import { i } from "./util/i18n.js";
 
-const ContextMenuList = ({ isFiltered, options, onSelectOption, style }) => {
+const ContextMenuList = forwardRef(
+  ({ isFiltered, options, onSelectOption, style, containerRef }, ref) => {
   const [activeSubmenu, setActiveSubmenu] = useState(null);
   const [activeSubmenuPosition, setActiveSubmenuPosition] = useState(null);
   const [submenuDirection, setSubmenuDirection] = useState("left");
-  const [submenuDirectionVertical, setSubmenuDirectionVertical] =
-    useState("top");
+  const submenuRef = useRef(null);
 
   const activeOption = options?.find((it) => it.label === activeSubmenu);
+
+  const getBoundary = () =>
+    containerRef?.current?.getBoundingClientRect() ?? {
+      right: window.innerWidth,
+      bottom: window.innerHeight,
+    };
 
   const handleMenuItemMouseEnter = (e, parentId) => {
     setActiveSubmenu(parentId);
@@ -20,35 +25,35 @@ const ContextMenuList = ({ isFiltered, options, onSelectOption, style }) => {
       e.currentTarget.parentNode.getBoundingClientRect().top;
     setActiveSubmenuPosition(pos);
 
-    const viewportWidth = window.innerWidth;
-    const submenuWidth = e.target.getBoundingClientRect().width;
-
-    const viewportHeight = window.innerHeight;
-    const submenuHeight = e.target.getBoundingClientRect().height;
-
+    const estimatedSubmenuWidth =
+      e.currentTarget.parentNode.getBoundingClientRect().width;
     const rightEdge = e.currentTarget.getBoundingClientRect().right;
-    if (rightEdge + submenuWidth > viewportWidth) {
-      setSubmenuDirection("right");
-    } else {
-      setSubmenuDirection("left");
-    }
 
-    const bottomEdge = e.currentTarget.getBoundingClientRect().bottom;
-    if (bottomEdge + submenuHeight > viewportHeight) {
-      setSubmenuDirectionVertical("bottom");
-    } else {
-      setSubmenuDirectionVertical("top");
-    }
+    setSubmenuDirection(
+      rightEdge + estimatedSubmenuWidth > getBoundary().right ? "right" : "left"
+    );
   };
 
   const handleMenuItemMouseLeave = () => {
     setActiveSubmenu(null);
   };
 
+  useLayoutEffect(() => {
+    if (!submenuRef.current || !activeSubmenu) return;
+
+    const submenuRect = submenuRef.current.getBoundingClientRect();
+    const boundaryBottom = getBoundary().bottom;
+
+    if (submenuRect.bottom > boundaryBottom) {
+      const overflow = submenuRect.bottom - boundaryBottom;
+      setActiveSubmenuPosition((prev) => Math.max(0, (prev ?? 0) - overflow));
+    }
+  }, [activeSubmenu, activeSubmenuPosition]);
+
   if (!options?.length) return null;
 
   return (
-    <ul className={css.contextMenu} style={style}>
+    <ul className={css.contextMenu} style={style} ref={ref}>
       {options
         ?.filter(isFiltered)
         ?.sort((a, b) => a.label.localeCompare(b.label))
@@ -83,20 +88,17 @@ const ContextMenuList = ({ isFiltered, options, onSelectOption, style }) => {
 
               {option.children && option.label === activeSubmenu && (
                 <ContextMenuList
+                  ref={submenuRef}
+                  containerRef={containerRef}
                   isFiltered={isFiltered}
                   options={option.children.map((o) => ({
                     ...o,
                     _parent: option,
                   }))}
                   onSelectOption={onSelectOption}
-                  className={css.submenu}
                   style={{
                     [submenuDirection]: "100%",
-                    top:
-                      submenuDirectionVertical === "top"
-                        ? activeSubmenuPosition
-                        : null,
-                    bottom: submenuDirectionVertical === "bottom" ? 0 : null,
+                    top: activeSubmenuPosition,
                   }}
                 />
               )}
@@ -112,7 +114,8 @@ const ContextMenuList = ({ isFiltered, options, onSelectOption, style }) => {
       )}
     </ul>
   );
-};
+  }
+);
 
 export const ContextMenu = ({ containerRef, i18n, children }) => {
   const { currentTheme } = useTheme();
@@ -188,6 +191,34 @@ export const ContextMenu = ({ containerRef, i18n, children }) => {
   };
 
   const nonNullOptions = options?.filter((it) => Boolean(it));
+
+  useLayoutEffect(() => {
+    if (!menuRef.current || !nonNullOptions?.length) return;
+
+    const menuRect = menuRef.current.getBoundingClientRect();
+    const containerRect = containerRef.current?.getBoundingClientRect() ?? {
+      right: window.innerWidth,
+      bottom: window.innerHeight,
+    };
+
+    let adjustedX = position.x;
+    let adjustedY = position.y;
+
+    if (menuRect.right > containerRect.right) {
+      adjustedX -= menuRect.right - containerRect.right;
+    }
+    if (menuRect.bottom > containerRect.bottom) {
+      adjustedY -= menuRect.bottom - containerRect.bottom;
+    }
+
+    adjustedX = Math.max(0, adjustedX);
+    adjustedY = Math.max(0, adjustedY);
+
+    if (adjustedX !== position.x || adjustedY !== position.y) {
+      setPosition({ x: adjustedX, y: adjustedY });
+    }
+  }, [options, position.x, position.y]);
+
   return (
     <>
       {children({ handleContextMenu })}
@@ -198,7 +229,6 @@ export const ContextMenu = ({ containerRef, i18n, children }) => {
           style={{
             left: position.x,
             top: position.y,
-            visibility: nonNullOptions ? "visible" : "hidden",
           }}
         >
           <input
@@ -211,6 +241,7 @@ export const ContextMenu = ({ containerRef, i18n, children }) => {
             onChange={(e) => setSearch(e.target.value)}
           />
           <ContextMenuList
+            containerRef={containerRef}
             isFiltered={isFiltered}
             options={nonNullOptions}
             onSelectOption={handleMenuItemClick}
