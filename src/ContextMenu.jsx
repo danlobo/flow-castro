@@ -1,4 +1,5 @@
 import React, { forwardRef, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import css from "./ContextMenu.module.css";
 import { useTheme } from "./ThemeProvider.jsx";
 import { i } from "./util/i18n.js";
@@ -133,15 +134,8 @@ export const ContextMenu = ({ containerRef, i18n, children }) => {
 
     setTimeout(() => searchRef.current?.focus(), 0);
 
-    const containerRect = containerRef.current?.getBoundingClientRect() ?? {
-      left: 0,
-      top: 0,
-    };
-    const x = e.clientX - containerRect.left;
-    const y = e.clientY - containerRect.top;
-
     setOptions(options);
-    setPosition({ x, y });
+    setPosition({ x: e.clientX, y: e.clientY });
   };
 
   const handleMenuItemClick = (option, e) => {
@@ -219,17 +213,12 @@ export const ContextMenu = ({ containerRef, i18n, children }) => {
     }
   }, [options, position.x, position.y]);
 
-  return (
-    <>
-      {children({ handleContextMenu })}
-      {nonNullOptions?.length ? (
+  const menu = nonNullOptions?.length
+    ? createPortal(
         <div
           ref={menuRef}
           className={css.container}
-          style={{
-            left: position.x,
-            top: position.y,
-          }}
+          style={{ left: position.x, top: position.y }}
         >
           <input
             ref={searchRef}
@@ -247,8 +236,15 @@ export const ContextMenu = ({ containerRef, i18n, children }) => {
             onSelectOption={handleMenuItemClick}
             style={{ position: "relative" }}
           />
-        </div>
-      ) : null}
+        </div>,
+        document.body
+      )
+    : null;
+
+  return (
+    <>
+      {children({ handleContextMenu })}
+      {menu}
     </>
   );
 };

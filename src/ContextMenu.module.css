@@ -29,7 +29,18 @@
 /* ========================================
    MAIN CONTAINER
    ======================================== */
-.container,
+.container {
+  position: fixed;
+  z-index: var(--context-menu-z-index);
+  background-color: var(--context-menu-bg);
+  border: 1px solid var(--context-menu-border);
+  color: var(--context-menu-text);
+  border-radius: var(--context-menu-border-radius);
+  padding: var(--context-menu-padding-container);
+  box-shadow: var(--context-menu-box-shadow);
+  min-width: var(--context-menu-min-width);
+}
+
 .contextMenu .contextMenu {
   position: absolute;
   z-index: var(--context-menu-z-index);
@@ -39,7 +50,6 @@
   border-radius: var(--context-menu-border-radius);
   padding: var(--context-menu-padding-container);
   box-shadow: var(--context-menu-box-shadow);
-  transform: scale(1);
   min-width: var(--context-menu-min-width);
 }
 
