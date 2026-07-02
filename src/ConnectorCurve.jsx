@@ -114,6 +114,7 @@ export function ConnectorCurveForward({
       data-connector-group
     >
       <path
+        data-connector-type={type?.type}
         style={{
           stroke: highlight
             ? highlight.color
