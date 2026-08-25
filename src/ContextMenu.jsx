@@ -57,7 +57,16 @@ const ContextMenuList = forwardRef(
     <ul className={css.contextMenu} style={style} ref={ref}>
       {options
         ?.filter(isFiltered)
-        ?.sort((a, b) => a.label.localeCompare(b.label))
+        ?.sort((a, b) => {
+          // Pinned options sit at the top, in the order they were declared;
+          // the rest is sorted by label. Array.sort is stable, so returning 0
+          // for two pinned options is what preserves their order.
+          if (a.pinned || b.pinned) {
+            return (a.pinned ? 0 : 1) - (b.pinned ? 0 : 1);
+          }
+
+          return a.label.localeCompare(b.label);
+        })
         ?.map((option, index) => {
           if (option.separator === true)
             return (

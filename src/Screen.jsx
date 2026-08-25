@@ -22,6 +22,8 @@ import commentCss from "./Comment.module.css";
 import { useTheme } from "./ThemeProvider.jsx";
 
 import { i } from "./util/i18n.js";
+import { layoutFlow } from "./util/layout.js";
+import { measurePortOffsets } from "./util/measurePorts.js";
 import Comment from "./Comment.jsx";
 
 const defaultI18n = {
@@ -33,6 +35,8 @@ const defaultI18n = {
   "contextMenu.removeThisConnection": "Remove this connection",
   "contextMenu.addWaypoint": "Add waypoint",
   "contextMenu.removeWaypoint": "Remove waypoint",
+  "contextMenu.organize": "Organize flow",
+  "contextMenu.organizeSelection": "Organize selection",
 };
 
 import { useElementSelection } from "./hooks/useElementSelection";
@@ -61,6 +65,7 @@ function Screen({
   highlightedConnections,
   onNodeClick,
   centerOnNode,
+  layoutOptions,
 }) {
   const internalCommentType = {
     label: i(i18n, "contextMenu.comment.label", {}, "Comment"),
@@ -675,6 +680,7 @@ function Screen({
   }, [nodeTypes]);
 
   const cmMenu = (e) => ({
+    pinned: true,
     label: i(i18n, "contextMenu.addComment.label", {}, "Add comment"),
     description: i(
       i18n,
@@ -699,6 +705,32 @@ function Screen({
     },
   });
 
+  /**
+   * Rearranges the flow with the layered layout. The ports are measured from
+   * the DOM first: the algorithm has no idea how a custom node renders them,
+   * and it uses their position to line the edges up and to keep the outputs
+   * in their on-screen order.
+   */
+  const organizeFlow = useCallback(
+    (only) => {
+      const portOffsets = measurePortOffsets(
+        screenRef.current,
+        state,
+        scaleRef.current,
+      );
+
+      setStateAndNotify((prev) =>
+        layoutFlow(prev, {
+          only,
+          portOffsets,
+          gridSize: snapToGrid ? gridSize : 0,
+          ...layoutOptions,
+        }),
+      );
+    },
+    [state, setStateAndNotify, snapToGrid, gridSize, layoutOptions],
+  );
+
   const wrapperProps = useCallback(
     (handleContextMenu) => ({
       onDragOver: (e) => {
@@ -713,6 +745,26 @@ function Screen({
         ? undefined
         : (e) =>
             handleContextMenu(e, [
+              // Pinned, so they stay at the top instead of being sorted in
+              // among the node categories.
+              cmMenu(e),
+              {
+                pinned: true,
+                label: i(i18n, "contextMenu.organize", {}, "Organize flow"),
+                onClick: () => organizeFlow(null),
+              },
+              selectedNodes?.length > 1
+                ? {
+                    pinned: true,
+                    label: i(
+                      i18n,
+                      "contextMenu.organizeSelection",
+                      {},
+                      "Organize selection",
+                    ),
+                    onClick: () => organizeFlow(selectedNodes),
+                  }
+                : null,
               ...nodeTypesByCategory.map(({ category, nodeTypes }) => ({
                 label: category,
                 children: nodeTypes
@@ -746,7 +798,6 @@ function Screen({
                     },
                   })),
               })),
-              cmMenu(e),
             ]),
       onMouseDown: handleMouseDown,
       onClick: (e) => {
@@ -754,7 +805,17 @@ function Screen({
           screenRef.current.focus({ preventScroll: true });
       },
     }),
-    [state, viewMode, nodeTypesByCategory, addNode, position, scale, readOnly],
+    [
+      state,
+      viewMode,
+      nodeTypesByCategory,
+      addNode,
+      position,
+      scale,
+      readOnly,
+      organizeFlow,
+      selectedNodes,
+    ],
   );
 
   const handleValueChange = useCallback(
@@ -1017,6 +1078,19 @@ function Screen({
                                               ),
                                               onClick: () => {
                                                 cloneNode(node.id);
+                                              },
+                                            }
+                                          : null,
+                                        selectedNodes?.length > 1
+                                          ? {
+                                              label: i(
+                                                i18n,
+                                                "contextMenu.organizeSelection",
+                                                {},
+                                                "Organize selection",
+                                              ),
+                                              onClick: () => {
+                                                organizeFlow(selectedNodes);
                                               },
                                             }
                                           : null,

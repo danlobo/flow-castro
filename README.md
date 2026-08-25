@@ -283,6 +283,70 @@ The library includes a context menu that appears on right-click:
 - Delete nodes
 - Add waypoints to connections
 - Delete connections
+- Organize the flow (or just the current selection)
+
+### Auto Layout
+
+Right-clicking the canvas offers **Organize flow**, which rearranges the nodes
+with a layered (Sugiyama) layout: cycle breaking, layer assignment, crossing
+minimization and coordinate assignment, with no external dependency. Selecting
+more than one node also offers **Organize selection**, which only moves those.
+
+The layout reads the ports straight from the DOM, so the outputs keep their
+on-screen order - option 3 of a menu is never routed above option 1. An edge
+spanning several layers gets a waypoint on each side of every column it crosses,
+so it climbs in the gaps and flies flat over the nodes in between, and loops are
+given their own lane under the diagram instead of doubling back over their
+source.
+
+Tune it with `layoutOptions`:
+
+```jsx
+<NodeContainer
+  layoutOptions={{
+    alignment: "top", // "top" | "center" | "port", see below
+    layerSpacing: 120, // horizontal gap between columns
+    nodeSpacing: 60, // vertical gap between nodes of a column
+    emitWaypoints: true, // route long edges around the nodes in between
+  }}
+  {...otherProps}
+/>
+```
+
+#### Alignment
+
+Two connected nodes of different heights cannot have both their boxes and their
+ports lined up - one is traded for the other:
+
+| `alignment` | Lines up | Cost |
+| --- | --- | --- |
+| `top` (default) | The top edge of the boxes | The edge slopes |
+| `center` | The vertical center of the boxes | The edge slopes |
+| `port` | The two connectors | The boxes are staggered by `dy_out(source) - dy_in(target)` |
+
+`port` makes every edge perfectly horizontal, which is the usual quality metric
+for a layered layout - but that metric comes from graphs drawn as dots, where
+the port and the node are the same point. Nodes here are tall cards, and it is
+the row of headers that reads as the structure, so the boxes win by default.
+
+Bend points always follow the ports whatever the mode, so long edges stay
+straight regardless.
+
+The same layout is exported as a pure function, if you would rather drive it
+yourself (from a toolbar button, on import, ...):
+
+```jsx
+import { layoutFlow, measurePortOffsets } from "flow-castro";
+
+const organized = layoutFlow(state, {
+  portOffsets: measurePortOffsets(screenElement, state, scale), // optional
+  only: selectedNodeIds, // optional, defaults to the whole flow
+});
+```
+
+`layoutFlow` never mutates its input: it returns a new state with the updated
+`position` of every node and the `waypoints` of every connection it routed.
+Nodes with no connection at all - comments, for instance - are left untouched.
 
 ## Event Handling
 

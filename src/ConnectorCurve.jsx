@@ -3,6 +3,32 @@ import css from "./ConnectorCurve.module.css";
 import { useTheme } from "./ThemeProvider.jsx";
 import { useScreenContext } from "./ScreenContext.jsx";
 
+const MIN_CONTROL_OFFSET = 40;
+const MAX_CONTROL_OFFSET = 150;
+const BACKWARD_CURVATURE = 12;
+
+/**
+ * How far a control point sits from its port, horizontally.
+ *
+ * Forward (the target is to the right) it is half the gap, floored so short
+ * links still leave the port horizontally instead of at an angle, and capped
+ * so long ones don't flatten into a huge S. Backwards (a loop) it grows with
+ * the square root of the distance, which keeps the detour compact.
+ */
+function controlOffset(distance) {
+  if (distance >= 0) {
+    return Math.min(
+      MAX_CONTROL_OFFSET,
+      Math.max(MIN_CONTROL_OFFSET, distance / 2),
+    );
+  }
+
+  return Math.max(
+    MIN_CONTROL_OFFSET,
+    BACKWARD_CURVATURE * Math.sqrt(-distance),
+  );
+}
+
 export function ConnectorCurveForward({
   type,
   src,
@@ -56,25 +82,10 @@ export function ConnectorCurveForward({
     };
   });
 
-  const b1 = {
-    x:
-      x2.x > x1.x
-        ? Math.abs(x2.x - x1.x) / 2
-        : x1.x - x2.x < PADDING * 3
-          ? x1.x + (x1.x - x2.x)
-          : x1.x + PADDING * 3 + (x1.x - x2.x) / 7,
-    y: x1.y,
-  };
+  const offset = controlOffset(x2.x - x1.x);
 
-  const b2 = {
-    x:
-      x2.x > x1.x
-        ? Math.abs(x2.x - x1.x) / 2
-        : x1.x - x2.x < PADDING * 3
-          ? x2.x + (x2.x - x1.x)
-          : x2.x - PADDING * 3 - (x1.x - x2.x) / 7,
-    y: x2.y,
-  };
+  const b1 = { x: x1.x + offset, y: x1.y };
+  const b2 = { x: x2.x - offset, y: x2.y };
 
   let pathData = `M ${x1.x + PADDING} ${x1.y + PADDING}`;
 
@@ -91,15 +102,17 @@ export function ConnectorCurveForward({
       const current = allPoints[i];
       const next = allPoints[i + 1];
 
-      const ctrlPoint1 = {
-        x: current.x + (next.x - current.x) / 2,
-        y: current.y,
-      };
+      if (Math.abs(next.y - current.y) < 1) {
+        // A straight run, typically a routing lane. A curve here would only
+        // overshoot past both ends along the very same line.
+        pathData += ` L ${next.x + PADDING} ${next.y + PADDING}`;
+        continue;
+      }
 
-      const ctrlPoint2 = {
-        x: current.x + (next.x - current.x) / 2,
-        y: next.y,
-      };
+      const segmentOffset = controlOffset(next.x - current.x);
+
+      const ctrlPoint1 = { x: current.x + segmentOffset, y: current.y };
+      const ctrlPoint2 = { x: next.x - segmentOffset, y: next.y };
 
       pathData += ` C ${ctrlPoint1.x + PADDING} ${ctrlPoint1.y + PADDING}, ${ctrlPoint2.x + PADDING} ${ctrlPoint2.y + PADDING}, ${next.x + PADDING} ${next.y + PADDING}`;
     }
@@ -118,10 +131,10 @@ export function ConnectorCurveForward({
         style={{
           stroke: highlight
             ? highlight.color
-            : currentTheme.connections?.[type?.type]?.color ??
+            : (currentTheme.connections?.[type?.type]?.color ??
               type?.color ??
               currentTheme.connections?.default?.color ??
-              "#ccc",
+              "#ccc"),
           strokeWidth: highlight
             ? Math.max(8, 10 * (scale || 1))
             : hovered
