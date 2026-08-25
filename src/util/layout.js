@@ -35,6 +35,18 @@ const DEFAULT_OPTIONS = {
   gridSize: 0,
   /** Only lay out these node ids (e.g. the current selection). */
   only: null,
+  /**
+   * Node types that are never moved. Comments are anchored to whatever they
+   * are commenting on, so relocating them would lose the point of writing one.
+   * Any other node without a single connection is gathered below the flow.
+   */
+  keepTypes: ["comment"],
+  /**
+   * Take terminal nodes out of the layer grid and park them beside the node
+   * that leads to them. A flow with many endings otherwise piles all of them
+   * into one column, and that column alone dictates the height of the diagram.
+   */
+  attachLeaves: true,
   /** Anchor the result's top-left corner here. Defaults to the original one. */
   origin: null,
   /** Write bend points into connection.waypoints. */
@@ -70,11 +82,23 @@ export function layoutFlow(state, options = {}) {
   if (ids.length < 2) return state;
 
   const edges = collectEdges(allNodes, new Set(ids));
-  const components = weakComponents(ids, edges).filter(
-    (component) => component.edges.length > 0,
-  );
+  const groups = weakComponents(ids, edges);
+  const components = groups.filter((group) => group.edges.length > 0);
 
   if (!components.length) return state;
+
+  // A group with no edge holds exactly one node. Left where it was, a stray
+  // node sitting far from the flow keeps the whole canvas as wide as the
+  // distance to it, so it is gathered under the flow instead.
+  const loose = groups
+    .filter((group) => group.edges.length === 0)
+    .map((group) => group.ids[0])
+    .filter((id) => !opts.keepTypes.includes(allNodes[id]?.type))
+    .sort((a, b) => {
+      const left = allNodes[a].position ?? { x: 0, y: 0 };
+      const right = allNodes[b].position ?? { x: 0, y: 0 };
+      return left.y - right.y || left.x - right.x;
+    });
 
   const placements = new Map();
   const bends = new Map();
@@ -83,7 +107,11 @@ export function layoutFlow(state, options = {}) {
   let bounds = null;
 
   for (const component of components) {
-    const result = layoutComponent(component, allNodes, opts);
+    const result = layoutComponent(
+      detachLeaves(component, opts),
+      allNodes,
+      opts,
+    );
     const offsetY = cursorY - result.bounds.minY;
 
     for (const [id, pos] of result.positions) {
@@ -107,9 +135,15 @@ export function layoutFlow(state, options = {}) {
     cursorY = box.maxY + opts.componentSpacing;
   }
 
+  // The anchor comes from the connected nodes only: a stray node's old
+  // position is exactly what we are trying to stop dragging the flow around.
   const anchor = opts.origin ?? originalTopLeft(allNodes, placements);
   const dx = anchor.x - bounds.minX;
   const dy = anchor.y - bounds.minY;
+
+  for (const [id, pos] of placeLoose(loose, allNodes, opts, bounds)) {
+    placements.set(id, pos);
+  }
 
   const snap = (value) =>
     opts.gridSize > 0
@@ -228,6 +262,60 @@ function weakComponents(ids, edges) {
   for (const edge of edges) groups.get(find(edge.from)).edges.push(edge);
 
   return [...groups.values()];
+}
+
+/**
+ * Splits a component's terminal nodes off, so they can be parked beside the
+ * node that leads to them instead of taking a slot in the next column.
+ *
+ * A node qualifies when nothing leaves it and everything arriving comes from a
+ * single other node - there is nowhere else it could sensibly go. The whole
+ * split is dropped when it would leave the component without a single edge,
+ * which is what stops a two-node flow from having nothing left to lay out.
+ *
+ * @returns {Object} the component with `ids`/`edges` trimmed and `leaves` added
+ */
+function detachLeaves(component, opts) {
+  if (!opts.attachLeaves) return { ...component, leaves: [] };
+
+  const outgoing = new Map(component.ids.map((id) => [id, 0]));
+  const parents = new Map(component.ids.map((id) => [id, new Set()]));
+
+  for (const edge of component.edges) {
+    outgoing.set(edge.from, outgoing.get(edge.from) + 1);
+    parents.get(edge.to).add(edge.from);
+  }
+
+  const detached = new Set(
+    component.ids.filter(
+      (id) => outgoing.get(id) === 0 && parents.get(id).size === 1,
+    ),
+  );
+
+  // A leaf hanging off another leaf would leave the first one with no anchor.
+  for (const id of [...detached]) {
+    const [parent] = parents.get(id);
+    if (detached.has(parent)) detached.delete(id);
+  }
+
+  const kept = component.edges.filter(
+    (edge) => !detached.has(edge.to) && !detached.has(edge.from),
+  );
+
+  if (!detached.size || !kept.length) return { ...component, leaves: [] };
+
+  const leaves = [...detached].map((id) => ({
+    id,
+    parent: [...parents.get(id)][0],
+    edges: component.edges.filter((edge) => edge.to === id),
+  }));
+
+  return {
+    ...component,
+    ids: component.ids.filter((id) => !detached.has(id)),
+    edges: kept,
+    leaves,
+  };
 }
 
 /* -------------------------------------------------------------------------
@@ -824,9 +912,22 @@ function layoutComponent(component, nodes, opts) {
   minimizeCrossings(layers, links, portRanks, opts.iterations);
   assignCoordinates(layers, links, opts);
 
+  // Widest leaf hanging off each layer. Leaves get a column of their own so
+  // they can sit at their parent's height without fighting the next layer's
+  // nodes for room - sharing that column just moves the pile one step right.
+  const leafWidth = [];
+  for (const leaf of component.leaves ?? []) {
+    const parent = vertexOf.get(leaf.parent);
+    if (!parent) continue;
+
+    const width = nodes[leaf.id]?.size?.width ?? opts.defaultNodeWidth;
+    leafWidth[parent.layer] = Math.max(leafWidth[parent.layer] ?? 0, width);
+  }
+
   // Layer index -> x. A column is as wide as its widest node.
+  const leafX = [];
   let cursorX = 0;
-  for (const layer of layers) {
+  for (const [index, layer] of layers.entries()) {
     const width = Math.max(0, ...layer.map((vertex) => vertex.w));
 
     for (const vertex of layer) {
@@ -836,6 +937,11 @@ function layoutComponent(component, nodes, opts) {
     }
 
     cursorX += width + opts.layerSpacing;
+
+    if (leafWidth[index]) {
+      leafX[index] = cursorX;
+      cursorX += leafWidth[index] + opts.layerSpacing;
+    }
   }
 
   const positions = new Map();
@@ -858,11 +964,24 @@ function layoutComponent(component, nodes, opts) {
   }
 
   bounds = bounds ?? { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+  bounds = placeLeaves(
+    component.leaves,
+    { vertexOf, positions, leafX },
+    nodes,
+    opts,
+    bounds,
+  );
 
   if (!opts.emitWaypoints) return { positions, bends: new Map(), bounds };
 
   const bends = collectBends(edges, vertexOf, opts);
-  const lanes = routeBackEdges(edges, vertexOf, opts, bounds.maxY);
+
+  // The layout never saw the leaf edges, so nothing would clear waypoints left
+  // over from a previous run on them.
+  for (const leaf of component.leaves) {
+    for (const edge of leaf.edges) bends.set(edge.key, []);
+  }
+  const lanes = routeBackEdges(edges, layers, vertexOf, opts);
 
   for (const [key, points] of lanes) {
     bends.set(key, points);
@@ -880,12 +999,125 @@ function layoutComponent(component, nodes, opts) {
 }
 
 /**
- * Routes every back edge through its own horizontal lane under the diagram.
- * Threading them between the columns would drag the line back over the nodes
- * they come from; a lane keeps a loop readable and never collides.
+ * Parks each terminal node beside the one that leads to it: in the column that
+ * would come next, lined up with the port the edge leaves from, and nudged to
+ * the nearest free spot. Leaves land in the gaps the flow already has instead
+ * of stacking into a column of their own.
+ *
+ * @returns {Object} the bounds, grown to cover the leaves
  */
-function routeBackEdges(edges, vertexOf, opts, contentBottom) {
+function placeLeaves(
+  leaves,
+  { vertexOf, positions, leafX },
+  nodes,
+  opts,
+  bounds,
+) {
+  if (!leaves?.length) return bounds;
+
+  const boxes = [];
+  for (const [id, pos] of positions) {
+    const vertex = vertexOf.get(id);
+    boxes.push({
+      x0: pos.x,
+      x1: pos.x + vertex.w,
+      y0: pos.y,
+      y1: pos.y + vertex.h,
+    });
+  }
+
+  // By parent position, then by port, so siblings ladder down in port order.
+  const ordered = leaves
+    .map((leaf) => {
+      const parent = vertexOf.get(leaf.parent);
+      const edge = leaf.edges[0];
+      const dy = opts.portOffsets?.[leaf.parent]?.outputs?.[edge?.fromPort];
+
+      return { leaf, parent, edge, portY: dy ?? parent?.h / 2 };
+    })
+    .filter((item) => item.parent)
+    .sort(
+      (a, b) =>
+        a.parent.x - b.parent.x || a.parent.y - b.parent.y || a.portY - b.portY,
+    );
+
+  // Bottom of the last sibling placed for each parent: without it the nearest
+  // free gap can be above an earlier sibling, which breaks the port order the
+  // ladder is supposed to show.
+  const floorOf = new Map();
+
+  for (const { leaf, parent, edge, portY } of ordered) {
+    const width = nodes[leaf.id]?.size?.width ?? opts.defaultNodeWidth;
+    const height = nodes[leaf.id]?.size?.height ?? opts.defaultNodeHeight;
+
+    const x = leafX[parent.layer] ?? parent.columnRight + opts.layerSpacing;
+
+    // Line the leaf's own input port up with the port it hangs off.
+    const inputDy =
+      opts.portOffsets?.[leaf.id]?.inputs?.[edge?.toPort] ?? height / 2;
+    const wanted = parent.y - parent.h / 2 + portY - inputDy;
+
+    const floor = floorOf.get(leaf.parent) ?? -Infinity;
+    const y = freeSlot(
+      boxes,
+      x,
+      x + width,
+      height,
+      Math.max(wanted, floor),
+      opts.nodeSpacing,
+      floor,
+    );
+
+    floorOf.set(leaf.parent, y + height + opts.nodeSpacing);
+    positions.set(leaf.id, { x, y });
+    boxes.push({ x0: x, x1: x + width, y0: y, y1: y + height });
+    bounds = mergeBounds(bounds, {
+      minX: x,
+      minY: y,
+      maxX: x + width,
+      maxY: y + height,
+    });
+  }
+
+  return bounds;
+}
+
+/**
+ * Nearest y to `wanted` where a box of `height` fits without touching anything
+ * already placed in that horizontal band. Candidates are `wanted` itself plus
+ * the edges of every blocker, so the search lands in a real gap rather than
+ * creeping down in fixed steps.
+ */
+function freeSlot(boxes, x0, x1, height, wanted, gap, minY = -Infinity) {
+  const blocking = boxes.filter((box) => box.x0 < x1 && x0 < box.x1);
+  if (!blocking.length) return wanted;
+
+  const fits = (y) =>
+    !blocking.some((box) => y < box.y1 + gap && box.y0 - gap < y + height);
+
+  const candidates = [wanted];
+  for (const box of blocking) {
+    candidates.push(box.y1 + gap);
+    candidates.push(box.y0 - gap - height);
+  }
+
+  candidates.sort((a, b) => Math.abs(a - wanted) - Math.abs(b - wanted));
+
+  for (const y of candidates) if (y >= minY && fits(y)) return y;
+
+  return Math.max(...blocking.map((box) => box.y1)) + gap;
+}
+
+/**
+ * Routes every back edge through a horizontal lane, just under the columns it
+ * actually flies past - not under the whole diagram. Threading it between the
+ * columns instead would drag the line back over the node it comes from, and
+ * sending it to the bottom of a tall flow turns a short loop into a detour of
+ * thousands of units.
+ */
+function routeBackEdges(edges, layers, vertexOf, opts) {
   const lanes = new Map();
+  const taken = [];
 
   const backEdges = edges
     .filter((edge) => edge.reversed)
@@ -896,20 +1128,66 @@ function routeBackEdges(edges, vertexOf, opts, contentBottom) {
     }))
     .filter(({ source, target }) => source && target);
 
-  // Widest loop on the lowest lane, so nested loops nest instead of crossing.
+  // Widest loop first, so it takes the lowest lane and nested loops nest.
   backEdges.sort((a, b) => b.source.x - b.target.x - (a.source.x - a.target.x));
 
-  backEdges.forEach(({ edge, source, target }, index) => {
-    const laneY = contentBottom + opts.nodeSpacing * (index + 1);
+  for (const { edge, source, target } of backEdges) {
     const detour = opts.layerSpacing / 2;
+    const right = source.x + source.w + detour;
+    const left = target.x - detour;
 
+    // Over or under, whichever is the shorter climb from the two ends. Always
+    // going under makes a loop between two nodes near the top of a tall flow
+    // travel all the way down and back.
+    const spanned = spannedExtent(layers, source, target);
+    const top = Math.min(source.y - source.h / 2, target.y - target.h / 2);
+    const bottom = Math.max(source.y + source.h / 2, target.y + target.h / 2);
+
+    const under = spanned.bottom + opts.nodeSpacing;
+    const over = spanned.top - opts.nodeSpacing;
+    const goesOver = top - over < under - bottom;
+
+    let y = goesOver ? over : under;
+    const step = goesOver ? -opts.nodeSpacing : opts.nodeSpacing;
+
+    // Two lanes may only share a height if they don't overlap horizontally.
+    for (;;) {
+      const clash = taken.find(
+        (lane) =>
+          lane.left < right &&
+          left < lane.right &&
+          Math.abs(lane.y - y) < opts.nodeSpacing,
+      );
+      if (!clash) break;
+      y = clash.y + step;
+    }
+
+    taken.push({ left, right, y });
     lanes.set(edge.key, [
-      { x: source.x + source.w + detour, y: laneY },
-      { x: target.x - detour, y: laneY },
+      { x: right, y },
+      { x: left, y },
     ]);
-  });
+  }
 
   return lanes;
+}
+
+/** Vertical extent of everything sitting in the layers between the two ends. */
+function spannedExtent(layers, source, target) {
+  const from = Math.min(source.layer, target.layer);
+  const to = Math.max(source.layer, target.layer);
+
+  let top = Infinity;
+  let bottom = -Infinity;
+
+  for (let index = from; index <= to; index++) {
+    for (const vertex of layers[index] ?? []) {
+      top = Math.min(top, vertex.y - vertex.h / 2);
+      bottom = Math.max(bottom, vertex.y + vertex.h / 2);
+    }
+  }
+
+  return { top, bottom };
 }
 
 /**
@@ -1022,6 +1300,38 @@ function mergeBounds(a, b) {
     maxX: Math.max(a.maxX, b.maxX),
     maxY: Math.max(a.maxY, b.maxY),
   };
+}
+
+/**
+ * Lays the connection-less nodes out in rows under the flow, wrapping at its
+ * width so a long tail of strays does not stretch the canvas sideways.
+ * @returns {Map} id -> position
+ */
+function placeLoose(ids, nodes, opts, bounds) {
+  const placements = new Map();
+  if (!ids.length) return placements;
+
+  const limit = Math.max(bounds.maxX - bounds.minX, 1);
+  let x = bounds.minX;
+  let y = bounds.maxY + opts.componentSpacing;
+  let rowHeight = 0;
+
+  for (const id of ids) {
+    const width = nodes[id]?.size?.width ?? opts.defaultNodeWidth;
+    const height = nodes[id]?.size?.height ?? opts.defaultNodeHeight;
+
+    if (x > bounds.minX && x + width > bounds.minX + limit) {
+      x = bounds.minX;
+      y += rowHeight + opts.nodeSpacing;
+      rowHeight = 0;
+    }
+
+    placements.set(id, { x, y });
+    x += width + opts.nodeSpacing;
+    rowHeight = Math.max(rowHeight, height);
+  }
+
+  return placements;
 }
 
 function originalTopLeft(nodes, placements) {

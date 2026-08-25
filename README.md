@@ -296,8 +296,13 @@ The layout reads the ports straight from the DOM, so the outputs keep their
 on-screen order - option 3 of a menu is never routed above option 1. An edge
 spanning several layers gets a waypoint on each side of every column it crosses,
 so it climbs in the gaps and flies flat over the nodes in between, and loops are
-given their own lane under the diagram instead of doubling back over their
-source.
+given a lane just past the columns they fly over - above or below, whichever is
+the shorter climb - instead of doubling back over their source.
+
+Nodes with no connection at all are gathered in rows under the flow, so a stray
+node left far away doesn't keep the canvas as wide as the distance to it.
+Comments are the exception: they are anchored to whatever they comment on, so
+moving them would lose the point. Add types to `keepTypes` to pin them too.
 
 Tune it with `layoutOptions`:
 
@@ -305,6 +310,8 @@ Tune it with `layoutOptions`:
 <NodeContainer
   layoutOptions={{
     alignment: "top", // "top" | "center" | "port", see below
+    keepTypes: ["comment"], // node types that are never moved
+    attachLeaves: true, // park terminal nodes beside their parent, see below
     layerSpacing: 120, // horizontal gap between columns
     nodeSpacing: 60, // vertical gap between nodes of a column
     emitWaypoints: true, // route long edges around the nodes in between
@@ -312,6 +319,19 @@ Tune it with `layoutOptions`:
   {...otherProps}
 />
 ```
+
+#### Terminal nodes
+
+A flow with many endings has all of them at the same depth, so a layered layout
+files them into one column - and that column alone then dictates the height of
+the diagram. With `attachLeaves` (on by default) a node that leads nowhere and
+is reached from a single other node is taken out of the grid and parked in a
+column of its own right after its parent, lined up with the port it hangs off.
+
+It trades width for height and for locality: on a 110-node flow with 44 endings
+the diagram went from 13297x13400 to 17203x11801, the fullest column from 29
+nodes to 19, and the median distance between an ending and the node leading to
+it from 328 to 104. Set it to `false` for a strict layered layout.
 
 #### Alignment
 

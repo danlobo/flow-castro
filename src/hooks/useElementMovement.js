@@ -26,6 +26,37 @@ export function useElementMovement({
         setSelectedNodes(_selectedNodes);
       }
 
+      const moving = new Set(_selectedNodes);
+
+      /**
+       * A waypoint follows the drag when it was picked individually, or when
+       * the whole edge is moving - both of its nodes are in the selection. In
+       * that case the edge has to travel rigidly with them, otherwise its bend
+       * points stay behind and the connection is dragged out of shape.
+       */
+      const moveWaypoints = (n, delta) =>
+        n.connections?.outputs?.map((conn) => {
+          if (!conn.waypoints?.length) return conn;
+
+          const wholeEdge = moving.has(n.id) && moving.has(conn.node);
+
+          return {
+            ...conn,
+            waypoints: conn.waypoints.map((wp, idx) =>
+              wholeEdge ||
+              isWaypointSelected({
+                srcNode: n.id,
+                srcPort: conn.name,
+                dstNode: conn.node,
+                dstPort: conn.port,
+                waypointIndex: idx,
+              })
+                ? { x: wp.x + delta.x, y: wp.y + delta.y }
+                : wp,
+            ),
+          };
+        });
+
       const fn = notify ? setState : setStateAndNotify;
       fn((prev) => ({
         ...prev,
@@ -48,23 +79,7 @@ export function useElementMovement({
               position: pos,
               connections: {
                 ...n.connections,
-                outputs: n.connections?.outputs?.map((conn) => ({
-                  ...conn,
-                  waypoints: conn.waypoints?.map((wp, idx) =>
-                    isWaypointSelected({
-                      srcNode: n.id,
-                      srcPort: conn.name,
-                      dstNode: conn.node,
-                      dstPort: conn.port,
-                      waypointIndex: idx,
-                    })
-                      ? {
-                          x: wp.x + delta.x,
-                          y: wp.y + delta.y,
-                        }
-                      : wp
-                  ),
-                })),
+                outputs: moveWaypoints(n, delta),
               },
             };
           } else if (_selectedNodes.includes(n.id)) {
@@ -76,23 +91,7 @@ export function useElementMovement({
               },
               connections: {
                 ...n.connections,
-                outputs: n.connections?.outputs?.map((conn) => ({
-                  ...conn,
-                  waypoints: conn.waypoints?.map((wp, idx) =>
-                    isWaypointSelected({
-                      srcNode: n.id,
-                      srcPort: conn.name,
-                      dstNode: conn.node,
-                      dstPort: conn.port,
-                      waypointIndex: idx,
-                    })
-                      ? {
-                          x: wp.x + delta.x,
-                          y: wp.y + delta.y,
-                        }
-                      : wp
-                  ),
-                })),
+                outputs: moveWaypoints(n, delta),
               },
             };
           } else {
@@ -111,7 +110,7 @@ export function useElementMovement({
       snapToGrid,
       gridSize,
       isWaypointSelected,
-    ]
+    ],
   );
 
   const throttledMoveHandler = useMemo(
@@ -120,12 +119,12 @@ export function useElementMovement({
         leading: true,
         trailing: true,
       }),
-    [originalMoveHandler]
+    [originalMoveHandler],
   );
 
   const moveHandler = useCallback(
     (node, position, notify) => throttledMoveHandler(node, position, notify),
-    [throttledMoveHandler]
+    [throttledMoveHandler],
   );
 
   return {

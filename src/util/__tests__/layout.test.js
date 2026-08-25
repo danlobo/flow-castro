@@ -363,4 +363,189 @@ describe("layoutFlow", () => {
       }
     });
   });
+  describe("nós soltos", () => {
+    const stray = (position) => ({
+      id: "stray",
+      type: "test",
+      position,
+      size: { ...SIZE },
+      connections: { inputs: [], outputs: [] },
+    });
+
+    it("gathers a connection-less node under the flow", () => {
+      const state = makeState(["a:o->b:i"]);
+      state.nodes.stray = stray({ x: -9000, y: -9000 });
+
+      const result = layoutFlow(state, { origin: { x: 0, y: 0 } });
+
+      const bottom = Math.max(
+        yOf(result, "a") + SIZE.height,
+        yOf(result, "b") + SIZE.height,
+      );
+
+      expect(yOf(result, "stray")).toBeGreaterThanOrEqual(bottom);
+      expect(xOf(result, "stray")).toBeGreaterThanOrEqual(0);
+    });
+
+    it("never moves the types listed in keepTypes", () => {
+      const state = makeState(["a:o->b:i"]);
+      state.nodes.stray = { ...stray({ x: 999, y: 888 }), type: "comment" };
+
+      const result = layoutFlow(state);
+
+      expect(result.nodes.stray.position).toEqual({ x: 999, y: 888 });
+    });
+
+    it("does not let a stray node drag the anchor", () => {
+      // The anchor is the original top-left, and a stray's old position is
+      // exactly what we are trying to stop dragging the flow around.
+      const state = makeState(["a:o->b:i"]);
+      state.nodes.a.position = { x: 400, y: 300 };
+      state.nodes.b.position = { x: 700, y: 300 };
+      state.nodes.stray = stray({ x: -9000, y: -9000 });
+
+      const result = layoutFlow(state);
+
+      expect(Math.min(xOf(result, "a"), xOf(result, "b"))).toBe(400);
+      expect(Math.min(yOf(result, "a"), yOf(result, "b"))).toBe(300);
+    });
+  });
+
+  describe("arestas de retorno", () => {
+    it("routes a loop on the nearer side, not always underneath", () => {
+      // `tall` makes the middle column very deep. The loop c -> a joins two
+      // short nodes, so it must not dive under `tall` to get back.
+      const state = makeState(
+        ["a:o1->b:i", "b:o->c:i", "c:o->a:i", "a:o2->tall:i"],
+        {
+          a: { root: true, size: { width: 200, height: 100 } },
+          b: { size: { width: 200, height: 100 } },
+          c: { size: { width: 200, height: 100 } },
+          tall: { size: { width: 200, height: 2000 } },
+        },
+      );
+
+      const result = layoutFlow(state, { origin: { x: 0, y: 0 } });
+      const back = result.nodes.c.connections.outputs.find(
+        (conn) => conn.node === "a",
+      );
+
+      expect(back.waypoints).toHaveLength(2);
+
+      const lane = back.waypoints[0].y;
+      const tallBottom = yOf(result, "tall") + result.nodes.tall.size.height;
+
+      expect(lane).toBeLessThan(tallBottom);
+    });
+
+    it("keeps two overlapping loops on different lanes", () => {
+      const state = makeState(
+        ["a:o->b:i", "b:o->c:i", "c:o1->a:i", "c:o2->b:i"],
+        { a: { root: true } },
+      );
+
+      const result = layoutFlow(state, { origin: { x: 0, y: 0 } });
+      const lanes = Object.values(result.nodes)
+        .flatMap((node) => node.connections?.outputs ?? [])
+        .filter((conn) => conn.waypoints?.length === 2)
+        .map((conn) => conn.waypoints[0].y);
+
+      expect(lanes).toHaveLength(2);
+      expect(Math.abs(lanes[0] - lanes[1])).toBeGreaterThanOrEqual(60);
+    });
+  });
+  describe("nós folha", () => {
+    // hub tem 3 terminais e um sucessor que continua o fluxo.
+    const build = (overrides = {}) =>
+      makeState(
+        [
+          "start:o->hub:i",
+          "hub:o1->end1:i",
+          "hub:o2->end2:i",
+          "hub:o3->end3:i",
+          "hub:o4->next:i",
+          "next:o->tail:i",
+        ],
+        { start: { root: true }, ...overrides },
+      );
+
+    it("parks terminals in a column of their own", () => {
+      const result = layoutFlow(build(), { origin: { x: 0, y: 0 } });
+
+      const leaves = ["end1", "end2", "end3"].map((id) => xOf(result, id));
+      expect(new Set(leaves).size).toBe(1);
+
+      // Entre o pai e a próxima camada real, sem disputar espaço com ela.
+      expect(xOf(result, "hub")).toBeLessThan(leaves[0]);
+      expect(leaves[0]).toBeLessThan(xOf(result, "next"));
+    });
+
+    it("puts them back in the grid when attachLeaves is off", () => {
+      const result = layoutFlow(build(), {
+        origin: { x: 0, y: 0 },
+        attachLeaves: false,
+      });
+
+      expect(xOf(result, "end1")).toBe(xOf(result, "next"));
+    });
+
+    it("ladders siblings in port order", () => {
+      const result = layoutFlow(build(), {
+        origin: { x: 0, y: 0 },
+        portOffsets: {
+          hub: {
+            inputs: {},
+            outputs: { o1: 20, o2: 60, o3: 100, o4: 140 },
+          },
+        },
+      });
+
+      expect(yOf(result, "end1")).toBeLessThan(yOf(result, "end2"));
+      expect(yOf(result, "end2")).toBeLessThan(yOf(result, "end3"));
+    });
+
+    it("never overlaps a terminal with anything else", () => {
+      const result = layoutFlow(build(), { origin: { x: 0, y: 0 } });
+      const nodes = Object.values(result.nodes);
+
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i];
+          const b = nodes[j];
+          const overlaps =
+            a.position.x < b.position.x + b.size.width &&
+            b.position.x < a.position.x + a.size.width &&
+            a.position.y < b.position.y + b.size.height &&
+            b.position.y < a.position.y + a.size.height;
+
+          expect(overlaps).toBe(false);
+        }
+      }
+    });
+
+    it("leaves a two-node flow alone", () => {
+      // Detaching b would leave the component without a single edge.
+      const result = layoutFlow(makeState(["a:o->b:i"]), {
+        origin: { x: 0, y: 0 },
+      });
+
+      expect(xOf(result, "a")).toBeLessThan(xOf(result, "b"));
+      expect(yOf(result, "a")).toBe(yOf(result, "b"));
+    });
+
+    it("clears stale waypoints from a terminal edge", () => {
+      const state = build();
+      const conn = state.nodes.hub.connections.outputs.find(
+        (c) => c.node === "end1",
+      );
+      conn.waypoints = [{ x: 1, y: 2 }];
+
+      const result = layoutFlow(state, { origin: { x: 0, y: 0 } });
+      const after = result.nodes.hub.connections.outputs.find(
+        (c) => c.node === "end1",
+      );
+
+      expect(after.waypoints).toBeUndefined();
+    });
+  });
 });
