@@ -1,7 +1,7 @@
 {
   "name": "flow-castro",
   "homepage": ".",
-  "version": "0.2.20",
+  "version": "0.2.21",
   "description": "A React library to create visual flow editors",
   "keywords": [
     "react",
