@@ -28,9 +28,12 @@ runs the scenarios in `harness.jsx`:
 | `selectAllAndDrag` | Ctrl+A then a drag — every node moves                     |
 
 Before the scenarios run, a correctness probe checks that the editor still
-*works*: that a drag moves the node it grabbed and only that one, that a
-right-click opens the node menu, and that typing into a port writes the value
-back. A handler wired up wrong is also very fast, so speed alone proves nothing.
+*works*: that a drag moves the node it grabbed and only that one, that the
+connectors follow it and still start at their port (measured in pixels, at rest
+and mid-drag - connector geometry is cached, and a stale cache draws the edge in
+the node's old place while still looking perfectly smooth), that a right-click
+opens the node menu, and that typing into a port writes the value back. A
+handler wired up wrong is also very fast, so speed alone proves nothing.
 It runs before the scenarios on purpose — afterwards the editor carries their
 state (a Ctrl+A selection, a panned viewport) and the assertions no longer hold.
 `--only-check` runs just the probe, skipping the measurements.

@@ -10,7 +10,7 @@ import React, {
 import Node from "./Node.jsx";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { useDragContext } from "./DragContext.jsx";
-import { useScreenContext } from "./ScreenContext.jsx";
+import { useScreenContext, useScreenViewportRef } from "./ScreenContext.jsx";
 import { ConnectorCurve, ConnectorCurveForward } from "./ConnectorCurve.jsx";
 import { ContextMenu } from "./ContextMenu.jsx";
 import css from "./Screen.module.css";
@@ -95,6 +95,7 @@ function Screen({
 
   const { dragInfo } = useDragContext();
   const { position, setPosition, scale, setScale } = useScreenContext();
+  const viewportRef = useScreenViewportRef();
 
   const [dstDragPosition, setDstDragPosition] = useState({ x: 0, y: 0 });
   const [pointerPosition, setPointerPosition] = useState({ x: 0, y: 0 });
@@ -851,6 +852,20 @@ function Screen({
     onNodeClick,
   };
 
+  const connectorDeps = useRef({});
+  connectorDeps.current = {
+    i18n,
+    canMove,
+    addWaypoint,
+    removeWaypoint,
+    updateWaypointPosition,
+    removeConnectionFromOutput,
+    isWaypointSelected,
+    addWaypointToSelection,
+    removeWaypointFromSelection,
+    setSelectedWaypoints,
+  };
+
   /** Set from inside the ContextMenu render prop, which is where it exists. */
   const contextMenuRef = useRef(null);
 
@@ -898,6 +913,282 @@ function Screen({
     },
     [setState],
   );
+
+  /**
+   * Connector geometry, cached per connection.
+   *
+   * Drawing a connection means four `querySelector` calls and four
+   * `getBoundingClientRect` reads to find where its two ports ended up. At a
+   * thousand connections that loop is by far the most expensive thing in a
+   * render - with the nodes memoized it is what is left.
+   *
+   * The numbers only depend on the two nodes at the ends, and those come out of
+   * state as new objects whenever anything about them changes, so identity is
+   * the invalidation signal. Pan and zoom cannot change the result at all: the
+   * math converts screen coordinates back into canvas coordinates, so the
+   * viewport cancels out - which is why the cache survives them untouched.
+   *
+   * Each change is measured twice on purpose. React renders before the DOM is
+   * updated, so the first read after a node moves still sees the old layout;
+   * `forceConnectorUpdate` below schedules the second render, and the entry
+   * stays `settled: false` until it has been measured there.
+   */
+  const connectorGeometryRef = useRef(new Map());
+  const connectorViewportRef = useRef(null);
+
+  const connectorHandlersRef = useRef(new Map());
+
+  // The cached numbers are relative to the container, so they only go stale if
+  // the container itself moves on screen - a window resize or a page scroll.
+  const containerRect = getContRect();
+  const containerKey = containerRect
+    ? `${containerRect.left}:${containerRect.top}:${containerRect.width}:${containerRect.height}`
+    : "";
+  if (connectorViewportRef.current !== containerKey) {
+    connectorViewportRef.current = containerKey;
+    connectorGeometryRef.current.clear();
+  }
+
+  /**
+   * Which of a connection's waypoints are selected, as a plain string: a fresh
+   * array or predicate per render would defeat the connector's memo.
+   */
+  const selectedWaypointsKey = (
+    srcNode,
+    srcPort,
+    dstNode,
+    dstPort,
+    waypoints,
+  ) => {
+    if (!selectedWaypoints?.length || !waypoints?.length) return "";
+
+    return selectedWaypoints
+      .filter(
+        (w) =>
+          w.srcNode === srcNode &&
+          w.srcPort === srcPort &&
+          w.dstNode === dstNode &&
+          w.dstPort === dstPort,
+      )
+      .map((w) => w.waypointIndex)
+      .sort((a, b) => a - b)
+      .join(",");
+  };
+
+  const getConnectorGeometry = (
+    srcNode,
+    srcPort,
+    dstNode,
+    dstPort,
+    connKey,
+  ) => {
+    const cache = connectorGeometryRef.current;
+    const srcNodeValue = state?.nodes?.[srcNode];
+    const dstNodeValue = state?.nodes?.[dstNode];
+
+    const cached = cache.get(connKey);
+    const sameState = Boolean(
+      cached &&
+      cached.srcNodeValue === srcNodeValue &&
+      cached.dstNodeValue === dstNodeValue,
+    );
+
+    if (sameState && cached.settled) {
+      return cached.geometry;
+    }
+
+    const srcBox = screenRef.current?.querySelector(
+      `#card-${CSS.escape(srcNode)}`,
+    );
+    const dstBox = screenRef.current?.querySelector(
+      `#card-${CSS.escape(dstNode)}`,
+    );
+
+    const srcElem = screenRef.current?.querySelector(
+      `#card-${CSS.escape(srcNode)}-output-${CSS.escape(srcPort)}`,
+    );
+    const dstElem = screenRef.current?.querySelector(
+      `#card-${CSS.escape(dstNode)}-input-${CSS.escape(dstPort)}`,
+    );
+
+    const screenRect = getContRect();
+    if (!srcElem || !dstElem || !screenRect || !srcBox || !dstBox) {
+      return null;
+    }
+
+    const srcRect = srcElem.getBoundingClientRect();
+    const dstRect = dstElem.getBoundingClientRect();
+    const srcBoxRect = srcBox.getBoundingClientRect();
+    const dstBoxRect = dstBox.getBoundingClientRect();
+
+    const toCanvas = (rect, centered) => ({
+      x:
+        (rect.x -
+          position.x -
+          screenRect.left +
+          (centered ? rect.width / 2 : 0)) /
+        scale,
+      y:
+        (rect.y -
+          position.y -
+          screenRect.top +
+          (centered ? rect.height / 2 : 0)) /
+        scale,
+    });
+
+    const geometry = {
+      srcPos: toCanvas(srcRect, true),
+      dstPos: toCanvas(dstRect, true),
+      box1: {
+        ...toCanvas(srcBoxRect, false),
+        w: srcBoxRect.width,
+        h: srcBoxRect.height,
+      },
+      box2: {
+        ...toCanvas(dstBoxRect, false),
+        w: dstBoxRect.width,
+        h: dstBoxRect.height,
+      },
+    };
+
+    cache.set(connKey, {
+      srcNodeValue,
+      dstNodeValue,
+      geometry,
+      // Settled only once this same state has been measured a second time,
+      // against a DOM that already reflects it.
+      settled: sameState,
+    });
+
+    return geometry;
+  };
+
+  /**
+   * The handlers a connection hands down never change for the life of that
+   * connection, so they are built once and kept, instead of five new closures
+   * per connection per render - the same reason the node handlers are stable.
+   */
+  const getConnectorHandlers = (
+    srcNode,
+    srcPort,
+    dstNode,
+    dstPort,
+    connKey,
+  ) => {
+    const existing = connectorHandlersRef.current.get(connKey);
+    if (existing) return existing;
+
+    const wp = (waypointIndex) => ({
+      srcNode,
+      srcPort,
+      dstNode,
+      dstPort,
+      waypointIndex,
+    });
+
+    const handlers = {
+      onUpdateWaypoint: (waypointIndex, newPosition) =>
+        connectorDeps.current.updateWaypointPosition(
+          srcNode,
+          srcPort,
+          dstNode,
+          dstPort,
+          waypointIndex,
+          newPosition,
+        ),
+
+      onWaypointMouseDown: (e, waypointIndex) => {
+        const deps = connectorDeps.current;
+
+        if (e.ctrlKey) {
+          deps.removeWaypointFromSelection(wp(waypointIndex));
+        } else if (e.shiftKey) {
+          deps.addWaypointToSelection(wp(waypointIndex));
+        } else if (!deps.isWaypointSelected(wp(waypointIndex))) {
+          deps.setSelectedWaypoints([wp(waypointIndex)]);
+        }
+      },
+
+      onWaypointContextMenu: (e, waypointIndex) => {
+        const deps = connectorDeps.current;
+
+        contextMenuRef.current?.(
+          e,
+          [
+            deps.canMove
+              ? {
+                  label: i(
+                    deps.i18n,
+                    "contextMenu.removeWaypoint",
+                    {},
+                    "Remove waypoint",
+                  ),
+                  style: { color: "red" },
+                  onClick: () =>
+                    deps.removeWaypoint(
+                      srcNode,
+                      srcPort,
+                      dstNode,
+                      dstPort,
+                      waypointIndex,
+                    ),
+                }
+              : null,
+          ].filter(Boolean),
+        );
+      },
+
+      onContextMenu: (e) => {
+        const deps = connectorDeps.current;
+
+        contextMenuRef.current?.(
+          e,
+          [
+            deps.canMove
+              ? {
+                  label: i(
+                    deps.i18n,
+                    "contextMenu.addWaypoint",
+                    {},
+                    "Add waypoint",
+                  ),
+                  onClick: () => {
+                    const rect = getContRect();
+                    const { position: pos, scale: sc } = viewportRef.current;
+
+                    deps.addWaypoint(srcNode, srcPort, dstNode, dstPort, {
+                      x: (e.clientX - rect.left - pos.x) / sc,
+                      y: (e.clientY - rect.top - pos.y) / sc,
+                    });
+                  },
+                }
+              : null,
+            deps.canMove
+              ? {
+                  label: i(
+                    deps.i18n,
+                    "contextMenu.removeThisConnection",
+                    {},
+                    "Remove this connection",
+                  ),
+                  style: { color: "red" },
+                  onClick: () =>
+                    deps.removeConnectionFromOutput(
+                      srcNode,
+                      srcPort,
+                      dstNode,
+                      dstPort,
+                    ),
+                }
+              : null,
+          ].filter(Boolean),
+        );
+      },
+    };
+
+    connectorHandlersRef.current.set(connKey, handlers);
+    return handlers;
+  };
 
   const handleNodeContextMenu = useCallback((event, nodeId) => {
     const {
@@ -1217,281 +1508,63 @@ function Screen({
                       >
                         {state?.nodes &&
                           Object.values(state.nodes).map((node) =>
-                            node.connections?.outputs?.map(
-                              (connection, index) => {
-                                const srcNode = node.id;
-                                const srcPort = connection.name;
-                                const dstNode = connection.node;
-                                const dstPort = connection.port;
-                                const connType = connection.type;
-                                const waypoints = connection.waypoints || [];
+                            node.connections?.outputs?.map((connection) => {
+                              const srcNode = node.id;
+                              const srcPort = connection.name;
+                              const dstNode = connection.node;
+                              const dstPort = connection.port;
+                              const waypoints = connection.waypoints;
 
-                                const srcBox = screenRef.current?.querySelector(
-                                  `#card-${CSS.escape(srcNode)}`,
-                                );
-                                const dstBox = screenRef.current?.querySelector(
-                                  `#card-${CSS.escape(dstNode)}`,
-                                );
+                              const connKey = `${srcNode}:${srcPort}>${dstNode}:${dstPort}`;
 
-                                const srcElem =
-                                  screenRef.current?.querySelector(
-                                    `#card-${CSS.escape(srcNode)}-output-${CSS.escape(srcPort)}`,
-                                  );
-                                const dstElem =
-                                  screenRef.current?.querySelector(
-                                    `#card-${CSS.escape(dstNode)}-input-${CSS.escape(dstPort)}`,
-                                  );
+                              const geometry = getConnectorGeometry(
+                                srcNode,
+                                srcPort,
+                                dstNode,
+                                dstPort,
+                                connKey,
+                              );
+                              if (!geometry) return null;
 
-                                const containerRect = getContRect();
-                                if (
-                                  !srcElem ||
-                                  !dstElem ||
-                                  !containerRect ||
-                                  !srcBox ||
-                                  !dstBox
-                                ) {
-                                  return null;
-                                }
+                              const handlers = getConnectorHandlers(
+                                srcNode,
+                                srcPort,
+                                dstNode,
+                                dstPort,
+                                connKey,
+                              );
 
-                                const srcRect = srcElem.getBoundingClientRect();
-                                const dstRect = dstElem.getBoundingClientRect();
-
-                                const srcBoxRect =
-                                  srcBox.getBoundingClientRect();
-                                const dstBoxRect =
-                                  dstBox.getBoundingClientRect();
-
-                                const screenRect = getContRect();
-
-                                const srcPos = {
-                                  x:
-                                    (srcRect.x -
-                                      position.x -
-                                      screenRect.left +
-                                      srcRect.width / 2) /
-                                    scale,
-                                  y:
-                                    (srcRect.y -
-                                      position.y -
-                                      screenRect.top +
-                                      srcRect.height / 2) /
-                                    scale,
-                                };
-
-                                const dstPos = {
-                                  x:
-                                    (dstRect.x -
-                                      position.x -
-                                      screenRect.left +
-                                      dstRect.width / 2) /
-                                    scale,
-                                  y:
-                                    (dstRect.y -
-                                      position.y -
-                                      screenRect.top +
-                                      dstRect.height / 2) /
-                                    scale,
-                                };
-
-                                const box1 = {
-                                  x:
-                                    (srcBoxRect.x -
-                                      position.x -
-                                      screenRect.left) /
-                                    scale,
-                                  y:
-                                    (srcBoxRect.y -
-                                      position.y -
-                                      screenRect.top) /
-                                    scale,
-                                  w: srcBoxRect.width,
-                                  h: srcBoxRect.height,
-                                };
-
-                                const box2 = {
-                                  x:
-                                    (dstBoxRect.x -
-                                      position.x -
-                                      screenRect.left) /
-                                    scale,
-                                  y:
-                                    (dstBoxRect.y -
-                                      position.y -
-                                      screenRect.top) /
-                                    scale,
-                                  w: dstBoxRect.width,
-                                  h: dstBoxRect.height,
-                                };
-
-                                const connKey = `${srcNode}:${srcPort}>${dstNode}:${dstPort}`;
-                                const highlight =
-                                  highlightedConnections?.[connKey] ?? null;
-
-                                return (
-                                  <ConnectorCurve
-                                    key={`connector-${srcNode}-${srcPort}-${dstNode}-${dstPort}`}
-                                    type={portTypes[connType]}
-                                    src={srcPos}
-                                    dst={dstPos}
-                                    scale={scale}
-                                    n1Box={box1}
-                                    n2Box={box2}
-                                    index={index}
-                                    waypoints={waypoints}
-                                    highlight={highlight}
-                                    onUpdateWaypoint={(
-                                      waypointIndex,
-                                      newPosition,
-                                    ) =>
-                                      updateWaypointPosition(
-                                        srcNode,
-                                        srcPort,
-                                        dstNode,
-                                        dstPort,
-                                        waypointIndex,
-                                        newPosition,
-                                      )
-                                    }
-                                    isWaypointSelected={(waypointIndex) =>
-                                      isWaypointSelected({
-                                        srcNode,
-                                        srcPort,
-                                        dstNode,
-                                        dstPort,
-                                        waypointIndex,
-                                      })
-                                    }
-                                    onWaypointMouseDown={(e, waypointIndex) => {
-                                      if (e.ctrlKey) {
-                                        removeWaypointFromSelection({
-                                          srcNode,
-                                          srcPort,
-                                          dstNode,
-                                          dstPort,
-                                          waypointIndex,
-                                        });
-                                      } else if (e.shiftKey) {
-                                        addWaypointToSelection({
-                                          srcNode,
-                                          srcPort,
-                                          dstNode,
-                                          dstPort,
-                                          waypointIndex,
-                                        });
-                                      } else {
-                                        if (
-                                          !isWaypointSelected({
-                                            srcNode,
-                                            srcPort,
-                                            dstNode,
-                                            dstPort,
-                                            waypointIndex,
-                                          })
-                                        ) {
-                                          setSelectedWaypoints([
-                                            {
-                                              srcNode,
-                                              srcPort,
-                                              dstNode,
-                                              dstPort,
-                                              waypointIndex,
-                                            },
-                                          ]);
-                                        }
-                                      }
-                                    }}
-                                    onWaypointContextMenu={(e, waypointIndex) =>
-                                      handleContextMenu(
-                                        e,
-                                        [
-                                          canMove
-                                            ? {
-                                                label: i(
-                                                  i18n,
-                                                  "contextMenu.removeWaypoint",
-                                                  {},
-                                                  "Remove waypoint",
-                                                ),
-                                                style: { color: "red" },
-                                                onClick: () => {
-                                                  removeWaypoint(
-                                                    srcNode,
-                                                    srcPort,
-                                                    dstNode,
-                                                    dstPort,
-                                                    waypointIndex,
-                                                  );
-                                                },
-                                              }
-                                            : null,
-                                        ].filter(Boolean),
-                                      )
-                                    }
-                                    onContextMenu={(e) =>
-                                      handleContextMenu(
-                                        e,
-                                        [
-                                          canMove
-                                            ? {
-                                                label: i(
-                                                  i18n,
-                                                  "contextMenu.addWaypoint",
-                                                  {},
-                                                  "Add waypoint",
-                                                ),
-                                                onClick: () => {
-                                                  const contextMenuRect =
-                                                    getContRect();
-                                                  const pointerX =
-                                                    (e.clientX -
-                                                      contextMenuRect.left -
-                                                      position.x) /
-                                                    scale;
-                                                  const pointerY =
-                                                    (e.clientY -
-                                                      contextMenuRect.top -
-                                                      position.y) /
-                                                    scale;
-
-                                                  addWaypoint(
-                                                    srcNode,
-                                                    srcPort,
-                                                    dstNode,
-                                                    dstPort,
-                                                    {
-                                                      x: pointerX,
-                                                      y: pointerY,
-                                                    },
-                                                  );
-                                                },
-                                              }
-                                            : null,
-                                          canMove
-                                            ? {
-                                                label: i(
-                                                  i18n,
-                                                  "contextMenu.removeThisConnection",
-                                                  {},
-                                                  "Remove this connection",
-                                                ),
-                                                style: { color: "red" },
-                                                onClick: () => {
-                                                  removeConnectionFromOutput(
-                                                    srcNode,
-                                                    srcPort,
-                                                    dstNode,
-                                                    dstPort,
-                                                  );
-                                                },
-                                              }
-                                            : null,
-                                        ].filter(Boolean),
-                                      )
-                                    }
-                                  />
-                                );
-                              },
-                            ),
+                              return (
+                                <ConnectorCurve
+                                  key={`connector-${connKey}`}
+                                  type={portTypes[connection.type]}
+                                  src={geometry.srcPos}
+                                  dst={geometry.dstPos}
+                                  n1Box={geometry.box1}
+                                  n2Box={geometry.box2}
+                                  scale={scale}
+                                  waypoints={waypoints}
+                                  highlight={
+                                    highlightedConnections?.[connKey] ?? null
+                                  }
+                                  selectedWaypointsKey={selectedWaypointsKey(
+                                    srcNode,
+                                    srcPort,
+                                    dstNode,
+                                    dstPort,
+                                    waypoints,
+                                  )}
+                                  onUpdateWaypoint={handlers.onUpdateWaypoint}
+                                  onWaypointMouseDown={
+                                    handlers.onWaypointMouseDown
+                                  }
+                                  onWaypointContextMenu={
+                                    handlers.onWaypointContextMenu
+                                  }
+                                  onContextMenu={handlers.onContextMenu}
+                                />
+                              );
+                            }),
                           )}
 
                         {(dragInfo || isInFadeout) && dstDragPosition ? (

@@ -163,7 +163,7 @@ describe("ConnectorCurve Component", () => {
       onWaypointContextMenu: jest.fn(),
       onUpdateWaypoint: jest.fn(),
       onWaypointMouseDown: jest.fn(),
-      isWaypointSelected: () => false,
+      selectedWaypointsKey: "",
     };
 
     const { container } = render(<ConnectorCurveForward {...completeProps} />);
@@ -172,13 +172,12 @@ describe("ConnectorCurve Component", () => {
     expect(waypointElements.length).toBe(2);
   });
 
-  test("ConnectorCurveForward calls isWaypointSelected with correct index", () => {
+  test("ConnectorCurveForward marks the waypoints named in selectedWaypointsKey", () => {
     const waypoints = [
       { x: 30, y: 30 },
       { x: 60, y: 60 },
+      { x: 90, y: 90 },
     ];
-
-    const isWaypointSelected = jest.fn((index) => index === 1);
 
     const completeProps = {
       ...defaultProps,
@@ -189,13 +188,33 @@ describe("ConnectorCurve Component", () => {
       onWaypointContextMenu: jest.fn(),
       onUpdateWaypoint: jest.fn(),
       onWaypointMouseDown: jest.fn(),
-      isWaypointSelected: isWaypointSelected,
+      selectedWaypointsKey: "0,2",
     };
 
     const { container } = render(<ConnectorCurveForward {...completeProps} />);
 
-    expect(isWaypointSelected).toHaveBeenCalledWith(0);
-    expect(isWaypointSelected).toHaveBeenCalledWith(1);
+    const marks = container.querySelectorAll("circle");
+    expect(marks).toHaveLength(3);
+    expect(marks[0].getAttribute("class")).toContain("selected");
+    expect(marks[1].getAttribute("class")).not.toContain("selected");
+    expect(marks[2].getAttribute("class")).toContain("selected");
+  });
+
+  test("ConnectorCurveForward marks nothing when selectedWaypointsKey is empty", () => {
+    const { container } = render(
+      <ConnectorCurveForward
+        {...defaultProps}
+        scale={1}
+        src={{ x: 10, y: 10 }}
+        dst={{ x: 100, y: 100 }}
+        waypoints={[{ x: 30, y: 30 }]}
+        selectedWaypointsKey=""
+      />,
+    );
+
+    expect(container.querySelector("circle").getAttribute("class")).not.toContain(
+      "selected",
+    );
   });
 
   test("ConnectorCurveForward calls waypoint callbacks when events are triggered", () => {
@@ -214,7 +233,7 @@ describe("ConnectorCurve Component", () => {
       onWaypointContextMenu: onWaypointContextMenuMock,
       onUpdateWaypoint: onUpdateWaypointMock,
       onWaypointMouseDown: onWaypointMouseDownMock,
-      isWaypointSelected: () => false,
+      selectedWaypointsKey: "",
     };
 
     const { container } = render(<ConnectorCurveForward {...completeProps} />);

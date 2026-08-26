@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { memo, useCallback, useMemo } from "react";
 import css from "./ConnectorCurve.module.css";
 import { useTheme } from "./ThemeProvider.jsx";
 import { useScreenViewportRef } from "./ScreenContext.jsx";
@@ -29,7 +29,7 @@ function controlOffset(distance) {
   );
 }
 
-export function ConnectorCurveForward({
+export const ConnectorCurveForward = memo(function ConnectorCurveForward({
   type,
   src,
   dst,
@@ -42,10 +42,19 @@ export function ConnectorCurveForward({
   onWaypointContextMenu,
   onUpdateWaypoint,
   onWaypointMouseDown,
-  isWaypointSelected,
+  selectedWaypointsKey = "",
 }) {
   const { currentTheme } = useTheme();
   const viewportRef = useScreenViewportRef();
+
+  /** Selection arrives as a string so this component can be memoized. */
+  const selectedWaypoints = useMemo(
+    () =>
+      new Set(
+        selectedWaypointsKey ? selectedWaypointsKey.split(",").map(Number) : [],
+      ),
+    [selectedWaypointsKey],
+  );
 
   const [hovered, setHovered] = React.useState(false);
   const [hoveredWaypointIndex, setHoveredWaypointIndex] = React.useState(-1);
@@ -159,7 +168,7 @@ export function ConnectorCurveForward({
 
       {/* Desenhar os waypoints */}
       {transformedWaypoints.map((waypoint, index) => {
-        const isSelected = isWaypointSelected && isWaypointSelected(index);
+        const isSelected = selectedWaypoints.has(index);
 
         const waypointRadius =
           hoveredWaypointIndex === index ||
@@ -248,9 +257,9 @@ export function ConnectorCurveForward({
       })}
     </g>
   );
-}
+});
 
-export function ConnectorCurve({
+export const ConnectorCurve = memo(function ConnectorCurve({
   type,
   src,
   dst,
@@ -265,7 +274,7 @@ export function ConnectorCurve({
   onWaypointContextMenu,
   onUpdateWaypoint,
   onWaypointMouseDown,
-  isWaypointSelected,
+  selectedWaypointsKey,
 }) {
   if (!src || !dst) {
     return null;
@@ -284,7 +293,7 @@ export function ConnectorCurve({
       onWaypointContextMenu={onWaypointContextMenu}
       onUpdateWaypoint={onUpdateWaypoint}
       onWaypointMouseDown={onWaypointMouseDown}
-      isWaypointSelected={isWaypointSelected}
+      selectedWaypointsKey={selectedWaypointsKey}
     />
   );
-}
+});

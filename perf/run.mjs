@@ -237,12 +237,12 @@ function report(runs) {
   for (const r of runs) {
     const c = r.checks || {};
     const flags = Object.entries(c)
-      .filter(([k]) => k !== "contextMenuItems")
+      .filter(([k]) => k !== "contextMenuItems" && k !== "connectorsRedrawn" && k !== "connectorStartsAtPortPx" && k !== "connectorStartsAtPortMidDragPx" && k !== "connectorLagWhileMovingPx")
       .map(([k, v]) => `${v === true ? "ok" : v === null ? "n/a" : "FAIL"} ${k}`);
     const moved = Object.entries(r.scenarios)
       .filter(([, s]) => "moved" in s)
       .map(([k, s]) => `${s.moved ? "ok" : "FAIL"} ${k}.moved`);
-    console.log(padr(r.count, 7) + [...flags, ...moved].join("  ·  "));
+    console.log(padr(r.count, 7) + [...flags, ...moved].join("  ·  ") + `  ·  gap ${c.connectorStartsAtPortPx}px · pausa ${c.connectorStartsAtPortMidDragPx}px · em movimento ${c.connectorLagWhileMovingPx}px`);
   }
 
   console.log("\n=== MOUNT ===");

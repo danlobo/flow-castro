@@ -267,6 +267,35 @@ const scenarios = {
  * Correctness probe - the scenarios above only prove the editor is
  * fast, not that it still works.
  * ------------------------------------------------------------------ */
+/**
+ * Distance, in pixels, between an output port and the start of the connector
+ * that leaves it. Geometry is cached in Screen and a cache that lags one move
+ * behind still redraws the path - just in the wrong place - so this is what
+ * catches it.
+ */
+function portGap() {
+  const port = document.querySelector('[id$="-output-string"]');
+  const paths = Array.from(document.querySelectorAll("path"));
+  if (!port || !paths.length) return null;
+
+  const pr = port.getBoundingClientRect();
+  const cx = pr.left + pr.width / 2;
+  const cy = pr.top + pr.height / 2;
+
+  let best = Infinity;
+  for (const path of paths) {
+    if (typeof path.getPointAtLength !== "function") continue;
+    const m = path.getScreenCTM();
+    if (!m) continue;
+
+    const pt = path.getPointAtLength(0);
+    const dx = m.a * pt.x + m.c * pt.y + m.e - cx;
+    const dy = m.b * pt.x + m.d * pt.y + m.f - cy;
+    best = Math.min(best, Math.hypot(dx, dy));
+  }
+  return best;
+}
+
 async function check() {
   const out = {};
 
@@ -277,17 +306,74 @@ async function check() {
   const others = Array.from(document.querySelectorAll('[id^="card-"]')).slice(1, 6);
   const othersBefore = others.map((c) => c.style.transform);
   const before = card.style.transform;
-  await dragPath(
-    card,
-    { x: r.left + r.width / 2, y: r.top + 12 },
-    { x: r.left + r.width / 2 + 120, y: r.top + 12 + 90 },
-    12,
-    { button: 0, buttons: 1 },
+  // Connector geometry is cached in Screen and invalidated by node identity.
+  // A stale cache draws the edges in the node's old place, which no amount of
+  // frame timing would catch, so the paths are compared across the drag.
+  const pathsBefore = Array.from(document.querySelectorAll("path")).map((p) =>
+    p.getAttribute("d"),
   );
+  // Half a drag, held: the interesting moment is mid-gesture, because the
+  // final move re-measures anyway and would hide a one-move lag.
+  const from = { x: r.left + r.width / 2, y: r.top + 12 };
+  mouse(card, "mousedown", from.x, from.y, { button: 0, buttons: 1 });
+  await nextFrame();
+  for (let i = 1; i <= 6; i++) {
+    mouse(document, "mousemove", from.x + i * 10, from.y + i * 7.5, {
+      button: 0,
+      buttons: 1,
+    });
+    await nextFrame();
+  }
+  // No pause here: the throttle's trailing call re-measures and would paper
+  // over a one-move lag, so this samples in continuous motion.
+  mouse(document, "mousemove", from.x + 70, from.y + 52.5, {
+    button: 0,
+    buttons: 1,
+  });
+  await nextFrame();
+  await nextFrame();
+  const movingGap = portGap();
+  out.connectorLagWhileMovingPx =
+    movingGap === null ? null : Math.round(movingGap * 10) / 10;
+
+  await sleep(300);
+  await afterPaint();
+  const midGap = portGap();
+  out.connectorStartsAtPortMidDragPx =
+    midGap === null ? null : Math.round(midGap * 10) / 10;
+  out.connectorStartsAtPortMidDrag = midGap === null ? null : midGap <= 4;
+
+  mouse(document, "mousemove", from.x + 120, from.y + 90, {
+    button: 0,
+    buttons: 1,
+  });
+  await nextFrame();
+  mouse(document, "mouseup", from.x + 120, from.y + 90, {
+    button: 0,
+    buttons: 0,
+  });
+  await sleep(250);
+  await afterPaint();
   out.dragMovesNode = card.style.transform !== before;
   out.dragMovesOnlyThatNode = others.every((c, i) => c.style.transform === othersBefore[i]);
 
-  // 2. right-clicking a node opens its menu
+  const pathsAfter = Array.from(document.querySelectorAll("path")).map((p) =>
+    p.getAttribute("d"),
+  );
+  out.connectorsRedrawn =
+    pathsBefore.length === pathsAfter.length
+      ? pathsAfter.filter((d, i) => d !== pathsBefore[i]).length
+      : -1;
+  out.connectorsFollowTheNode = out.connectorsRedrawn > 0;
+
+  // 2. the connector really starts at the port it comes out of.
+  //    Geometry is cached, so a cache that lags one move behind still redraws
+  //    the path - just in the wrong place. This measures the actual gap.
+  const gap = portGap();
+  out.connectorStartsAtPortPx = gap === null ? null : Math.round(gap * 10) / 10;
+  out.connectorStartsAtPort = gap === null ? null : gap <= 4;
+
+  // 3. right-clicking a node opens its menu
   card.dispatchEvent(
     new MouseEvent("contextmenu", {
       bubbles: true,
@@ -305,7 +391,7 @@ async function check() {
   document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
   await afterPaint();
 
-  // 3. typing into a port writes the value back into the node
+  // 4. typing into a port writes the value back into the node
   const ta = document.querySelector("textarea");
   if (ta) {
     const setter = Object.getOwnPropertyDescriptor(
