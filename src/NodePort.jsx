@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import { useDragContext } from "./DragContext.jsx";
-import { useScreenContext } from "./ScreenContext.jsx";
+import { useScreenViewportRef } from "./ScreenContext.jsx";
 import css from "./NodePort.module.css";
 import { useTheme } from "./ThemeProvider.jsx";
 import { throttle } from "./util/throttle";
@@ -34,7 +34,7 @@ function NodePort({
   options,
 }) {
   const { currentTheme } = useTheme();
-  const { position: screenPosition, scale: screenScale } = useScreenContext();
+  const viewportRef = useScreenViewportRef();
   const { dragInfo, setDragInfo } = useDragContext();
 
   const [internalValue, setInternalValue] = useState(value);
@@ -92,6 +92,9 @@ function NodePort({
 
     //event.preventDefault();
     event.stopPropagation();
+
+    const { position: screenPosition, scale: screenScale } =
+      viewportRef.current;
 
     const nodePos = containerRef.current.getBoundingClientRect();
     const localPos = globalToLocal(

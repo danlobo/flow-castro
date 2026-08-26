@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import css from "./ConnectorCurve.module.css";
 import { useTheme } from "./ThemeProvider.jsx";
-import { useScreenContext } from "./ScreenContext.jsx";
+import { useScreenViewportRef } from "./ScreenContext.jsx";
 
 const MIN_CONTROL_OFFSET = 40;
 const MAX_CONTROL_OFFSET = 150;
@@ -45,7 +45,7 @@ export function ConnectorCurveForward({
   isWaypointSelected,
 }) {
   const { currentTheme } = useTheme();
-  const { scale: screenScale } = useScreenContext();
+  const viewportRef = useScreenViewportRef();
 
   const [hovered, setHovered] = React.useState(false);
   const [hoveredWaypointIndex, setHoveredWaypointIndex] = React.useState(-1);
@@ -212,6 +212,7 @@ export function ConnectorCurveForward({
               const startX = e.clientX;
               const startY = e.clientY;
               const origWaypoint = waypoints[index];
+              const { scale: screenScale } = viewportRef.current;
 
               const moveHandler = (moveEvent) => {
                 moveEvent.preventDefault();

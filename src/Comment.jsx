@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import css from "./Comment.module.css";
-import { useScreenContext } from "./ScreenContext.jsx";
+import { useScreenViewportRef } from "./ScreenContext.jsx";
 
 const Comment = ({
   title,
@@ -17,7 +17,7 @@ const Comment = ({
   nodeId,
   onContextMenu,
 }) => {
-  const { scale: screenScale } = useScreenContext();
+  const viewportRef = useScreenViewportRef();
 
   const containerRef = useRef(null);
 
@@ -27,6 +27,7 @@ const Comment = ({
 
       const startX = e.pageX;
       const startY = e.pageY;
+      const { scale: screenScale } = viewportRef.current;
 
       const mouseMoveHandler = (e) => {
         const dx = e.pageX - startX;
@@ -51,7 +52,7 @@ const Comment = ({
       window.addEventListener("mousemove", mouseMoveHandler);
       window.addEventListener("mouseup", mouseUpHandler);
     },
-    [position, onMove, onMoveEnd, screenScale]
+    [position, onMove, onMoveEnd, viewportRef],
   );
 
   useEffect(() => {

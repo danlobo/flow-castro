@@ -1,7 +1,7 @@
 import React from "react";
 import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import NodePort from "./NodePort.jsx";
-import { useScreenContext } from "./ScreenContext.jsx";
+import { useScreenViewportRef } from "./ScreenContext.jsx";
 import css from "./Node.module.css";
 import { useTheme } from "./ThemeProvider.jsx";
 import { throttle } from "./util/throttle";
@@ -32,7 +32,7 @@ function Node({
   useEffect(() => {
     const currentRef = nodeRef.current;
     const observer = new ResizeObserver((entries) => {
-      onResize({
+      onResize(value.id, {
         width: entries[0].contentRect.width,
         height: entries[0].contentRect.height,
       });
@@ -61,7 +61,8 @@ function Node({
     }
   }, [name, nodeName, nodeId]);
 
-  const { scale: screenScale } = useScreenContext();
+  // Read when the drag happens, so a pan does not re-render every node.
+  const viewportRef = useScreenViewportRef();
 
   const handleMouseDown = useCallback(
     (event) => {
@@ -71,15 +72,16 @@ function Node({
 
       const startX = event.pageX;
       const startY = event.pageY;
+      const { scale: screenScale } = viewportRef.current;
 
-      onDragStart?.({ x: nodePosition.x, y: nodePosition.y });
+      onDragStart?.(nodeId, { x: nodePosition.x, y: nodePosition.y });
 
       const handleMouseMove = throttle(
         (event) => {
           const dx = event.pageX - startX;
           const dy = event.pageY - startY;
 
-          onChangePosition({
+          onChangePosition(nodeId, {
             x: nodePosition.x + dx / screenScale,
             y: nodePosition.y + dy / screenScale,
           });
@@ -96,7 +98,7 @@ function Node({
         const dy = e.pageY - startY;
 
         if (Math.abs(dx) >= 2 && Math.abs(dy) >= 2) {
-          onDragEnd?.({
+          onDragEnd?.(nodeId, {
             x: nodePosition.x + dx / screenScale,
             y: nodePosition.y + dy / screenScale,
           });
@@ -106,8 +108,27 @@ function Node({
       window.addEventListener("mousemove", handleMouseMove);
       window.addEventListener("mouseup", handleMouseUp);
     },
-    [nodePosition, screenScale, onChangePosition, onDragStart, onDragEnd],
+    [
+      nodeId,
+      nodePosition,
+      viewportRef,
+      onChangePosition,
+      onDragStart,
+      onDragEnd,
+    ],
   );
+
+  /**
+   * `onContextMenu` and `onClick` are given to the DOM, which only hands back an
+   * event - the node id is added here so Screen can pass the same handler to
+   * every node instead of one closure per node.
+   */
+  const handleContextMenu = useCallback(
+    (event) => onContextMenu?.(event, nodeId),
+    [onContextMenu, nodeId],
+  );
+
+  const handleClick = useCallback(() => onClick?.(nodeId), [onClick, nodeId]);
 
   const onOutputPortConnected = useCallback(
     ({ source, target }) => {
@@ -144,10 +165,7 @@ function Node({
           return acc;
         }, {});
 
-      onValueChange?.({
-        ...value,
-        values: newValues,
-      });
+      onValueChange?.(nodeId, newValues);
     }
   }, [nodeInputs]);
 
@@ -170,8 +188,8 @@ function Node({
           currentTheme?.nodes?.common?.body?.background,
         border: highlight
           ? `3px solid ${highlight.color}`
-          : currentTheme?.nodes?.[nodeType?.type]?.body?.border ??
-            currentTheme?.nodes?.common?.body?.border,
+          : (currentTheme?.nodes?.[nodeType?.type]?.body?.border ??
+            currentTheme?.nodes?.common?.body?.border),
         boxShadow: highlight ? `0 0 14px 2px ${highlight.color}` : undefined,
         color:
           currentTheme?.nodes?.[nodeType?.type]?.body?.color ??
@@ -180,8 +198,8 @@ function Node({
         cursor: canMove ? "grab" : onClick ? "pointer" : null,
       }}
       onMouseDown={handleMouseDown}
-      onContextMenu={onContextMenu}
-      onClick={onClick}
+      onContextMenu={onContextMenu ? handleContextMenu : undefined}
+      onClick={onClick ? handleClick : undefined}
     >
       {highlight?.label && (
         <span
@@ -232,12 +250,9 @@ function Node({
                 name={input.name}
                 value={nodeValues[input.name]}
                 onValueChange={(v1) => {
-                  onValueChange?.({
-                    ...value,
-                    values: {
-                      ...value.values,
-                      [input.name]: v1,
-                    },
+                  onValueChange?.(nodeId, {
+                    ...value.values,
+                    [input.name]: v1,
                   });
                 }}
                 nodeId={nodeId}

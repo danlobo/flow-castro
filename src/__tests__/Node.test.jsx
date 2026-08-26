@@ -38,6 +38,7 @@ jest.mock("../ScreenContext.jsx", () => ({
     dragStart: jest.fn(),
     dragEnd: jest.fn(),
   }),
+  useScreenViewportRef: () => ({ current: { scale: 1, position: { x: 0, y: 0 } } }),
 }));
 
 jest.mock("../ThemeProvider.jsx", () => ({

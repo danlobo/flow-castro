@@ -41,7 +41,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "up": "npm version patch"
+    "up": "npm version patch",
+    "perf": "node perf/run.mjs"
   },
   "eslintConfig": {
     "extends": [

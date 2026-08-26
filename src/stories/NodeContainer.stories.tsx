@@ -250,3 +250,43 @@ PortTypes.args = {
   debugMode: false,
   viewMode: 'select'
 }
+/**
+ * Stress test: a 1000-node flow, for eyeballing what the perf harness in
+ * `perf/` measures (`npm run perf`).
+ */
+const makeStressState = (count: number, cols = 20) => {
+  const nodes: Record<string, any> = {}
+  for (let i = 0; i < count; i++) {
+    nodes[`n${i}`] = {
+      id: `n${i}`,
+      name: `String ${i}`,
+      type: 'string',
+      position: { x: (i % cols) * 560, y: Math.floor(i / cols) * 320 },
+      values: { string: `value ${i}` },
+      size: { width: 450, height: 148.4375 },
+      connections: { inputs: [], outputs: [] }
+    }
+  }
+  for (let i = 0; i < count - 1; i++) {
+    const src = nodes[`n${i}`]
+    const dst = nodes[`n${i + 1}`]
+    const conn: any = { name: 'string', node: dst.id, port: 'string', type: 'string' }
+    if (i % 7 === 0) conn.waypoints = [{ x: src.position.x + 505, y: src.position.y + 40 }]
+    src.connections.outputs.push(conn)
+    dst.connections.inputs.push({ name: 'string', node: src.id, port: 'string', type: 'string' })
+  }
+  return { nodes }
+}
+
+export const Stress1000 = Tpl.bind({});
+Stress1000.args = {
+  theme: null,
+  themes: null,
+  nodeTypes,
+  portTypes,
+  onChangeState: fn(),
+  initialState: makeStressState(1000),
+  state: {},
+  debugMode: false,
+  viewMode: 'select'
+}

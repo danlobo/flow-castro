@@ -28,3 +28,6 @@ yarn-error.log*
 *.tgz
 dist/
 .yarn
+# perf harness
+/perf/.build
+/perf/results

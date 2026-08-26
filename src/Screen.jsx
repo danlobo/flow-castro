@@ -829,6 +829,147 @@ function Screen({
     setSnapToGrid((prev) => !prev);
   }, []);
 
+  /**
+   * Every node is handed the same handler instances and the node id travels
+   * with the call, instead of a closure being built per node on every render.
+   * A fresh closure per node was defeating `memo(Node)` outright: moving a
+   * single node re-rendered all of them. The volatile values the handlers need
+   * are read from a ref, refreshed below on each render, so a stable identity
+   * never means a stale read.
+   */
+  const nodeHandlerDeps = useRef({});
+  nodeHandlerDeps.current = {
+    state,
+    i18n,
+    nodeTypes,
+    selectedNodes,
+    moveHandler,
+    handleValueChange,
+    cloneNode,
+    removeNodes,
+    organizeFlow,
+    onNodeClick,
+  };
+
+  /** Set from inside the ContextMenu render prop, which is where it exists. */
+  const contextMenuRef = useRef(null);
+
+  const handleNodeValueChange = useCallback((nodeId, values) => {
+    nodeHandlerDeps.current.handleValueChange(nodeId, values);
+  }, []);
+
+  const handleNodePositionChange = useCallback((nodeId, position) => {
+    const { state: current, moveHandler: move } = nodeHandlerDeps.current;
+    const node = current?.nodes?.[nodeId];
+    if (node) move(node, position, false);
+  }, []);
+
+  const handleNodeDragEnd = useCallback((nodeId, position) => {
+    const { state: current, moveHandler: move } = nodeHandlerDeps.current;
+    const node = current?.nodes?.[nodeId];
+    if (node) move(node, position, true);
+  }, []);
+
+  const handleNodeClick = useCallback((nodeId) => {
+    nodeHandlerDeps.current.onNodeClick?.(nodeId);
+  }, []);
+
+  const handleNodeResize = useCallback(
+    (nodeId, size) => {
+      setState((prev) => {
+        const node = prev.nodes?.[nodeId];
+        if (!node) return prev;
+
+        return {
+          ...prev,
+          nodes: {
+            ...prev.nodes,
+            [nodeId]: {
+              ...node,
+              size,
+              connections: {
+                ...node.connections,
+                outputs: [...(node.connections?.outputs ?? [])],
+              },
+            },
+          },
+        };
+      });
+    },
+    [setState],
+  );
+
+  const handleNodeContextMenu = useCallback((event, nodeId) => {
+    const {
+      state: current,
+      i18n: currentI18n,
+      nodeTypes: currentNodeTypes,
+      selectedNodes: currentSelection,
+      cloneNode: clone,
+      removeNodes: remove,
+      organizeFlow: organize,
+    } = nodeHandlerDeps.current;
+
+    const nodeDef = currentNodeTypes?.[current?.nodes?.[nodeId]?.type];
+
+    contextMenuRef.current?.(event, [
+      !nodeDef?.root
+        ? {
+            label: i(
+              currentI18n,
+              "contextMenu.cloneThisNode",
+              {},
+              "Clone this node",
+            ),
+            onClick: () => {
+              clone(nodeId);
+            },
+          }
+        : null,
+      currentSelection?.length > 1
+        ? {
+            label: i(
+              currentI18n,
+              "contextMenu.organizeSelection",
+              {},
+              "Organize selection",
+            ),
+            onClick: () => {
+              organize(currentSelection);
+            },
+          }
+        : null,
+      !nodeDef?.root
+        ? {
+            label: i(
+              currentI18n,
+              "contextMenu.removeThisNode",
+              {},
+              "Remove this node",
+            ),
+            style: { color: "red" },
+            onClick: () => {
+              remove([nodeId]);
+            },
+          }
+        : null,
+      currentSelection?.length > 0
+        ? {
+            label: i(
+              currentI18n,
+              "contextMenu.removeSelectedNodes",
+              {},
+              "Remove selected nodes",
+            ),
+            style: { color: "red" },
+            onClick: () => {
+              remove(currentSelection);
+            },
+          }
+        : null,
+    ]);
+  }, []);
+
   if (!state) return null;
 
   return (
@@ -907,122 +1048,126 @@ function Screen({
               {/* Painel de status */}
               <StatusPanel scale={scale} position={position} />
               <ContextMenu containerRef={screenRef} i18n={i18n}>
-                {({ handleContextMenu }) => (
-                  <TransformComponent
-                    contentClass="main"
-                    wrapperStyle={wrapperStyle}
-                    wrapperProps={wrapperProps(handleContextMenu)}
-                  >
-                    {state?.nodes &&
-                      Object.values(state.nodes).map((node, index) => {
-                        const nodeDef = nodeTypes[node.type];
+                {({ handleContextMenu }) => {
+                  // The node menu is opened from a handler shared by every
+                  // node, so the opener travels by ref rather than by closure.
+                  contextMenuRef.current = handleContextMenu;
 
-                        if (node.type === "comment")
-                          return (
-                            <Comment
-                              nodeId={node.id}
-                              text={node.value || ""}
-                              title={node.title || ""}
-                              isSelected={selectedNodes.includes(node.id)}
-                              onChangeText={(value) => {
-                                setStateAndNotify((prev) => ({
-                                  ...prev,
-                                  nodes: {
-                                    ...prev.nodes,
-                                    [node.id]: {
-                                      ...prev.nodes[node.id],
-                                      value,
+                  return (
+                    <TransformComponent
+                      contentClass="main"
+                      wrapperStyle={wrapperStyle}
+                      wrapperProps={wrapperProps(handleContextMenu)}
+                    >
+                      {state?.nodes &&
+                        Object.values(state.nodes).map((node, index) => {
+                          const nodeDef = nodeTypes[node.type];
+
+                          if (node.type === "comment")
+                            return (
+                              <Comment
+                                nodeId={node.id}
+                                text={node.value || ""}
+                                title={node.title || ""}
+                                isSelected={selectedNodes.includes(node.id)}
+                                onChangeText={(value) => {
+                                  setStateAndNotify((prev) => ({
+                                    ...prev,
+                                    nodes: {
+                                      ...prev.nodes,
+                                      [node.id]: {
+                                        ...prev.nodes[node.id],
+                                        value,
+                                      },
                                     },
-                                  },
-                                }));
-                              }}
-                              onChangeTitle={(title) => {
-                                setStateAndNotify((prev) => ({
-                                  ...prev,
-                                  nodes: {
-                                    ...prev.nodes,
-                                    [node.id]: {
-                                      ...prev.nodes[node.id],
-                                      title,
+                                  }));
+                                }}
+                                onChangeTitle={(title) => {
+                                  setStateAndNotify((prev) => ({
+                                    ...prev,
+                                    nodes: {
+                                      ...prev.nodes,
+                                      [node.id]: {
+                                        ...prev.nodes[node.id],
+                                        title,
+                                      },
                                     },
-                                  },
-                                }));
-                              }}
-                              key={node.id}
-                              id={node.id}
-                              position={node.position}
-                              size={node.size}
-                              onResize={(size) => {
-                                if (snapToGrid) {
-                                  size.w =
-                                    Math.round(size.w / gridSize) * gridSize;
-                                  size.h =
-                                    Math.round(size.h / gridSize) * gridSize;
+                                  }));
+                                }}
+                                key={node.id}
+                                id={node.id}
+                                position={node.position}
+                                size={node.size}
+                                onResize={(size) => {
+                                  if (snapToGrid) {
+                                    size.w =
+                                      Math.round(size.w / gridSize) * gridSize;
+                                    size.h =
+                                      Math.round(size.h / gridSize) * gridSize;
+                                  }
+
+                                  setStateAndNotify((prev) => ({
+                                    ...prev,
+                                    nodes: {
+                                      ...prev.nodes,
+                                      [node.id]: {
+                                        ...prev.nodes[node.id],
+                                        size,
+                                      },
+                                    },
+                                  }));
+                                }}
+                                onMove={(position) =>
+                                  moveHandler(node, position, false)
                                 }
+                                onMoveEnd={(position) =>
+                                  moveHandler(node, position, true)
+                                }
+                                onContextMenu={(e) =>
+                                  handleContextMenu(e, [
+                                    {
+                                      label: i(
+                                        i18n,
+                                        "contextMenu.cloneThisComment",
+                                        {},
+                                        "Clone this comment",
+                                      ),
+                                      onClick: () => {
+                                        cloneNode(node.id);
+                                      },
+                                    },
+                                    {
+                                      label: i(
+                                        i18n,
+                                        "contextMenu.removeThisComment",
+                                        {},
+                                        "Remove this comment",
+                                      ),
+                                      style: { color: "red" },
+                                      onClick: () => {
+                                        removeNodes([node.id]);
+                                      },
+                                    },
+                                    selectedNodes?.length > 0
+                                      ? {
+                                          label: i(
+                                            i18n,
+                                            "contextMenu.removeSelectedNodes",
+                                            {},
+                                            "Remove selected nodes",
+                                          ),
+                                          style: { color: "red" },
+                                          onClick: () => {
+                                            removeNodes(selectedNodes);
+                                          },
+                                        }
+                                      : null,
+                                  ])
+                                }
+                              />
+                            );
 
-                                setStateAndNotify((prev) => ({
-                                  ...prev,
-                                  nodes: {
-                                    ...prev.nodes,
-                                    [node.id]: {
-                                      ...prev.nodes[node.id],
-                                      size,
-                                    },
-                                  },
-                                }));
-                              }}
-                              onMove={(position) =>
-                                moveHandler(node, position, false)
-                              }
-                              onMoveEnd={(position) =>
-                                moveHandler(node, position, true)
-                              }
-                              onContextMenu={(e) =>
-                                handleContextMenu(e, [
-                                  {
-                                    label: i(
-                                      i18n,
-                                      "contextMenu.cloneThisComment",
-                                      {},
-                                      "Clone this comment",
-                                    ),
-                                    onClick: () => {
-                                      cloneNode(node.id);
-                                    },
-                                  },
-                                  {
-                                    label: i(
-                                      i18n,
-                                      "contextMenu.removeThisComment",
-                                      {},
-                                      "Remove this comment",
-                                    ),
-                                    style: { color: "red" },
-                                    onClick: () => {
-                                      removeNodes([node.id]);
-                                    },
-                                  },
-                                  selectedNodes?.length > 0
-                                    ? {
-                                        label: i(
-                                          i18n,
-                                          "contextMenu.removeSelectedNodes",
-                                          {},
-                                          "Remove selected nodes",
-                                        ),
-                                        style: { color: "red" },
-                                        onClick: () => {
-                                          removeNodes(selectedNodes);
-                                        },
-                                      }
-                                    : null,
-                                ])
-                              }
-                            />
-                          );
-
-                        return (
-                          <>
+                          return (
                             <Node
                               id={`node_${node.id}`}
                               key={`node_${node.id}`}
@@ -1033,25 +1178,13 @@ function Screen({
                               value={node}
                               isSelected={selectedNodes.includes(node.id)}
                               onValueChange={
-                                readOnly
-                                  ? undefined
-                                  : (v) => {
-                                      handleValueChange(node.id, {
-                                        ...v.values,
-                                      });
-                                    }
+                                readOnly ? undefined : handleNodeValueChange
                               }
                               onChangePosition={
-                                readOnly
-                                  ? undefined
-                                  : (position) =>
-                                      moveHandler(node, position, false)
+                                readOnly ? undefined : handleNodePositionChange
                               }
                               onDragEnd={
-                                readOnly
-                                  ? undefined
-                                  : (position) =>
-                                      moveHandler(node, position, true)
+                                readOnly ? undefined : handleNodeDragEnd
                               }
                               containerRef={screenRef}
                               canMove={readOnly ? false : canMove}
@@ -1059,418 +1192,351 @@ function Screen({
                               highlight={highlightedNodes?.[node.id]}
                               readOnly={readOnly}
                               onClick={
-                                onNodeClick
-                                  ? () => onNodeClick(node.id)
-                                  : undefined
+                                onNodeClick ? handleNodeClick : undefined
                               }
                               onContextMenu={
-                                readOnly
-                                  ? undefined
-                                  : (e) =>
-                                      handleContextMenu(e, [
-                                        !nodeDef.root
-                                          ? {
-                                              label: i(
-                                                i18n,
-                                                "contextMenu.cloneThisNode",
-                                                {},
-                                                "Clone this node",
-                                              ),
-                                              onClick: () => {
-                                                cloneNode(node.id);
-                                              },
-                                            }
-                                          : null,
-                                        selectedNodes?.length > 1
-                                          ? {
-                                              label: i(
-                                                i18n,
-                                                "contextMenu.organizeSelection",
-                                                {},
-                                                "Organize selection",
-                                              ),
-                                              onClick: () => {
-                                                organizeFlow(selectedNodes);
-                                              },
-                                            }
-                                          : null,
-                                        !nodeDef.root
-                                          ? {
-                                              label: i(
-                                                i18n,
-                                                "contextMenu.removeThisNode",
-                                                {},
-                                                "Remove this node",
-                                              ),
-                                              style: { color: "red" },
-                                              onClick: () => {
-                                                removeNodes([node.id]);
-                                              },
-                                            }
-                                          : null,
-                                        selectedNodes?.length > 0
-                                          ? {
-                                              label: i(
-                                                i18n,
-                                                "contextMenu.removeSelectedNodes",
-                                                {},
-                                                "Remove selected nodes",
-                                              ),
-                                              style: { color: "red" },
-                                              onClick: () => {
-                                                removeNodes(selectedNodes);
-                                              },
-                                            }
-                                          : null,
-                                      ])
+                                readOnly ? undefined : handleNodeContextMenu
                               }
-                              onResize={(size) => {
-                                setState((prev) => ({
-                                  ...prev,
-                                  nodes: {
-                                    ...prev.nodes,
-                                    [node.id]: {
-                                      ...prev.nodes[node.id],
-                                      size,
-                                      connections: {
-                                        ...prev.nodes[node.id].connections,
-                                        outputs: [
-                                          ...(prev.nodes[node.id].connections
-                                            ?.outputs ?? []),
-                                        ],
-                                      },
-                                    },
-                                  },
-                                }));
-                              }}
+                              onResize={handleNodeResize}
                             />
-                          </>
-                        );
-                      })}
+                          );
+                        })}
 
-                    {/* Camada única de SVG para todas as conexões */}
-                    <svg
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        width: (rect ? rect.width : 0) / (scale || 1),
-                        height: (rect ? rect.height : 0) / (scale || 1),
-                        overflow: "visible",
-                        zIndex: -1,
-                        pointerEvents: "none",
-                      }}
-                    >
-                      {state?.nodes &&
-                        Object.values(state.nodes).map((node) =>
-                          node.connections?.outputs?.map(
-                            (connection, index) => {
-                              const srcNode = node.id;
-                              const srcPort = connection.name;
-                              const dstNode = connection.node;
-                              const dstPort = connection.port;
-                              const connType = connection.type;
-                              const waypoints = connection.waypoints || [];
+                      {/* Camada única de SVG para todas as conexões */}
+                      <svg
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: (rect ? rect.width : 0) / (scale || 1),
+                          height: (rect ? rect.height : 0) / (scale || 1),
+                          overflow: "visible",
+                          zIndex: -1,
+                          pointerEvents: "none",
+                        }}
+                      >
+                        {state?.nodes &&
+                          Object.values(state.nodes).map((node) =>
+                            node.connections?.outputs?.map(
+                              (connection, index) => {
+                                const srcNode = node.id;
+                                const srcPort = connection.name;
+                                const dstNode = connection.node;
+                                const dstPort = connection.port;
+                                const connType = connection.type;
+                                const waypoints = connection.waypoints || [];
 
-                              const srcBox = screenRef.current?.querySelector(
-                                `#card-${CSS.escape(srcNode)}`,
-                              );
-                              const dstBox = screenRef.current?.querySelector(
-                                `#card-${CSS.escape(dstNode)}`,
-                              );
+                                const srcBox = screenRef.current?.querySelector(
+                                  `#card-${CSS.escape(srcNode)}`,
+                                );
+                                const dstBox = screenRef.current?.querySelector(
+                                  `#card-${CSS.escape(dstNode)}`,
+                                );
 
-                              const srcElem = screenRef.current?.querySelector(
-                                `#card-${CSS.escape(srcNode)}-output-${CSS.escape(srcPort)}`,
-                              );
-                              const dstElem = screenRef.current?.querySelector(
-                                `#card-${CSS.escape(dstNode)}-input-${CSS.escape(dstPort)}`,
-                              );
+                                const srcElem =
+                                  screenRef.current?.querySelector(
+                                    `#card-${CSS.escape(srcNode)}-output-${CSS.escape(srcPort)}`,
+                                  );
+                                const dstElem =
+                                  screenRef.current?.querySelector(
+                                    `#card-${CSS.escape(dstNode)}-input-${CSS.escape(dstPort)}`,
+                                  );
 
-                              const containerRect = getContRect();
-                              if (
-                                !srcElem ||
-                                !dstElem ||
-                                !containerRect ||
-                                !srcBox ||
-                                !dstBox
-                              ) {
-                                return null;
-                              }
+                                const containerRect = getContRect();
+                                if (
+                                  !srcElem ||
+                                  !dstElem ||
+                                  !containerRect ||
+                                  !srcBox ||
+                                  !dstBox
+                                ) {
+                                  return null;
+                                }
 
-                              const srcRect = srcElem.getBoundingClientRect();
-                              const dstRect = dstElem.getBoundingClientRect();
+                                const srcRect = srcElem.getBoundingClientRect();
+                                const dstRect = dstElem.getBoundingClientRect();
 
-                              const srcBoxRect = srcBox.getBoundingClientRect();
-                              const dstBoxRect = dstBox.getBoundingClientRect();
+                                const srcBoxRect =
+                                  srcBox.getBoundingClientRect();
+                                const dstBoxRect =
+                                  dstBox.getBoundingClientRect();
 
-                              const screenRect = getContRect();
+                                const screenRect = getContRect();
 
-                              const srcPos = {
-                                x:
-                                  (srcRect.x -
-                                    position.x -
-                                    screenRect.left +
-                                    srcRect.width / 2) /
-                                  scale,
-                                y:
-                                  (srcRect.y -
-                                    position.y -
-                                    screenRect.top +
-                                    srcRect.height / 2) /
-                                  scale,
-                              };
+                                const srcPos = {
+                                  x:
+                                    (srcRect.x -
+                                      position.x -
+                                      screenRect.left +
+                                      srcRect.width / 2) /
+                                    scale,
+                                  y:
+                                    (srcRect.y -
+                                      position.y -
+                                      screenRect.top +
+                                      srcRect.height / 2) /
+                                    scale,
+                                };
 
-                              const dstPos = {
-                                x:
-                                  (dstRect.x -
-                                    position.x -
-                                    screenRect.left +
-                                    dstRect.width / 2) /
-                                  scale,
-                                y:
-                                  (dstRect.y -
-                                    position.y -
-                                    screenRect.top +
-                                    dstRect.height / 2) /
-                                  scale,
-                              };
+                                const dstPos = {
+                                  x:
+                                    (dstRect.x -
+                                      position.x -
+                                      screenRect.left +
+                                      dstRect.width / 2) /
+                                    scale,
+                                  y:
+                                    (dstRect.y -
+                                      position.y -
+                                      screenRect.top +
+                                      dstRect.height / 2) /
+                                    scale,
+                                };
 
-                              const box1 = {
-                                x:
-                                  (srcBoxRect.x -
-                                    position.x -
-                                    screenRect.left) /
-                                  scale,
-                                y:
-                                  (srcBoxRect.y - position.y - screenRect.top) /
-                                  scale,
-                                w: srcBoxRect.width,
-                                h: srcBoxRect.height,
-                              };
+                                const box1 = {
+                                  x:
+                                    (srcBoxRect.x -
+                                      position.x -
+                                      screenRect.left) /
+                                    scale,
+                                  y:
+                                    (srcBoxRect.y -
+                                      position.y -
+                                      screenRect.top) /
+                                    scale,
+                                  w: srcBoxRect.width,
+                                  h: srcBoxRect.height,
+                                };
 
-                              const box2 = {
-                                x:
-                                  (dstBoxRect.x -
-                                    position.x -
-                                    screenRect.left) /
-                                  scale,
-                                y:
-                                  (dstBoxRect.y - position.y - screenRect.top) /
-                                  scale,
-                                w: dstBoxRect.width,
-                                h: dstBoxRect.height,
-                              };
+                                const box2 = {
+                                  x:
+                                    (dstBoxRect.x -
+                                      position.x -
+                                      screenRect.left) /
+                                    scale,
+                                  y:
+                                    (dstBoxRect.y -
+                                      position.y -
+                                      screenRect.top) /
+                                    scale,
+                                  w: dstBoxRect.width,
+                                  h: dstBoxRect.height,
+                                };
 
-                              const connKey = `${srcNode}:${srcPort}>${dstNode}:${dstPort}`;
-                              const highlight =
-                                highlightedConnections?.[connKey] ?? null;
+                                const connKey = `${srcNode}:${srcPort}>${dstNode}:${dstPort}`;
+                                const highlight =
+                                  highlightedConnections?.[connKey] ?? null;
 
-                              return (
-                                <ConnectorCurve
-                                  key={`connector-${srcNode}-${srcPort}-${dstNode}-${dstPort}`}
-                                  type={portTypes[connType]}
-                                  src={srcPos}
-                                  dst={dstPos}
-                                  scale={scale}
-                                  n1Box={box1}
-                                  n2Box={box2}
-                                  index={index}
-                                  waypoints={waypoints}
-                                  highlight={highlight}
-                                  onUpdateWaypoint={(
-                                    waypointIndex,
-                                    newPosition,
-                                  ) =>
-                                    updateWaypointPosition(
-                                      srcNode,
-                                      srcPort,
-                                      dstNode,
-                                      dstPort,
+                                return (
+                                  <ConnectorCurve
+                                    key={`connector-${srcNode}-${srcPort}-${dstNode}-${dstPort}`}
+                                    type={portTypes[connType]}
+                                    src={srcPos}
+                                    dst={dstPos}
+                                    scale={scale}
+                                    n1Box={box1}
+                                    n2Box={box2}
+                                    index={index}
+                                    waypoints={waypoints}
+                                    highlight={highlight}
+                                    onUpdateWaypoint={(
                                       waypointIndex,
                                       newPosition,
-                                    )
-                                  }
-                                  isWaypointSelected={(waypointIndex) =>
-                                    isWaypointSelected({
-                                      srcNode,
-                                      srcPort,
-                                      dstNode,
-                                      dstPort,
-                                      waypointIndex,
-                                    })
-                                  }
-                                  onWaypointMouseDown={(e, waypointIndex) => {
-                                    if (e.ctrlKey) {
-                                      removeWaypointFromSelection({
+                                    ) =>
+                                      updateWaypointPosition(
                                         srcNode,
                                         srcPort,
                                         dstNode,
                                         dstPort,
                                         waypointIndex,
-                                      });
-                                    } else if (e.shiftKey) {
-                                      addWaypointToSelection({
+                                        newPosition,
+                                      )
+                                    }
+                                    isWaypointSelected={(waypointIndex) =>
+                                      isWaypointSelected({
                                         srcNode,
                                         srcPort,
                                         dstNode,
                                         dstPort,
                                         waypointIndex,
-                                      });
-                                    } else {
-                                      if (
-                                        !isWaypointSelected({
+                                      })
+                                    }
+                                    onWaypointMouseDown={(e, waypointIndex) => {
+                                      if (e.ctrlKey) {
+                                        removeWaypointFromSelection({
                                           srcNode,
                                           srcPort,
                                           dstNode,
                                           dstPort,
                                           waypointIndex,
-                                        })
-                                      ) {
-                                        setSelectedWaypoints([
-                                          {
+                                        });
+                                      } else if (e.shiftKey) {
+                                        addWaypointToSelection({
+                                          srcNode,
+                                          srcPort,
+                                          dstNode,
+                                          dstPort,
+                                          waypointIndex,
+                                        });
+                                      } else {
+                                        if (
+                                          !isWaypointSelected({
                                             srcNode,
                                             srcPort,
                                             dstNode,
                                             dstPort,
                                             waypointIndex,
-                                          },
-                                        ]);
+                                          })
+                                        ) {
+                                          setSelectedWaypoints([
+                                            {
+                                              srcNode,
+                                              srcPort,
+                                              dstNode,
+                                              dstPort,
+                                              waypointIndex,
+                                            },
+                                          ]);
+                                        }
                                       }
+                                    }}
+                                    onWaypointContextMenu={(e, waypointIndex) =>
+                                      handleContextMenu(
+                                        e,
+                                        [
+                                          canMove
+                                            ? {
+                                                label: i(
+                                                  i18n,
+                                                  "contextMenu.removeWaypoint",
+                                                  {},
+                                                  "Remove waypoint",
+                                                ),
+                                                style: { color: "red" },
+                                                onClick: () => {
+                                                  removeWaypoint(
+                                                    srcNode,
+                                                    srcPort,
+                                                    dstNode,
+                                                    dstPort,
+                                                    waypointIndex,
+                                                  );
+                                                },
+                                              }
+                                            : null,
+                                        ].filter(Boolean),
+                                      )
                                     }
-                                  }}
-                                  onWaypointContextMenu={(e, waypointIndex) =>
-                                    handleContextMenu(
-                                      e,
-                                      [
-                                        canMove
-                                          ? {
-                                              label: i(
-                                                i18n,
-                                                "contextMenu.removeWaypoint",
-                                                {},
-                                                "Remove waypoint",
-                                              ),
-                                              style: { color: "red" },
-                                              onClick: () => {
-                                                removeWaypoint(
-                                                  srcNode,
-                                                  srcPort,
-                                                  dstNode,
-                                                  dstPort,
-                                                  waypointIndex,
-                                                );
-                                              },
-                                            }
-                                          : null,
-                                      ].filter(Boolean),
-                                    )
-                                  }
-                                  onContextMenu={(e) =>
-                                    handleContextMenu(
-                                      e,
-                                      [
-                                        canMove
-                                          ? {
-                                              label: i(
-                                                i18n,
-                                                "contextMenu.addWaypoint",
-                                                {},
-                                                "Add waypoint",
-                                              ),
-                                              onClick: () => {
-                                                const contextMenuRect =
-                                                  getContRect();
-                                                const pointerX =
-                                                  (e.clientX -
-                                                    contextMenuRect.left -
-                                                    position.x) /
-                                                  scale;
-                                                const pointerY =
-                                                  (e.clientY -
-                                                    contextMenuRect.top -
-                                                    position.y) /
-                                                  scale;
+                                    onContextMenu={(e) =>
+                                      handleContextMenu(
+                                        e,
+                                        [
+                                          canMove
+                                            ? {
+                                                label: i(
+                                                  i18n,
+                                                  "contextMenu.addWaypoint",
+                                                  {},
+                                                  "Add waypoint",
+                                                ),
+                                                onClick: () => {
+                                                  const contextMenuRect =
+                                                    getContRect();
+                                                  const pointerX =
+                                                    (e.clientX -
+                                                      contextMenuRect.left -
+                                                      position.x) /
+                                                    scale;
+                                                  const pointerY =
+                                                    (e.clientY -
+                                                      contextMenuRect.top -
+                                                      position.y) /
+                                                    scale;
 
-                                                addWaypoint(
-                                                  srcNode,
-                                                  srcPort,
-                                                  dstNode,
-                                                  dstPort,
-                                                  { x: pointerX, y: pointerY },
-                                                );
-                                              },
-                                            }
-                                          : null,
-                                        canMove
-                                          ? {
-                                              label: i(
-                                                i18n,
-                                                "contextMenu.removeThisConnection",
-                                                {},
-                                                "Remove this connection",
-                                              ),
-                                              style: { color: "red" },
-                                              onClick: () => {
-                                                removeConnectionFromOutput(
-                                                  srcNode,
-                                                  srcPort,
-                                                  dstNode,
-                                                  dstPort,
-                                                );
-                                              },
-                                            }
-                                          : null,
-                                      ].filter(Boolean),
-                                    )
-                                  }
-                                />
-                              );
-                            },
-                          ),
-                        )}
+                                                  addWaypoint(
+                                                    srcNode,
+                                                    srcPort,
+                                                    dstNode,
+                                                    dstPort,
+                                                    {
+                                                      x: pointerX,
+                                                      y: pointerY,
+                                                    },
+                                                  );
+                                                },
+                                              }
+                                            : null,
+                                          canMove
+                                            ? {
+                                                label: i(
+                                                  i18n,
+                                                  "contextMenu.removeThisConnection",
+                                                  {},
+                                                  "Remove this connection",
+                                                ),
+                                                style: { color: "red" },
+                                                onClick: () => {
+                                                  removeConnectionFromOutput(
+                                                    srcNode,
+                                                    srcPort,
+                                                    dstNode,
+                                                    dstPort,
+                                                  );
+                                                },
+                                              }
+                                            : null,
+                                        ].filter(Boolean),
+                                      )
+                                    }
+                                  />
+                                );
+                              },
+                            ),
+                          )}
 
-                      {(dragInfo || isInFadeout) && dstDragPosition ? (
-                        <ConnectorCurveForward
-                          tmp
-                          invalid={isInFadeout}
-                          src={{
-                            x:
-                              (((dragInfo && dragInfo.startX) ||
-                                (isInFadeout && dstDragPosition.srcX)) -
-                                getContRect().left -
-                                position.x +
-                                PORT_SIZE / 2 -
-                                2) /
-                              scale,
-                            y:
-                              (((dragInfo && dragInfo.startY) ||
-                                (isInFadeout && dstDragPosition.srcY)) -
-                                getContRect().top -
-                                position.y +
-                                PORT_SIZE / 2 -
-                                2) /
-                              scale,
-                          }}
-                          dst={{
-                            x:
-                              (dstDragPosition.x -
-                                window.scrollX -
-                                getContRect().left -
-                                position.x) /
-                              scale,
-                            y:
-                              (dstDragPosition.y -
-                                window.scrollY -
-                                getContRect().top -
-                                position.y) /
-                              scale,
-                          }}
-                          scale={scale}
-                        />
-                      ) : null}
-                    </svg>
-                  </TransformComponent>
-                )}
+                        {(dragInfo || isInFadeout) && dstDragPosition ? (
+                          <ConnectorCurveForward
+                            tmp
+                            invalid={isInFadeout}
+                            src={{
+                              x:
+                                (((dragInfo && dragInfo.startX) ||
+                                  (isInFadeout && dstDragPosition.srcX)) -
+                                  getContRect().left -
+                                  position.x +
+                                  PORT_SIZE / 2 -
+                                  2) /
+                                scale,
+                              y:
+                                (((dragInfo && dragInfo.startY) ||
+                                  (isInFadeout && dstDragPosition.srcY)) -
+                                  getContRect().top -
+                                  position.y +
+                                  PORT_SIZE / 2 -
+                                  2) /
+                                scale,
+                            }}
+                            dst={{
+                              x:
+                                (dstDragPosition.x -
+                                  window.scrollX -
+                                  getContRect().left -
+                                  position.x) /
+                                scale,
+                              y:
+                                (dstDragPosition.y -
+                                  window.scrollY -
+                                  getContRect().top -
+                                  position.y) /
+                                scale,
+                            }}
+                            scale={scale}
+                          />
+                        ) : null}
+                      </svg>
+                    </TransformComponent>
+                  );
+                }}
               </ContextMenu>
             </>
           );

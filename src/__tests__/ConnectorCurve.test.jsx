@@ -48,6 +48,7 @@ jest.mock("../ScreenContext", () => ({
   useScreenContext: () => ({
     scale: 1,
   }),
+  useScreenViewportRef: () => ({ current: { scale: 1, position: { x: 0, y: 0 } } }),
 }));
 
 global.SVGPathElement = class SVGPathElement {};

@@ -14,6 +14,7 @@ jest.mock("../ScreenContext.jsx", () => ({
     scale: 1,
     position: { x: 0, y: 0 },
   }),
+  useScreenViewportRef: () => ({ current: { scale: 1, position: { x: 0, y: 0 } } }),
 }));
 
 jest.mock("../ThemeProvider.jsx", () => ({
