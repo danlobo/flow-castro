@@ -467,7 +467,10 @@ export function useNodeOperations({
 
         if (
           !srcNode.connections.outputs.find(
-            (c) => c.node === dstNode.id && c.name === dstPort.name
+            (c) =>
+              c.node === dstNode.id &&
+              c.name === srcPort.name &&
+              c.port === dstPort.name
           )
         ) {
           srcNode.connections.outputs.push({
@@ -481,7 +484,10 @@ export function useNodeOperations({
 
         if (
           !dstNode.connections.inputs.find(
-            (c) => c.node === srcNode.id && c.name === srcPort.name
+            (c) =>
+              c.node === srcNode.id &&
+              c.name === dstPort.name &&
+              c.port === srcPort.name
           )
         ) {
           dstNode.connections.inputs.push({

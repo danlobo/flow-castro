@@ -85,3 +85,29 @@
     filter: blur(16px);
   }
 }
+
+.waypointHit {
+  display: none;
+  fill: transparent;
+  stroke: none;
+  pointer-events: all;
+}
+
+@media (any-pointer: coarse) {
+  .waypointHit {
+    display: inline;
+  }
+}
+
+.pathHit {
+  display: none;
+  fill: none;
+  stroke: transparent;
+  pointer-events: stroke;
+}
+
+@media (any-pointer: coarse) {
+  .pathHit {
+    display: inline;
+  }
+}

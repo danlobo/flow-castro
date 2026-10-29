@@ -87,3 +87,94 @@
   border-radius: 0%;
   transform: rotate(45deg);
 }
+
+/* The browser must not scroll or zoom the page while a finger drags a
+   connection out of a port. */
+.port,
+.portOverlay {
+  touch-action: none;
+}
+
+.formContainer {
+  touch-action: auto;
+}
+
+/* Fingers need a bigger target than the cursor: taller rows and an overlay
+   that reaches further out of the node. */
+@media (pointer: coarse) {
+  .port {
+    min-height: calc(var(--port-size) + 16px);
+  }
+
+  .portOverlay {
+    width: calc(100% + 40px);
+  }
+
+  .portOverlay.input {
+    left: -40px;
+  }
+
+  .portOverlay.output {
+    right: -40px;
+  }
+}
+
+/* While a connection is being made, ports show where it can go. Rings are
+   drawn with box-shadow because the diamond shape already uses transform. */
+.portConnector {
+  transition:
+    box-shadow 120ms ease,
+    opacity 120ms ease;
+}
+
+.label {
+  transition: opacity 120ms ease;
+}
+
+.dragSource .portConnector,
+.pendingSource .portConnector {
+  box-shadow: 0 0 0 3px var(--color-bg), 0 0 0 5px var(--color-primary);
+}
+
+.pendingSource .portConnector {
+  animation: pendingPulse 1.2s ease-in-out infinite;
+}
+
+.pendingSource .portOverlay {
+  background-color: color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.compatible .portConnector {
+  box-shadow: 0 0 0 3px var(--color-bg), 0 0 0 5px var(--color-primary);
+}
+
+.compatible .portOverlay {
+  background-color: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+
+.incompatible .portConnector,
+.incompatible .label {
+  opacity: 0.3;
+}
+
+/* The port a dragged connection will land on if released now. */
+.portOverlay.snapTarget {
+  background-color: color-mix(in srgb, var(--color-primary) 22%, transparent);
+}
+
+@keyframes pendingPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px var(--color-bg), 0 0 0 5px var(--color-primary);
+  }
+  50% {
+    box-shadow: 0 0 0 3px var(--color-bg), 0 0 0 9px
+      color-mix(in srgb, var(--color-primary) 35%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pendingSource .portConnector {
+    animation: none;
+  }
+}

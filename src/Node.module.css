@@ -48,3 +48,14 @@
   /* padding-right: 8px; */
   box-sizing: border-box;
 }
+
+/* A finger dragging a node must move the node, not scroll or zoom the page. */
+.movable {
+  touch-action: none;
+}
+
+.movable input,
+.movable textarea,
+.movable select {
+  touch-action: auto;
+}

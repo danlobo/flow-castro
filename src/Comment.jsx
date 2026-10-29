@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import css from "./Comment.module.css";
 import { useScreenViewportRef } from "./ScreenContext.jsx";
+import { trackPointerDrag } from "./util/pointerDrag";
 
 const Comment = ({
   title,
@@ -21,38 +22,62 @@ const Comment = ({
 
   const containerRef = useRef(null);
 
-  const mouseDownHandler = useCallback(
+  const moveStartHandler = useCallback(
     (e) => {
+      if (e.isPrimary === false) return;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
       e.stopPropagation();
 
-      const startX = e.pageX;
-      const startY = e.pageY;
       const { scale: screenScale } = viewportRef.current;
+      const positionAt = (dx, dy) => ({
+        x: position.x + dx / screenScale,
+        y: position.y + dy / screenScale,
+      });
 
-      const mouseMoveHandler = (e) => {
-        const dx = e.pageX - startX;
-        const dy = e.pageY - startY;
-
-        onMove?.({
-          x: position.x + dx / screenScale,
-          y: position.y + dy / screenScale,
-        });
-      };
-      const mouseUpHandler = (e) => {
-        const dx = e.pageX - startX;
-        const dy = e.pageY - startY;
-
-        onMoveEnd?.({
-          x: position.x + dx / screenScale,
-          y: position.y + dy / screenScale,
-        });
-        window.removeEventListener("mousemove", mouseMoveHandler);
-        window.removeEventListener("mouseup", mouseUpHandler);
-      };
-      window.addEventListener("mousemove", mouseMoveHandler);
-      window.addEventListener("mouseup", mouseUpHandler);
+      trackPointerDrag(e, {
+        threshold: 0,
+        onMove: (dx, dy) => onMove?.(positionAt(dx, dy)),
+        onEnd: (dx, dy) => onMoveEnd?.(positionAt(dx, dy)),
+        onCancel: () => onMoveEnd?.(positionAt(0, 0)),
+      });
     },
     [position, onMove, onMoveEnd, viewportRef],
+  );
+
+  /**
+   * The CSS resize grip only answers to a mouse, so fingers and pens resize
+   * through the corner handle instead. The size is written straight to the
+   * element while dragging and reported once at the end, like the grip does.
+   */
+  const resizeStartHandler = useCallback(
+    (e) => {
+      if (e.pointerType === "mouse" || e.isPrimary === false) return;
+      e.stopPropagation();
+
+      const el = containerRef.current;
+      const { scale: screenScale } = viewportRef.current;
+      const startW = el.offsetWidth;
+      const startH = el.offsetHeight;
+      const sizeAt = (dx, dy) => ({
+        w: Math.max(80, startW + dx / screenScale),
+        h: Math.max(40, startH + dy / screenScale),
+      });
+
+      trackPointerDrag(e, {
+        threshold: 0,
+        onMove: (dx, dy) => {
+          const { w, h } = sizeAt(dx, dy);
+          el.style.width = `${w}px`;
+          el.style.height = `${h}px`;
+        },
+        onEnd: (dx, dy) => onResize?.(sizeAt(dx, dy)),
+        onCancel: () => {
+          el.style.width = `${startW}px`;
+          el.style.height = `${startH}px`;
+        },
+      });
+    },
+    [onResize, viewportRef],
   );
 
   useEffect(() => {
@@ -95,8 +120,19 @@ const Comment = ({
       }}
       onContextMenu={onContextMenu}
     >
-      <div className={css.moveHandler} onMouseDown={mouseDownHandler}></div>
-      <div className={css.handler}></div>
+      {/* Focusable so touch screens count the handles as tap targets: the
+          browser otherwise hands a touch near the title to the title input. */}
+      <div
+        className={css.moveHandler}
+        tabIndex={-1}
+        onPointerDown={moveStartHandler}
+        onMouseDown={(e) => e.stopPropagation()}
+      ></div>
+      <div
+        className={css.handler}
+        tabIndex={-1}
+        onPointerDown={resizeStartHandler}
+      ></div>
       <input
         className={css.title}
         placeholder="Comment"

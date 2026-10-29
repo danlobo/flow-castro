@@ -46,7 +46,34 @@ jest.mock("../NodePort.module.css", () => ({
   circle: "circle",
   square: "square",
   diamond: "diamond",
+  pendingSource: "pendingSource",
+  dragSource: "dragSource",
+  compatible: "compatible",
+  incompatible: "incompatible",
 }));
+
+const dragFromPort = (
+  port,
+  { pointerType = "mouse", from = { x: 0, y: 0 }, to = { x: 40, y: 0 } } = {}
+) => {
+  fireEvent.pointerDown(port, { pointerId: 1, pointerType, clientX: from.x, clientY: from.y });
+  fireEvent.pointerMove(window, { pointerId: 1, pointerType, clientX: to.x, clientY: to.y });
+  fireEvent.pointerUp(window, { pointerId: 1, pointerType, clientX: to.x, clientY: to.y });
+};
+
+const tapPort = (port, pointerType = "touch") => {
+  fireEvent.pointerDown(port, { pointerId: 1, pointerType, clientX: 0, clientY: 0 });
+  fireEvent.pointerUp(window, { pointerId: 1, pointerType, clientX: 2, clientY: 1 });
+};
+
+const mockDragContext = (value) =>
+  jest.spyOn(require("../DragContext.jsx"), "useDragContext").mockReturnValue({
+    dragInfo: null,
+    setDragInfo: jest.fn(),
+    pendingConnection: null,
+    setPendingConnection: jest.fn(),
+    ...value,
+  });
 
 jest.mock("../util/throttle", () => ({
   throttle: jest.fn((fn) => fn),
@@ -154,7 +181,7 @@ describe("NodePort Component", () => {
       <NodePort {...defaultProps} hidePort={true} />
     );
 
-    fireEvent.mouseDown(container.querySelector(".port"));
+    dragFromPort(container.querySelector(".port"));
 
     expect(setDragInfoMock).not.toHaveBeenCalled();
   });
@@ -170,7 +197,7 @@ describe("NodePort Component", () => {
       <NodePort {...defaultProps} canMove={false} />
     );
 
-    fireEvent.mouseDown(container.querySelector(".port"));
+    dragFromPort(container.querySelector(".port"));
 
     expect(setDragInfoMock).not.toHaveBeenCalled();
   });
@@ -230,28 +257,269 @@ describe("NodePort Component", () => {
     expect(connector.classList.contains("diamond")).toBeTruthy();
   });
 
-  test("starts dragging when canMove is true and hidePort is false", () => {
-    const setDragInfoMock = jest.fn();
+  describe("connecting", () => {
+    let elementsFromPoint;
 
-    jest
-      .spyOn(require("../DragContext.jsx"), "useDragContext")
-      .mockReturnValue({
-        dragInfo: null,
-        setDragInfo: setDragInfoMock,
+    beforeEach(() => {
+      elementsFromPoint = jest.fn(() => []);
+      document.elementsFromPoint = elementsFromPoint;
+    });
+
+    afterEach(() => {
+      delete document.elementsFromPoint;
+      jest.restoreAllMocks();
+    });
+
+    test("starts dragging once the pointer moves past the threshold", () => {
+      const setDragInfo = jest.fn();
+      mockDragContext({ setDragInfo });
+
+      const { container } = render(<NodePort {...defaultProps} />);
+      const port = container.querySelector(".port");
+
+      fireEvent.pointerDown(port, { pointerId: 1, clientX: 0, clientY: 0 });
+      fireEvent.pointerMove(window, { pointerId: 1, clientX: 1, clientY: 1 });
+      expect(setDragInfo).not.toHaveBeenCalled();
+
+      fireEvent.pointerMove(window, { pointerId: 1, clientX: 20, clientY: 0 });
+      expect(setDragInfo).toHaveBeenCalledTimes(1);
+      expect(setDragInfo.mock.calls[0][0]).toMatchObject({
+        type: "connector",
+        nodeId: defaultProps.nodeId,
+        portName: defaultProps.name,
+        portType: defaultProps.type.type,
+        direction: "input",
+        pointerType: "mouse",
       });
 
-    const { container } = render(
-      <NodePort {...defaultProps} canMove={true} hidePort={false} />
-    );
+      fireEvent.pointerUp(window, { pointerId: 1, clientX: 20, clientY: 0 });
+      expect(setDragInfo).toHaveBeenLastCalledWith(null);
+    });
 
-    fireEvent.mouseDown(container.querySelector(".port"));
+    test("connects to the compatible port the drag is released on", () => {
+      const onConnected = jest.fn();
+      mockDragContext();
 
-    expect(setDragInfoMock).toHaveBeenCalled();
-    expect(setDragInfoMock.mock.calls[0][0]).toMatchObject({
-      type: "connector",
-      nodeId: defaultProps.nodeId,
-      portName: defaultProps.name,
-      portType: defaultProps.type,
+      const target = document.createElement("div");
+      target.className = "portOverlay";
+      Object.assign(target.dataset, {
+        nodeId: "node2",
+        portName: "out",
+        portType: "test",
+        portDirection: "output",
+      });
+      elementsFromPoint.mockReturnValue([target]);
+
+      const { container } = render(
+        <NodePort {...defaultProps} onConnected={onConnected} />
+      );
+      // The mocked connector rect is 100x50 at the origin: centre (50, 25).
+      dragFromPort(container.querySelector(".port"), {
+        pointerType: "touch",
+        from: { x: 50, y: 25 },
+        to: { x: 150, y: 25 },
+      });
+
+      expect(onConnected).toHaveBeenCalledWith({
+        source: { nodeId: "node1", portName: "testPort" },
+        target: { nodeId: "node2", portName: "out" },
+      });
+    });
+
+    test("ignores a release on a port of the same direction", () => {
+      const onConnected = jest.fn();
+      mockDragContext();
+
+      const target = document.createElement("div");
+      target.className = "portOverlay";
+      Object.assign(target.dataset, {
+        nodeId: "node2",
+        portName: "in",
+        portType: "test",
+        portDirection: "input",
+      });
+      elementsFromPoint.mockReturnValue([target]);
+
+      const { container } = render(
+        <NodePort {...defaultProps} onConnected={onConnected} />
+      );
+      dragFromPort(container.querySelector(".port"));
+
+      expect(onConnected).not.toHaveBeenCalled();
+    });
+
+    test("on touch, a drag far from the connector is left to the node", () => {
+      const setDragInfo = jest.fn();
+      const setPendingConnection = jest.fn();
+      const onNodePointerDown = jest.fn();
+      mockDragContext({ setDragInfo, setPendingConnection });
+
+      const { container } = render(
+        <div onPointerDown={onNodePointerDown}>
+          <NodePort {...defaultProps} />
+        </div>
+      );
+      // Centre of the mocked connector is (50, 25); start 100px away.
+      dragFromPort(container.querySelector(".port"), {
+        pointerType: "touch",
+        from: { x: 150, y: 25 },
+        to: { x: 250, y: 25 },
+      });
+
+      expect(onNodePointerDown).toHaveBeenCalled();
+      expect(setDragInfo).not.toHaveBeenCalled();
+      expect(setPendingConnection).not.toHaveBeenCalled();
+    });
+
+    test("on touch, a tap far from the connector still starts a connection", () => {
+      const setPendingConnection = jest.fn();
+      mockDragContext({ setPendingConnection });
+
+      const { container } = render(<NodePort {...defaultProps} />);
+      const port = container.querySelector(".port");
+      fireEvent.pointerDown(port, { pointerId: 1, pointerType: "touch", clientX: 150, clientY: 25 });
+      fireEvent.pointerUp(window, { pointerId: 1, pointerType: "touch", clientX: 151, clientY: 25 });
+
+      expect(setPendingConnection).toHaveBeenCalledWith(
+        expect.objectContaining({ nodeId: "node1", portName: "testPort" })
+      );
+    });
+
+    test("in touch selection mode the port leaves presses to the node", () => {
+      const setPendingConnection = jest.fn();
+      const setDragInfo = jest.fn();
+      const onNodePointerDown = jest.fn();
+      mockDragContext({ setPendingConnection, setDragInfo });
+
+      const { container } = render(
+        <div onPointerDown={onNodePointerDown}>
+          <NodePort {...defaultProps} selecting />
+        </div>
+      );
+      const port = container.querySelector(".port");
+      tapPort(port);
+      dragFromPort(port, { pointerType: "touch", from: { x: 50, y: 25 }, to: { x: 150, y: 25 } });
+
+      expect(onNodePointerDown).toHaveBeenCalledTimes(2);
+      expect(setPendingConnection).not.toHaveBeenCalled();
+      expect(setDragInfo).not.toHaveBeenCalled();
+    });
+
+    test("selection mode does not change how the mouse connects", () => {
+      const setDragInfo = jest.fn();
+      mockDragContext({ setDragInfo });
+
+      const { container } = render(<NodePort {...defaultProps} selecting />);
+      dragFromPort(container.querySelector(".port"));
+
+      expect(setDragInfo).toHaveBeenCalledWith(expect.objectContaining({ type: "connector" }));
+    });
+
+    test("a tap starts a pending connection", () => {
+      const setPendingConnection = jest.fn();
+      const setDragInfo = jest.fn();
+      mockDragContext({ setPendingConnection, setDragInfo });
+
+      const { container } = render(<NodePort {...defaultProps} />);
+      tapPort(container.querySelector(".port"));
+
+      expect(setDragInfo).not.toHaveBeenCalled();
+      expect(setPendingConnection).toHaveBeenCalledWith({
+        nodeId: "node1",
+        portName: "testPort",
+        portType: "test",
+        direction: "input",
+      });
+    });
+
+    test("tapping the pending port again cancels it", () => {
+      const setPendingConnection = jest.fn();
+      mockDragContext({
+        setPendingConnection,
+        pendingConnection: {
+          nodeId: "node1",
+          portName: "testPort",
+          portType: "test",
+          direction: "input",
+        },
+      });
+
+      const { container } = render(<NodePort {...defaultProps} />);
+      expect(container.querySelector(".port")).toHaveClass("pendingSource");
+
+      tapPort(container.querySelector(".port"));
+      expect(setPendingConnection).toHaveBeenCalledWith(null);
+    });
+
+    test("tapping a compatible port completes the pending connection", () => {
+      const setPendingConnection = jest.fn();
+      const onConnected = jest.fn();
+      mockDragContext({
+        setPendingConnection,
+        pendingConnection: {
+          nodeId: "node2",
+          portName: "out",
+          portType: "test",
+          direction: "output",
+        },
+      });
+
+      const { container } = render(
+        <NodePort {...defaultProps} onConnected={onConnected} />
+      );
+      expect(container.querySelector(".port")).toHaveClass("compatible");
+
+      tapPort(container.querySelector(".port"));
+      expect(onConnected).toHaveBeenCalledWith({
+        source: { nodeId: "node1", portName: "testPort" },
+        target: { nodeId: "node2", portName: "out" },
+      });
+      expect(setPendingConnection).toHaveBeenCalledWith(null);
+    });
+
+    test("tapping an incompatible port makes it the new origin", () => {
+      const setPendingConnection = jest.fn();
+      const onConnected = jest.fn();
+      mockDragContext({
+        setPendingConnection,
+        pendingConnection: {
+          nodeId: "node2",
+          portName: "out",
+          portType: "other",
+          direction: "output",
+        },
+      });
+
+      const { container } = render(
+        <NodePort {...defaultProps} onConnected={onConnected} />
+      );
+      expect(container.querySelector(".port")).toHaveClass("incompatible");
+
+      tapPort(container.querySelector(".port"));
+      expect(onConnected).not.toHaveBeenCalled();
+      expect(setPendingConnection).toHaveBeenCalledWith(
+        expect.objectContaining({ nodeId: "node1", portName: "testPort" })
+      );
+    });
+
+    test("does not react to taps when readOnly", () => {
+      const setPendingConnection = jest.fn();
+      mockDragContext({ setPendingConnection });
+
+      const { container } = render(<NodePort {...defaultProps} readOnly />);
+      tapPort(container.querySelector(".port"));
+
+      expect(setPendingConnection).not.toHaveBeenCalled();
+    });
+
+    test("tapping the inline form does not start a connection", () => {
+      const setPendingConnection = jest.fn();
+      mockDragContext({ setPendingConnection });
+
+      const { container } = render(<NodePort {...defaultProps} />);
+      tapPort(container.querySelector(".formContainer"));
+
+      expect(setPendingConnection).not.toHaveBeenCalled();
     });
   });
 

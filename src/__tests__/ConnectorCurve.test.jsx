@@ -12,6 +12,7 @@ jest.mock("../ConnectorCurve.module.css", () => ({
   tmp: "tmp",
   pathTmp: "pathTmp",
   path: "path",
+  pathHit: "pathHit",
   waypoint: "waypoint",
   selected: "selected",
   waypointHovered: "waypointHovered",
@@ -105,7 +106,7 @@ describe("ConnectorCurve Component", () => {
     const { container } = render(
       <ConnectorCurve {...defaultProps} invalid={true} />
     );
-    const pathElement = container.querySelector("path");
+    const pathElement = container.querySelector("path.path");
     expect(pathElement).toBeTruthy();
   });
 
@@ -113,7 +114,7 @@ describe("ConnectorCurve Component", () => {
     const { container } = render(
       <ConnectorCurve {...defaultProps} tmp={true} />
     );
-    const pathElement = container.querySelector("path");
+    const pathElement = container.querySelector("path.path");
     expect(pathElement.className.baseVal).toContain("pathTmp");
   });
 
@@ -122,7 +123,7 @@ describe("ConnectorCurve Component", () => {
       <ConnectorCurve {...defaultProps} type="test" />
     );
 
-    const pathElement = container.querySelector("path");
+    const pathElement = container.querySelector("path.path");
     expect(pathElement).toBeTruthy();
 
     expect(container.querySelector("g")).toBeTruthy();
@@ -132,13 +133,33 @@ describe("ConnectorCurve Component", () => {
     expect(pathElement.style.stroke).toBeTruthy();
   });
 
+  test("ConnectorCurve opens its menu from the wide touch stroke too", () => {
+    const onContextMenu = jest.fn();
+    const { container } = render(
+      <ConnectorCurve {...defaultProps} scale={0.5} onContextMenu={onContextMenu} />
+    );
+
+    const hit = container.querySelector("path.pathHit");
+    expect(hit).toBeTruthy();
+    // 32px on screen, at half zoom.
+    expect(hit.style.strokeWidth).toBe("64");
+
+    fireEvent.contextMenu(hit);
+    expect(onContextMenu).toHaveBeenCalledTimes(1);
+  });
+
+  test("the temporary connection has no touch stroke", () => {
+    const { container } = render(<ConnectorCurveForward {...defaultProps} tmp />);
+    expect(container.querySelector("path.pathHit")).toBeNull();
+  });
+
   test("ConnectorCurve calls onContextMenu when context event is triggered", () => {
     const onContextMenuMock = jest.fn();
     const { container } = render(
       <ConnectorCurve {...defaultProps} onContextMenu={onContextMenuMock} />
     );
 
-    const pathElement = container.querySelector("path");
+    const pathElement = container.querySelector("path.path");
     expect(pathElement).toBeTruthy();
 
     fireEvent.contextMenu(pathElement);
@@ -193,7 +214,7 @@ describe("ConnectorCurve Component", () => {
 
     const { container } = render(<ConnectorCurveForward {...completeProps} />);
 
-    const marks = container.querySelectorAll("circle");
+    const marks = container.querySelectorAll(".waypoint");
     expect(marks).toHaveLength(3);
     expect(marks[0].getAttribute("class")).toContain("selected");
     expect(marks[1].getAttribute("class")).not.toContain("selected");
@@ -212,7 +233,7 @@ describe("ConnectorCurve Component", () => {
       />,
     );
 
-    expect(container.querySelector("circle").getAttribute("class")).not.toContain(
+    expect(container.querySelector(".waypoint").getAttribute("class")).not.toContain(
       "selected",
     );
   });
@@ -238,12 +259,16 @@ describe("ConnectorCurve Component", () => {
 
     const { container } = render(<ConnectorCurveForward {...completeProps} />);
 
-    const waypointElement = container.querySelector("circle");
+    const waypointElement = container.querySelector(".waypoint");
     expect(waypointElement).toBeTruthy();
 
-    fireEvent.mouseDown(waypointElement);
+    fireEvent.pointerDown(waypointElement, { clientX: 0, clientY: 0 });
     expect(onWaypointMouseDownMock).toHaveBeenCalledTimes(1);
     expect(onWaypointMouseDownMock).toHaveBeenCalledWith(expect.anything(), 0);
+
+    fireEvent.pointerMove(window, { clientX: 20, clientY: 10 });
+    expect(onUpdateWaypointMock).toHaveBeenLastCalledWith(0, { x: 50, y: 40 });
+    fireEvent.pointerUp(window, { clientX: 20, clientY: 10 });
 
     fireEvent.contextMenu(waypointElement);
     expect(onWaypointContextMenuMock).toHaveBeenCalledTimes(1);
@@ -259,7 +284,7 @@ describe("ConnectorCurve Component", () => {
     const groupElement = container.querySelector("g");
     expect(groupElement).toBeTruthy();
 
-    const pathElement = container.querySelector("path");
+    const pathElement = container.querySelector("path.path");
     expect(pathElement).toBeTruthy();
 
     const initialStrokeWidth = pathElement.style.strokeWidth;

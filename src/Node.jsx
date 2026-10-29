@@ -5,6 +5,9 @@ import { useScreenViewportRef } from "./ScreenContext.jsx";
 import css from "./Node.module.css";
 import { useTheme } from "./ThemeProvider.jsx";
 import { throttle } from "./util/throttle";
+import { trackPointerDrag } from "./util/pointerDrag";
+
+const stopPropagation = (event) => event.stopPropagation();
 
 function Node({
   name,
@@ -25,6 +28,8 @@ function Node({
   highlight,
   readOnly,
   onClick,
+  onTap,
+  selectionMode,
 }) {
   const { currentTheme } = useTheme();
 
@@ -64,57 +69,48 @@ function Node({
   // Read when the drag happens, so a pan does not re-render every node.
   const viewportRef = useScreenViewportRef();
 
-  const handleMouseDown = useCallback(
+  const handlePointerDown = useCallback(
     (event) => {
       if (!canMove) return;
+      if (event.isPrimary === false) return;
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      // Typing in a field must not drag the node it sits in.
+      if (event.target.closest?.("input, textarea, select, [contenteditable]"))
+        return;
 
       event.stopPropagation();
 
-      const startX = event.pageX;
-      const startY = event.pageY;
       const { scale: screenScale } = viewportRef.current;
+      const positionAt = (dx, dy) => ({
+        x: nodePosition.x + dx / screenScale,
+        y: nodePosition.y + dy / screenScale,
+      });
 
-      onDragStart?.(nodeId, { x: nodePosition.x, y: nodePosition.y });
-
-      const handleMouseMove = throttle(
-        (event) => {
-          const dx = event.pageX - startX;
-          const dy = event.pageY - startY;
-
-          onChangePosition(nodeId, {
-            x: nodePosition.x + dx / screenScale,
-            y: nodePosition.y + dy / screenScale,
-          });
-        },
+      const handleMove = throttle(
+        (dx, dy) => onChangePosition(nodeId, positionAt(dx, dy)),
         16,
         { leading: true, trailing: false },
       );
 
-      const handleMouseUp = (e) => {
-        window.removeEventListener("mousemove", handleMouseMove);
-        window.removeEventListener("mouseup", handleMouseUp);
-
-        const dx = e.pageX - startX;
-        const dy = e.pageY - startY;
-
-        if (Math.abs(dx) >= 2 && Math.abs(dy) >= 2) {
-          onDragEnd?.(nodeId, {
-            x: nodePosition.x + dx / screenScale,
-            y: nodePosition.y + dy / screenScale,
-          });
-        }
-      };
-
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
+      trackPointerDrag(event, {
+        onStart: () =>
+          onDragStart?.(nodeId, { x: nodePosition.x, y: nodePosition.y }),
+        onMove: handleMove,
+        onEnd: (dx, dy) => onDragEnd?.(nodeId, positionAt(dx, dy)),
+        // A pinch took over: put the node back where it was.
+        onCancel: () => onDragEnd?.(nodeId, positionAt(0, 0)),
+        onTap: () => onTap?.(nodeId),
+      });
     },
     [
+      canMove,
       nodeId,
       nodePosition,
       viewportRef,
       onChangePosition,
       onDragStart,
       onDragEnd,
+      onTap,
     ],
   );
 
@@ -145,9 +141,9 @@ function Node({
   );
 
   const nodeInputs = useMemo(() => {
-    if (typeof nodeType.inputs === "function")
+    if (typeof nodeType?.inputs === "function")
       return nodeType.inputs(nodeValues);
-    return nodeType.inputs;
+    return nodeType?.inputs;
   }, [nodeType, nodeValues]);
 
   useEffect(() => {
@@ -170,10 +166,10 @@ function Node({
   }, [nodeInputs]);
 
   const nodeOutputs = useMemo(() => {
-    if (typeof nodeType.outputs === "function") {
+    if (typeof nodeType?.outputs === "function") {
       return nodeType.outputs(nodeValues, value.connections?.inputs);
     }
-    return nodeType.outputs;
+    return nodeType?.outputs;
   }, [nodeType, nodeValues, value.connections?.inputs]);
 
   return (
@@ -181,7 +177,11 @@ function Node({
       ref={nodeRef}
       id={`card-${nodeId}`}
       key={`card-${nodeId}`}
-      className={[css.node, isSelected ? css.selected : ""].join(" ")}
+      className={[
+        css.node,
+        isSelected ? css.selected : "",
+        canMove ? css.movable : "",
+      ].join(" ")}
       style={{
         backgroundColor:
           currentTheme?.nodes?.[nodeType?.type]?.body?.background ??
@@ -197,7 +197,10 @@ function Node({
         transform: `translate(${nodePosition.x}px, ${nodePosition.y}px)`,
         cursor: canMove ? "grab" : onClick ? "pointer" : null,
       }}
-      onMouseDown={handleMouseDown}
+      onPointerDown={handlePointerDown}
+      // Pointer events come first; the mouse events browsers emit after them
+      // must not reach the canvas, which would start an area selection.
+      onMouseDown={canMove ? stopPropagation : undefined}
       onContextMenu={onContextMenu ? handleContextMenu : undefined}
       onClick={onClick ? handleClick : undefined}
     >
@@ -269,6 +272,7 @@ function Node({
                 readOnly={readOnly}
                 canMove={canMove}
                 options={input.options}
+                selecting={selectionMode}
               />
             );
           })}
@@ -293,6 +297,7 @@ function Node({
                 canMove={canMove}
                 readOnly={readOnly}
                 options={output.options}
+                selecting={selectionMode}
               />
             );
           })}

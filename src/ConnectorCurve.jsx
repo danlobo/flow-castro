@@ -2,8 +2,15 @@ import React, { memo, useCallback, useMemo } from "react";
 import css from "./ConnectorCurve.module.css";
 import { useTheme } from "./ThemeProvider.jsx";
 import { useScreenViewportRef } from "./ScreenContext.jsx";
+import { trackPointerDrag } from "./util/pointerDrag";
 
 const MIN_CONTROL_OFFSET = 40;
+// Screen radius (px) of the invisible target that lets a finger grab a
+// waypoint, which is drawn much smaller than a fingertip.
+const WAYPOINT_TOUCH_RADIUS = 22;
+// Screen width (px) of the invisible stroke that lets a finger hit a
+// connection.
+const CONNECTION_TOUCH_WIDTH = 32;
 const MAX_CONTROL_OFFSET = 150;
 const BACKWARD_CURVATURE = 12;
 
@@ -135,6 +142,16 @@ export const ConnectorCurveForward = memo(function ConnectorCurveForward({
       transform={`translate(${minX - PADDING - OFFSET_X}, ${minY - PADDING - OFFSET_Y})`}
       data-connector-group
     >
+      {/* Invisible, finger-wide stroke - shown on touch screens only - so a
+          long press for the menu does not have to land on a thin line. */}
+      {!tmp && (
+        <path
+          className={css.pathHit}
+          style={{ strokeWidth: CONNECTION_TOUCH_WIDTH / (scale || 1) }}
+          d={pathData}
+          onContextMenu={onContextMenu}
+        />
+      )}
       <path
         data-connector-type={type?.type}
         style={{
@@ -177,27 +194,15 @@ export const ConnectorCurveForward = memo(function ConnectorCurveForward({
             ? Math.max(10, 10 * scale)
             : Math.max(6, 6 * scale);
 
+        const color =
+          currentTheme.connections?.[type?.type]?.color ??
+          type?.color ??
+          currentTheme.connections?.default?.color ??
+          "#ccc";
+
         return (
-          <circle
+          <g
             key={`waypoint-${index}`}
-            cx={waypoint.x + PADDING}
-            cy={waypoint.y + PADDING}
-            r={waypointRadius || 0}
-            stroke={
-              currentTheme.connections?.[type?.type]?.color ??
-              type?.color ??
-              currentTheme.connections?.default?.color ??
-              "#ccc"
-            }
-            fill={
-              currentTheme.connections?.[type?.type]?.color ??
-              type?.color ??
-              currentTheme.connections?.default?.color ??
-              "#ccc"
-            }
-            strokeWidth={
-              isSelected ? Math.max(3, 3 * scale) : Math.max(2, 2 * scale)
-            }
             style={{
               cursor:
                 isDragging && hoveredWaypointIndex === index
@@ -206,53 +211,75 @@ export const ConnectorCurveForward = memo(function ConnectorCurveForward({
             }}
             onMouseEnter={() => setHoveredWaypointIndex(index)}
             onMouseLeave={() => setHoveredWaypointIndex(-1)}
-            onMouseDown={(e) => {
+            onPointerDown={(e) => {
+              if (e.isPrimary === false) return;
+              if (e.pointerType === "mouse" && e.button !== 0) return;
+
               if (onWaypointMouseDown) {
                 onWaypointMouseDown(e, index);
               }
 
               if (isDragging) return;
 
-              e.preventDefault();
               e.stopPropagation();
 
-              setIsDragging(true);
-
-              const startX = e.clientX;
-              const startY = e.clientY;
               const origWaypoint = waypoints[index];
               const { scale: screenScale } = viewportRef.current;
 
-              const moveHandler = (moveEvent) => {
-                moveEvent.preventDefault();
-                const dx = (moveEvent.clientX - startX) / screenScale;
-                const dy = (moveEvent.clientY - startY) / screenScale;
+              setIsDragging(true);
+              setHoveredWaypointIndex(index);
 
-                const newPosition = {
-                  x: origWaypoint.x + dx,
-                  y: origWaypoint.y + dy,
-                };
-
-                onUpdateWaypoint && onUpdateWaypoint(index, newPosition);
-              };
-
-              const upHandler = () => {
-                window.removeEventListener("mousemove", moveHandler);
-                window.removeEventListener("mouseup", upHandler);
+              const finish = () => {
                 setIsDragging(false);
                 setHoveredWaypointIndex(-1);
               };
 
-              window.addEventListener("mousemove", moveHandler);
-              window.addEventListener("mouseup", upHandler);
+              trackPointerDrag(e, {
+                threshold: 0,
+                onMove: (dx, dy) =>
+                  onUpdateWaypoint?.(index, {
+                    x: origWaypoint.x + dx / screenScale,
+                    y: origWaypoint.y + dy / screenScale,
+                  }),
+                onEnd: finish,
+                onTap: finish,
+                onCancel: () => {
+                  onUpdateWaypoint?.(index, origWaypoint);
+                  finish();
+                },
+              });
+            }}
+            // Pointer events come first; the mouse events browsers emit after
+            // them must not select text or start an area selection.
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
             }}
             onContextMenu={(e) =>
               onWaypointContextMenu && onWaypointContextMenu(e, index)
             }
-            className={[css.waypoint, isSelected ? css.selected : null].join(
-              " ",
-            )}
-          />
+          >
+            {/* Invisible, finger-sized target - shown on touch screens only. */}
+            <circle
+              cx={waypoint.x + PADDING}
+              cy={waypoint.y + PADDING}
+              r={WAYPOINT_TOUCH_RADIUS / (scale || 1)}
+              className={css.waypointHit}
+            />
+            <circle
+              cx={waypoint.x + PADDING}
+              cy={waypoint.y + PADDING}
+              r={waypointRadius || 0}
+              stroke={color}
+              fill={color}
+              strokeWidth={
+                isSelected ? Math.max(3, 3 * scale) : Math.max(2, 2 * scale)
+              }
+              className={[css.waypoint, isSelected ? css.selected : null].join(
+                " ",
+              )}
+            />
+          </g>
         );
       })}
     </g>

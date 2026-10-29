@@ -19,11 +19,18 @@ import { useDebounceCallback } from "./hooks/useDebounceCallback";
 import nodeCss from "./Node.module.css";
 import nodePortCss from "./NodePort.module.css";
 import commentCss from "./Comment.module.css";
+import connectorCss from "./ConnectorCurve.module.css";
 import { useTheme } from "./ThemeProvider.jsx";
 
 import { i } from "./util/i18n.js";
 import { layoutFlow } from "./util/layout.js";
 import { measurePortOffsets } from "./util/measurePorts.js";
+import {
+  connectorAnchor,
+  findConnectionTarget,
+  LOUPE_RADIUS,
+  SNAP_RADIUS,
+} from "./util/connectionTarget.js";
 import Comment from "./Comment.jsx";
 
 const defaultI18n = {
@@ -37,7 +44,21 @@ const defaultI18n = {
   "contextMenu.removeWaypoint": "Remove waypoint",
   "contextMenu.organize": "Organize flow",
   "contextMenu.organizeSelection": "Organize selection",
+  "connection.pending": "Tap a highlighted port to connect",
+  "connection.cancel": "Cancel",
+  "selection.mode": "Drag to select, tap a node to add or remove it",
+  "selection.done": "Done",
+  "toolbar.selectionMode": "Selection mode",
 };
+
+// A tap that moves less than this (px) on the canvas cancels a pending
+// connection; anything longer is a pan and leaves it alone.
+const TAP_SLOP = 8;
+
+// How long (ms) a still finger must be held to open the context menu where the
+// browser does not do it on its own (iOS). Longer than Android's own long
+// press, so there the native menu comes first and this one stands down.
+const LONG_PRESS_DELAY = 650;
 
 import { useElementSelection } from "./hooks/useElementSelection";
 import { useClipboard } from "./hooks/useClipboard";
@@ -49,9 +70,12 @@ import {
   ToolbarHorizontal,
   StatusPanel,
   SelectionArea,
+  ConnectionLoupe,
+  ModeBar,
 } from "./components";
 import { useElementMovement } from "./hooks/useElementMovement.js";
 import { throttle } from "./util/throttle";
+import { trackPointerDrag } from "./util/pointerDrag";
 
 function Screen({
   portTypes,
@@ -93,7 +117,8 @@ function Screen({
     "--roundness": currentTheme.roundness,
   };
 
-  const { dragInfo } = useDragContext();
+  const { dragInfo, pendingConnection, setPendingConnection } =
+    useDragContext();
   const { position, setPosition, scale, setScale } = useScreenContext();
   const viewportRef = useScreenViewportRef();
 
@@ -102,11 +127,16 @@ function Screen({
   const [isInFadeout, setIsInFadeout] = useState(false);
   const [lastConnectionSuccessful, setLastConnectionSuccessful] =
     useState(false);
+  const [loupe, setLoupe] = useState(null);
+  const snapTargetRef = useRef(null);
 
   const [state, setState] = useState(initialState);
   const [shouldNotify, setShouldNotify] = useState(false);
 
   const [viewMode, setViewMode] = useState("select");
+  // On touch a one-finger drag pans the canvas; in selection mode it draws a
+  // selection area instead, and tapping a node adds or removes it.
+  const [selectionMode, setSelectionMode] = useState(false);
 
   const {
     selectedNodes,
@@ -335,6 +365,85 @@ function Screen({
     [setScale],
   );
 
+  /**
+   * Applies an area selection drawn from `pos` to `_posEnd` (page
+   * coordinates): picks the nodes and waypoints inside it and hands them to
+   * the selection with `selectMode`.
+   */
+  const selectInArea = useCallback(
+    (pos, _posEnd, selectMode) => {
+      setSelectEndPoint(_posEnd);
+
+      const _selectedNodes = [];
+      const nodes = state.nodes ? Object.values(state.nodes) : [];
+
+      const p1 = {
+        x: Math.min(pos.x, _posEnd.x),
+        y: Math.min(pos.y, _posEnd.y),
+      };
+
+      const p2 = {
+        x: Math.max(pos.x, _posEnd.x),
+        y: Math.max(pos.y, _posEnd.y),
+      };
+
+      nodes.forEach((node) => {
+        const cardElement = screenRef.current?.querySelector(
+          `#card-${CSS.escape(node.id)}`,
+        );
+        if (!cardElement) return;
+
+        const { x, y, width, height } = cardElement.getBoundingClientRect();
+
+        if (x > p1.x && x + width < p2.x && y > p1.y && y + height < p2.y) {
+          _selectedNodes.push(node.id);
+        }
+      });
+
+      const selectedWaypoints = [];
+
+      if (state.nodes) {
+        Object.values(state.nodes).forEach((node) => {
+          if (node.connections?.outputs) {
+            node.connections.outputs.forEach((connection) => {
+              if (connection.waypoints) {
+                connection.waypoints.forEach((waypoint, waypointIndex) => {
+                  const waypointScreenX =
+                    waypoint.x * scale + position.x + window.scrollX;
+                  const waypointScreenY =
+                    waypoint.y * scale + position.y + window.scrollY;
+
+                  if (
+                    waypointScreenX > p1.x &&
+                    waypointScreenX < p2.x &&
+                    waypointScreenY > p1.y &&
+                    waypointScreenY < p2.y
+                  ) {
+                    selectedWaypoints.push({
+                      srcNode: node.id,
+                      srcPort: connection.name,
+                      dstNode: connection.node,
+                      dstPort: connection.port,
+                      waypointIndex: waypointIndex,
+                    });
+                  }
+                });
+              }
+            });
+          }
+        });
+      }
+
+      processAreaSelection(
+        { p1, p2 },
+        selectMode,
+        _selectedNodes,
+        selectedWaypoints,
+      );
+    },
+    [position, scale, state, processAreaSelection, setSelectEndPoint],
+  );
+
   const handleMouseDown = useCallback(
     (event) => {
       if (readOnly) return;
@@ -373,77 +482,7 @@ function Screen({
         const dy = e.pageY + window.scrollY;
 
         if (Math.abs(dx - startX) >= 2 && Math.abs(dy - startY) >= 2) {
-          const _posEnd = { x: dx, y: dy };
-          setSelectEndPoint(_posEnd);
-
-          const _selectedNodes = [];
-          const nodes = state.nodes ? Object.values(state.nodes) : [];
-
-          const p1 = {
-            x: Math.min(pos.x, _posEnd.x),
-            y: Math.min(pos.y, _posEnd.y),
-          };
-
-          const p2 = {
-            x: Math.max(pos.x, _posEnd.x),
-            y: Math.max(pos.y, _posEnd.y),
-          };
-
-          nodes.forEach((node) => {
-            const cardElement = screenRef.current?.querySelector(
-              `#card-${CSS.escape(node.id)}`,
-            );
-            if (!cardElement) return;
-
-            const { x, y, width, height } = cardElement.getBoundingClientRect();
-
-            if (x > p1.x && x + width < p2.x && y > p1.y && y + height < p2.y) {
-              _selectedNodes.push(node.id);
-            }
-          });
-
-          const selectedWaypoints = [];
-
-          if (state.nodes) {
-            Object.values(state.nodes).forEach((node) => {
-              if (node.connections?.outputs) {
-                node.connections.outputs.forEach((connection) => {
-                  if (connection.waypoints) {
-                    connection.waypoints.forEach((waypoint, waypointIndex) => {
-                      const waypointScreenX =
-                        waypoint.x * scale + position.x + window.scrollX;
-                      const waypointScreenY =
-                        waypoint.y * scale + position.y + window.scrollY;
-
-                      if (
-                        waypointScreenX > p1.x &&
-                        waypointScreenX < p2.x &&
-                        waypointScreenY > p1.y &&
-                        waypointScreenY < p2.y
-                      ) {
-                        selectedWaypoints.push({
-                          srcNode: node.id,
-                          srcPort: connection.name,
-                          dstNode: connection.node,
-                          dstPort: connection.port,
-                          waypointIndex: waypointIndex,
-                        });
-                      }
-                    });
-                  }
-                });
-              }
-            });
-          }
-
-          processAreaSelection(
-            { p1, p2 },
-            selectMode,
-            _selectedNodes,
-            selectedWaypoints,
-          );
-
-          setSelectStartPoint(_posEnd);
+          selectInArea(pos, { x: dx, y: dy }, selectMode);
         }
         setSelectStartPoint({ x: 0, y: 0 });
         setSelectEndPoint({ x: 0, y: 0 });
@@ -452,7 +491,58 @@ function Screen({
       window.addEventListener("mousemove", handleMouseMove);
       window.addEventListener("mouseup", handleMouseUp);
     },
-    [position, scale, state, selectedNodes, readOnly],
+    [readOnly, selectInArea, throttledUpdateSelectEndPoint],
+  );
+
+  const handleCanvasPointerDown = useCallback(
+    (event) => {
+      if (readOnly || !selectionMode) return;
+      if (event.pointerType === "mouse" || event.isPrimary === false) return;
+      if (
+        event.target.closest?.(
+          `.${nodeCss.node}, .${commentCss.container}, .${css.panel}, [data-flow-mode-bar]`,
+        )
+      )
+        return;
+
+      const pos = {
+        x: event.pageX + window.scrollX,
+        y: event.pageY + window.scrollY,
+      };
+      const pageAt = (e) => ({
+        x: e.pageX + window.scrollX,
+        y: e.pageY + window.scrollY,
+      });
+      const reset = () => {
+        setSelectStartPoint({ x: 0, y: 0 });
+        setSelectEndPoint({ x: 0, y: 0 });
+      };
+
+      setViewMode("select-add");
+
+      trackPointerDrag(event, {
+        onStart: () => {
+          setSelectStartPoint(pos);
+          setSelectEndPoint(pos);
+        },
+        onMove: (dx, dy, e) => throttledUpdateSelectEndPoint(e),
+        // Without modifier keys, an area adds to what is already selected, as
+        // tapping nodes does; a tap on empty canvas starts over.
+        onEnd: (dx, dy, e) => {
+          selectInArea(pos, pageAt(e), "select-add");
+          reset();
+        },
+        onTap: () => clearSelection(),
+        onCancel: reset,
+      });
+    },
+    [
+      readOnly,
+      selectionMode,
+      selectInArea,
+      throttledUpdateSelectEndPoint,
+      clearSelection,
+    ],
   );
 
   const handleMousePositionUpdate = useCallback(
@@ -481,8 +571,20 @@ function Screen({
     };
   }, [throttledMouseMoveListener]);
 
+  // Highlights the port a dragged connection would land on, straight in the
+  // DOM: going through state would re-render every port on every move.
+  const markSnapTarget = useCallback((target) => {
+    if (snapTargetRef.current === target) return;
+    snapTargetRef.current?.classList.remove(nodePortCss.snapTarget);
+    target?.classList.add(nodePortCss.snapTarget);
+    snapTargetRef.current = target;
+  }, []);
+
   useEffect(() => {
     if (!dragInfo) {
+      markSnapTarget(null);
+      setLoupe(null);
+
       if (dstDragPosition && !lastConnectionSuccessful) {
         setIsInFadeout(true);
 
@@ -504,26 +606,102 @@ function Screen({
     setLastConnectionSuccessful(false);
 
     const updateDragPosition = (event) => {
-      const dx = event.pageX;
-      const dy = event.pageY;
+      if (!dragInfo) return;
 
-      if (dragInfo) {
-        setDstDragPosition({
-          x: dx,
-          y: dy,
-          srcX: dragInfo.startX,
-          srcY: dragInfo.startY,
+      const isTouch = dragInfo.pointerType === "touch";
+      const findTarget = (radius) =>
+        findConnectionTarget({
+          root: screenRef.current,
+          source: dragInfo,
+          x: event.clientX,
+          y: event.clientY,
+          radius,
+          overlayClass: nodePortCss.portOverlay,
         });
-      }
+
+      const target = findTarget(SNAP_RADIUS[dragInfo.pointerType] ?? 0);
+      markSnapTarget(target);
+
+      // The line ends on the port it would connect to, so a finger that is
+      // covering the port still sees where the connection goes.
+      const anchor = target ? connectorAnchor(target) : null;
+      setDstDragPosition({
+        x: anchor ? anchor.x + window.scrollX : event.pageX,
+        y: anchor ? anchor.y + window.scrollY : event.pageY,
+        srcX: dragInfo.startX,
+        srcY: dragInfo.startY,
+      });
+
+      const nearTarget = isTouch && (target || findTarget(LOUPE_RADIUS));
+      setLoupe(
+        nearTarget
+          ? { point: { x: event.clientX, y: event.clientY }, target }
+          : null,
+      );
     };
 
     const throttledDragMoveListener = throttle(updateDragPosition, 16);
 
-    window.addEventListener("mousemove", throttledDragMoveListener);
+    window.addEventListener("pointermove", throttledDragMoveListener);
     return () => {
-      window.removeEventListener("mousemove", throttledDragMoveListener);
+      window.removeEventListener("pointermove", throttledDragMoveListener);
     };
-  }, [dragInfo, dstDragPosition, lastConnectionSuccessful]);
+  }, [dragInfo, dstDragPosition, lastConnectionSuccessful, markSnapTarget]);
+
+  // A pending connection is cancelled by Esc or by a tap on anything that is
+  // not a port. Pans and pinches in between are left alone, so the target can
+  // be brought into view before the second tap.
+  useEffect(() => {
+    if (!pendingConnection) return;
+    const screen = screenRef.current;
+    if (!screen) return;
+
+    const pointers = new Map();
+    let multiTouch = false;
+
+    const handlePointerDown = (e) => {
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pointers.size > 1) multiTouch = true;
+    };
+
+    const handlePointerUp = (e) => {
+      const start = pointers.get(e.pointerId);
+      pointers.delete(e.pointerId);
+      const wasMultiTouch = multiTouch;
+      if (pointers.size === 0) multiTouch = false;
+      if (!start || wasMultiTouch) return;
+      if (Math.hypot(e.clientX - start.x, e.clientY - start.y) >= TAP_SLOP)
+        return;
+      if (
+        e.target.closest?.(
+          `.${nodePortCss.port}, [data-flow-mode-bar], .${css.panel}`,
+        )
+      )
+        return;
+      setPendingConnection(null);
+    };
+
+    const handlePointerCancel = (e) => {
+      pointers.delete(e.pointerId);
+      if (pointers.size === 0) multiTouch = false;
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") setPendingConnection(null);
+    };
+
+    screen.addEventListener("pointerdown", handlePointerDown, true);
+    window.addEventListener("pointerup", handlePointerUp, true);
+    window.addEventListener("pointercancel", handlePointerCancel, true);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      screen.removeEventListener("pointerdown", handlePointerDown, true);
+      window.removeEventListener("pointerup", handlePointerUp, true);
+      window.removeEventListener("pointercancel", handlePointerCancel, true);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [pendingConnection, setPendingConnection]);
+
 
   const throttledPositionUpdate = useRef(
     throttle(
@@ -538,6 +716,132 @@ function Screen({
   const [isMoveable, setIsMoveable] = useState(false);
   const [canMove, setCanMove] = useState(true);
   const [snapToGrid, setSnapToGrid] = useState(true);
+
+  useEffect(() => {
+    if (readOnly || !canMove) setPendingConnection(null);
+  }, [readOnly, canMove, setPendingConnection]);
+
+  // The pan/zoom library only checks the element a touch lands on against its
+  // exclusion list, so a finger on a node's title or body would pan the canvas
+  // instead of moving the node. Single-finger touches on movable nodes are
+  // stopped before they reach it; a second finger still gets through, so a
+  // pinch can start with a finger resting on a node.
+  useEffect(() => {
+    const screen = screenRef.current;
+    if (!screen || readOnly) return;
+    if (!canMove && !selectionMode) return;
+
+    const handleTouchStart = (e) => {
+      if (e.touches.length !== 1) return;
+      const target = e.target;
+      // In selection mode the drag draws the selection area instead.
+      if (!selectionMode && !target.closest?.(`.${nodeCss.movable}`)) return;
+      if (target.closest("input, textarea, select, [contenteditable]")) return;
+      e.stopPropagation();
+    };
+
+    screen.addEventListener("touchstart", handleTouchStart, true);
+    return () => {
+      screen.removeEventListener("touchstart", handleTouchStart, true);
+    };
+  }, [readOnly, canMove, selectionMode]);
+
+  useEffect(() => {
+    if (readOnly) setSelectionMode(false);
+  }, [readOnly]);
+
+  // Browsers turn two quick taps into a `dblclick`, which the pan/zoom library
+  // answers by zooming in. Tapping a node twice to select and deselect it, or
+  // a port twice to cancel a connection, must not zoom the canvas.
+  useEffect(() => {
+    const screen = screenRef.current;
+    if (!screen) return;
+
+    let lastPointerType = "mouse";
+    const handlePointerDown = (e) => {
+      lastPointerType = e.pointerType || "mouse";
+    };
+    const handleDoubleClick = (e) => {
+      if (lastPointerType === "mouse") return;
+      if (
+        e.target.closest?.(
+          `.${nodeCss.node}, .${commentCss.container}, [data-connector-group]`,
+        )
+      )
+        e.stopPropagation();
+    };
+
+    screen.addEventListener("pointerdown", handlePointerDown, true);
+    screen.addEventListener("dblclick", handleDoubleClick, true);
+    return () => {
+      screen.removeEventListener("pointerdown", handlePointerDown, true);
+      screen.removeEventListener("dblclick", handleDoubleClick, true);
+    };
+  }, []);
+
+  // Android opens the context menu on a long press by itself; iOS never does,
+  // which would leave touch users there without node, connection or canvas
+  // menus. A still finger held long enough gets a synthetic `contextmenu`,
+  // unless the browser already sent a real one.
+  useEffect(() => {
+    const screen = screenRef.current;
+    if (!screen || readOnly) return;
+
+    let press = null;
+    const clear = () => {
+      if (press) clearTimeout(press.timer);
+      press = null;
+    };
+
+    const handlePointerDown = (e) => {
+      clear();
+      if (e.pointerType !== "touch" || !e.isPrimary) return;
+      if (e.target.closest?.("input, textarea, select, [contenteditable]"))
+        return;
+
+      const { target, clientX, clientY } = e;
+      press = {
+        x: clientX,
+        y: clientY,
+        timer: setTimeout(() => {
+          press = null;
+          target.dispatchEvent(
+            new MouseEvent("contextmenu", {
+              bubbles: true,
+              cancelable: true,
+              clientX,
+              clientY,
+              screenX: clientX,
+              screenY: clientY,
+            }),
+          );
+        }, LONG_PRESS_DELAY),
+      };
+    };
+
+    const handlePointerMove = (e) => {
+      if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > TAP_SLOP)
+        clear();
+    };
+
+    const handleNativeContextMenu = (e) => {
+      if (e.isTrusted) clear();
+    };
+
+    screen.addEventListener("pointerdown", handlePointerDown, true);
+    window.addEventListener("pointermove", handlePointerMove, true);
+    window.addEventListener("pointerup", clear, true);
+    window.addEventListener("pointercancel", clear, true);
+    screen.addEventListener("contextmenu", handleNativeContextMenu, true);
+    return () => {
+      clear();
+      screen.removeEventListener("pointerdown", handlePointerDown, true);
+      window.removeEventListener("pointermove", handlePointerMove, true);
+      window.removeEventListener("pointerup", clear, true);
+      window.removeEventListener("pointercancel", clear, true);
+      screen.removeEventListener("contextmenu", handleNativeContextMenu, true);
+    };
+  }, [readOnly]);
 
   const onZoom = useCallback(
     (params) => {
@@ -643,9 +947,14 @@ function Screen({
       excluded: [
         nodeCss.node,
         nodePortCss.port,
+        nodePortCss.portOverlay,
         nodePortCss.portConnector,
+        nodePortCss.label,
         commentCss.container,
         commentCss.moveHandler,
+        commentCss.handler,
+        connectorCss.waypoint,
+        connectorCss.waypointHit,
       ],
     }),
     [isMoveable],
@@ -659,8 +968,17 @@ function Screen({
       backgroundSize: `${scaledGridSize}px ${scaledGridSize}px`,
       backgroundImage: `linear-gradient(to right, ${currentTheme.colors?.hover} 1px, transparent 1px), linear-gradient(to bottom, ${currentTheme.colors?.hover} 1px, transparent 1px)`,
       backgroundPosition: `${scaledPositionX}px ${scaledPositionY}px`,
+      // The selection drag keeps the pan/zoom library out, so nothing else
+      // stops the browser from taking the gesture over and cancelling it.
+      touchAction: selectionMode ? "none" : undefined,
     }),
-    [scaledGridSize, scaledPositionX, scaledPositionY, currentTheme],
+    [
+      scaledGridSize,
+      scaledPositionX,
+      scaledPositionY,
+      currentTheme,
+      selectionMode,
+    ],
   );
 
   const nodeTypesByCategory = useMemo(() => {
@@ -801,6 +1119,7 @@ function Screen({
               })),
             ]),
       onMouseDown: handleMouseDown,
+      onPointerDown: handleCanvasPointerDown,
       onClick: (e) => {
         if (e.target === wrapperRef.current.instance.wrapperComponent)
           screenRef.current.focus({ preventScroll: true });
@@ -816,6 +1135,8 @@ function Screen({
       readOnly,
       organizeFlow,
       selectedNodes,
+      handleMouseDown,
+      handleCanvasPointerDown,
     ],
   );
 
@@ -850,6 +1171,9 @@ function Screen({
     removeNodes,
     organizeFlow,
     onNodeClick,
+    selectionMode,
+    addNodesToSelection,
+    removeNodesFromSelection,
   };
 
   const connectorDeps = useRef({});
@@ -883,6 +1207,17 @@ function Screen({
     const { state: current, moveHandler: move } = nodeHandlerDeps.current;
     const node = current?.nodes?.[nodeId];
     if (node) move(node, position, true);
+  }, []);
+
+  const handleNodeTap = useCallback((nodeId) => {
+    const { selectionMode: selecting, selectedNodes: selected } =
+      nodeHandlerDeps.current;
+    if (!selecting) return;
+    if (selected.includes(nodeId)) {
+      nodeHandlerDeps.current.removeNodesFromSelection([nodeId]);
+    } else {
+      nodeHandlerDeps.current.addNodesToSelection([nodeId]);
+    }
   }, []);
 
   const handleNodeClick = useCallback((nodeId) => {
@@ -1264,7 +1599,13 @@ function Screen({
   if (!state) return null;
 
   return (
-    <div className={css.container} style={style} ref={screenRef} tabIndex={0}>
+    <div
+      className={css.container}
+      style={style}
+      ref={screenRef}
+      tabIndex={0}
+      data-flow-screen=""
+    >
       <TransformWrapper
         initialScale={state?.scale ?? 1}
         initialPositionX={state?.position?.x ?? 0}
@@ -1334,10 +1675,50 @@ function Screen({
                 snapToGrid={snapToGrid}
                 handleSnapToGrid={handleSnapToGrid}
                 viewMode={viewMode}
+                selectionMode={selectionMode}
+                onToggleSelectionMode={
+                  readOnly ? undefined : () => setSelectionMode((on) => !on)
+                }
+                selectionModeLabel={i(
+                  i18n,
+                  "toolbar.selectionMode",
+                  {},
+                  "Selection mode",
+                )}
               />
 
               {/* Painel de status */}
               <StatusPanel scale={scale} position={position} />
+
+              {pendingConnection ? (
+                <ModeBar
+                  message={i(
+                    i18n,
+                    "connection.pending",
+                    {},
+                    "Tap a highlighted port to connect",
+                  )}
+                  actionLabel={i(i18n, "connection.cancel", {}, "Cancel")}
+                  onAction={() => setPendingConnection(null)}
+                />
+              ) : selectionMode ? (
+                <ModeBar
+                  message={i(
+                    i18n,
+                    "selection.mode",
+                    {},
+                    "Drag to select, tap a node to add or remove it",
+                  )}
+                  actionLabel={i(i18n, "selection.done", {}, "Done")}
+                  onAction={() => setSelectionMode(false)}
+                />
+              ) : null}
+
+              <ConnectionLoupe
+                containerRef={screenRef}
+                point={loupe?.point}
+                target={loupe?.target}
+              />
               <ContextMenu containerRef={screenRef} i18n={i18n}>
                 {({ handleContextMenu }) => {
                   // The node menu is opened from a handler shared by every
@@ -1458,6 +1839,10 @@ function Screen({
                               />
                             );
 
+                          // Unknown node type (e.g. a saved flow referencing a
+                          // type that isn't registered): skip rather than crash.
+                          if (!nodeDef) return null;
+
                           return (
                             <Node
                               id={`node_${node.id}`}
@@ -1485,6 +1870,8 @@ function Screen({
                               onClick={
                                 onNodeClick ? handleNodeClick : undefined
                               }
+                              onTap={readOnly ? undefined : handleNodeTap}
+                              selectionMode={selectionMode}
                               onContextMenu={
                                 readOnly ? undefined : handleNodeContextMenu
                               }
@@ -1504,6 +1891,9 @@ function Screen({
                           overflow: "visible",
                           zIndex: -1,
                           pointerEvents: "none",
+                          // SVG children ignore touch-action, so it is set
+                          // here for the waypoints a finger drags.
+                          touchAction: "none",
                         }}
                       >
                         {state?.nodes &&
